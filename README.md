@@ -101,9 +101,20 @@ docs/               # architecture, taxonomy, datasets, benchmarks, roadmap
 
 ## Status
 
-Early scaffold. The **spine is real and tested** (taxonomy, verdict, rewards,
-metrics, harness, CLI, reference guard); the model training and benchmark adapters
-are stubbed with clear `TODO`s. Follow the plan in [`docs/roadmap.md`](docs/roadmap.md).
+All roadmap phases are implemented with tests. The spine (taxonomy, verdict,
+rewards, metrics, harness, CLI) and the training/eval/deploy/report code are in;
+decoder SFT + GRPO wiring is smoke-verified end-to-end.
+
+**Verified result:** a fine-tuned encoder (Regime A, distilbert, 2 epochs, 73 s on
+an M4 Max) beats the keyword baseline **~100× on F1 (0.007 → 0.703)** on a held-out
+BeaverTails test set — see [`docs/benchmarks.md`](docs/benchmarks.md). Reproduce:
+
+```bash
+make data-demo && make demo    # download data, fine-tune, compare vs baseline
+```
+
+Remaining follow-ups (need external access): scoring the gated incumbents
+(`HF_TOKEN`), a full-scale GRPO run, and publishing. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Contributing
 

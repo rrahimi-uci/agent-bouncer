@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup install data train-sft train-grpo eval bench baselines serve test lint format clean
+.PHONY: help setup install data data-demo demo report train-sft train-grpo train-dpo eval bench baselines serve test lint format clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -18,6 +18,18 @@ train-sft:  ## Supervised fine-tune (config=configs/model/sft_qwen3_0_6b.yaml)
 
 train-grpo:  ## GRPO reasoning guard (config=configs/model/grpo_qwen3_1_7b.yaml)
 	agent-bouncer train grpo --config $(or $(config),configs/model/grpo_qwen3_1_7b.yaml)
+
+train-dpo:  ## DPO over-refusal tuning (config=configs/model/dpo_qwen3.yaml)
+	agent-bouncer train dpo --config $(or $(config),configs/model/dpo_qwen3.yaml)
+
+data-demo:  ## Build the balanced BeaverTails demo dataset (ungated)
+	python scripts/prepare_beavertails_demo.py
+
+demo:  ## Train Regime-A encoder and check it beats the baseline (end-to-end)
+	python scripts/demo_train_eval.py
+
+report:  ## Render results table + model card from outputs/demo_results.json
+	python scripts/make_report.py
 
 eval:  ## Run the eval harness on the smoke set (uses the reference guard)
 	agent-bouncer eval tests/data/smoke.jsonl --run-name keyword-baseline

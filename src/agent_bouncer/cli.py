@@ -37,10 +37,14 @@ def _cmd_train(args: argparse.Namespace) -> int:
         from .train.sft import run_sft
 
         run_sft(args.config)
-    else:
+    elif args.method == "grpo":
         from .train.grpo import run_grpo
 
         run_grpo(args.config)
+    else:
+        from .train.dpo import run_dpo
+
+        run_dpo(args.config)
     return 0
 
 
@@ -63,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.set_defaults(func=_cmd_eval)
 
     p_train = sub.add_parser("train", help="Train a guard")
-    p_train.add_argument("method", choices=["sft", "grpo"])
+    p_train.add_argument("method", choices=["sft", "grpo", "dpo"])
     p_train.add_argument("--config", required=True)
     p_train.set_defaults(func=_cmd_train)
 

@@ -1,0 +1,19 @@
+# Demo config: a fast, ungated encoder fine-tune to prove the pipeline moves the
+# baseline in-session. The "official" Regime-A config uses ModernBERT-large;
+# distilbert here is smaller/faster for a quick, reproducible run.
+arch: encoder
+base_model: distilbert-base-uncased
+seed: 42
+
+data:
+  train: data/demo/train.jsonl
+  validation: data/demo/validation.jsonl
+  test: data/demo/test.jsonl
+
+train:
+  epochs: 2
+  lr: 2.0e-5
+  batch_size: 16
+  max_length: 128
+
+output_dir: outputs/demo-encoder
