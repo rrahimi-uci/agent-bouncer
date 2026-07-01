@@ -1,0 +1,21 @@
+# Evaluation config (consumed by the eval harness / scripts/run_eval.sh)
+mlflow:
+  experiment_name: agent-bouncer
+  tracking_uri: null   # null -> local ./mlruns
+
+benchmarks:
+  guardbench: true
+  pint: true
+  xstest: true
+
+# Guards to score (paths to trained checkpoints or baseline ids)
+guards:
+  - keyword-baseline
+  # - outputs/encoder-modernbert
+  # - outputs/sft-qwen3-0.6b
+  # - outputs/grpo-qwen3-1.7b
+
+baselines:
+  - meta-llama/Llama-Guard-3-1B
+  - google/shieldgemma-2b
+  - meta-llama/Llama-Prompt-Guard-2-86M

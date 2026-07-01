@@ -1,0 +1,13 @@
+# Regime D (stretch) — DPO on over-refusal pairs to crush false positives
+arch: decoder
+mode: sft
+backend: unsloth
+base_model: outputs/sft-qwen3-0.6b   # start from the SFT checkpoint
+
+dpo:
+  beta: 0.1
+  lr: 5.0e-6
+  epochs: 1
+  # preference pairs: (benign prompt -> "safe") preferred over ("unsafe")
+
+output_dir: outputs/dpo-qwen3-0.6b

@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use Agent Bouncer, please cite it."
+title: "Agent Bouncer: a tiny, fast safety bouncer for LLMs and agents"
+authors:
+  - family-names: Rahimi
+    given-names: Reza
+repository-code: "https://github.com/rezarahimi/agent-bouncer"
+license: Apache-2.0
+version: 0.0.1
+date-released: "2026-07-01"
+keywords:
+  - llm
+  - agent
+  - guardrail
+  - prompt-injection
+  - small-language-model

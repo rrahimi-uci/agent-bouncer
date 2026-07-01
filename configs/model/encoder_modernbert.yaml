@@ -1,0 +1,13 @@
+# Regime A — encoder classifier (the latency hero)
+arch: encoder
+backend: transformers
+base_model: answerdotai/ModernBERT-large
+num_labels: 13          # len(Hazard): NONE + 12 hazards
+
+train:
+  epochs: 3
+  lr: 2.0e-5
+  batch_size: 32
+  max_length: 512
+
+output_dir: outputs/encoder-modernbert

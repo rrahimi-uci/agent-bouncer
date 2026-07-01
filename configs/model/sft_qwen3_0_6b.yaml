@@ -1,0 +1,18 @@
+# Regime B — SFT / QLoRA decoder classifier
+arch: decoder
+mode: sft
+backend: mlx          # {mlx (local, Apple Silicon), unsloth (Colab/CUDA)}
+base_model: Qwen/Qwen3-0.6B
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
+train:
+  epochs: 2
+  lr: 2.0e-4
+  batch_size: 16
+  max_seq_len: 1024
+
+output_dir: outputs/sft-qwen3-0.6b

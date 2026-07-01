@@ -1,0 +1,27 @@
+# Regime C — GRPO reasoning guard (the headline experiment)
+arch: decoder
+mode: reasoning
+backend: unsloth      # {unsloth (free Colab/small VRAM), mlx (local)}
+base_model: Qwen/Qwen3-1.7B
+
+lora:
+  r: 16
+  alpha: 32
+
+grpo:
+  num_generations: 8       # rollouts per prompt (group size)
+  max_completion_len: 256
+  lr: 1.0e-6
+  kl_coef: 0.04
+  steps: 1000
+
+# Verifiable reward weights -> agent_bouncer.rewards.RewardWeights
+reward:
+  correctness: 1.0
+  category: 0.5
+  format: 0.2
+  false_positive_penalty: 1.0   # bake over-blocking avoidance into the objective
+  brevity: 0.1
+  rationale_budget: 256
+
+output_dir: outputs/grpo-qwen3-1.7b

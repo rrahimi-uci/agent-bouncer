@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-bouncer"
+version = "0.0.1"
+description = "A tiny, fast safety bouncer for LLMs and agents — screens prompts, tool calls, and outputs before they reach your model."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Reza Rahimi", email = "145064767+rrahimi-uci@users.noreply.github.com" }]
+keywords = ["llm", "agent", "guardrail", "safety", "prompt-injection", "moderation", "slm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+train = ["torch", "transformers", "datasets", "trl", "peft", "accelerate"]
+mlx = ["mlx-lm"]
+eval = ["mlflow>=2.9"]
+serve = ["fastapi", "uvicorn"]
+dev = ["pytest>=8.0", "pytest-cov", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/rezarahimi/agent-bouncer"
+Repository = "https://github.com/rezarahimi/agent-bouncer"
+Issues = "https://github.com/rezarahimi/agent-bouncer/issues"
+
+[project.scripts]
+agent-bouncer = "agent_bouncer.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_bouncer"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]

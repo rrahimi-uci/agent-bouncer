@@ -1,0 +1,24 @@
+# Data preparation config (consumed by scripts/download_data.py)
+output_dir: data/
+seed: 42
+
+sources:
+  - name: wildguardmix
+    hf_id: allenai/wildguardmix
+    enabled: true
+  - name: beavertails
+    hf_id: PKU-Alignment/BeaverTails
+    enabled: true
+  - name: aegis
+    hf_id: nvidia/Aegis-AI-Content-Safety-Dataset-2.0
+    enabled: true
+
+# Held-out benign / over-refusal set for the false-positive metric
+benign:
+  - name: xstest
+    hf_id: natolambert/xstest-v2-copy
+    enabled: true
+
+splits:
+  train: 0.9
+  validation: 0.1

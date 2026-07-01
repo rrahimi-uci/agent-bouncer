@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Testing / linting caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ML artifacts
+mlruns/
+mlartifacts/
+outputs/
+checkpoints/
+*.gguf
+*.safetensors
+*.bin
+wandb/
+
+# Data (downloaded / generated — not committed). tests/data/ fixtures are kept.
+/data/
+
+# Env / secrets
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
