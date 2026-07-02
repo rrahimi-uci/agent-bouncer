@@ -44,23 +44,31 @@ pipeline smoke, not convergence — completions clip at max length (the base mod
 doesn't yet emit terminal JSON), so a real run needs many more steps, a GPU, and
 ideally GRPO *from the SFT checkpoint*. See `configs/model/grpo_qwen3_1_7b.yaml`.
 
-### Comparing against incumbents (`make incumbents`, needs credentials)
+### Comparison vs incumbents (`make incumbents`)
 
-`make incumbents` scores every reachable guard on the test subset and reports
-**precision / recall / F1 / FPR**. It runs whatever `.env` allows and skips the rest
-with a clear message (never fabricated):
+Precision/recall on a balanced **200-prompt** BeaverTails subset, identical harness.
+OpenAI rows are **live**; the gated HF incumbents (Llama Guard / ShieldGemma) still
+need `HF_TOKEN` + license acceptance.
 
-- **OpenAI** (needs `OPENAI_API_KEY`): the Moderation API (`omni-moderation-latest`)
-  and a mini chat model (default `gpt-4o-mini`) as an LLM-judge — see
-  `eval/openai_guards.py`.
-- **Gated HF** (needs `HF_TOKEN` *and* accepting each model's license on HF): Llama
-  Guard 3, ShieldGemma, PromptGuard2 — see `eval/baselines.py`.
+| Guard | Params | Precision | Recall | F1 | FPR@benign ↓ | p50 latency ↓ |
+|-------|-------:|----------:|-------:|---:|-------------:|--------------:|
+| keyword-baseline         | 0    | 0.000 | 0.000 | 0.000 | 0.000 | 0.004 ms |
+| **encoder (distilbert)** | 66M  | 0.716 | 0.680 | 0.697 | 0.270 | **7 ms** |
+| decoder-SFT (Qwen3)      | 0.6B | 0.710 | 0.660 | 0.684 | 0.270 | 446 ms |
+| openai-moderation        | api  | 0.720 | 0.590 | 0.648 | **0.230** | 182 ms |
+| openai-gpt-4o-mini       | —    | 0.648 | **0.810** | **0.720** | 0.440 | 717 ms |
 
-In this environment `.env` was empty and no keys were set, so those rows are
-**pending credentials**; the guard wrappers and their output parsers are
-unit-tested and skip cleanly when a key is absent. (Note: the OpenAI Moderation API
-classifies *content* harmfulness, so on BeaverTails — which labels *response*
-safety — expect lower recall than an LLM-judge prompted for this task.)
+Takeaways:
+- **The 66M encoder beats OpenAI Moderation on F1** (0.697 vs 0.648) and is within
+  0.02 F1 of gpt-4o-mini — at **~25–100× lower latency** (7 ms vs 182–717 ms).
+- **gpt-4o-mini has the best recall/F1 but the worst over-blocking**: FPR 0.44 means
+  it flags ~44% of *benign* prompts — unusable on a request path without tuning.
+  That over-blocking is exactly what Agent Bouncer optimizes against.
+- **OpenAI Moderation** is the most conservative (lowest FPR + recall) — expected,
+  since it classifies *content* harmfulness and misses response-risk prompts.
+
+The comparison runs via `eval/openai_guards.py` (OpenAI) and `eval/baselines.py`
+(gated HF); `make incumbents` skips any guard whose key is absent (never fabricated).
 
 Caveats bound the *absolute* numbers (not the relative comparison, which uses one
 test set + harness for all guards): BeaverTails labels *response* safety, so
