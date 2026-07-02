@@ -16,6 +16,7 @@ import yaml
 from ..models.decoder import build_prompt, format_target
 from ..schema import Decision, Verdict
 from ..taxonomy import Hazard
+from .runtime import load_decoder_training_assets
 
 
 def _flip(gold: Verdict) -> Verdict:
@@ -64,15 +65,21 @@ def run_dpo(config_path: str | Path) -> str:
         seed=int(cfg.get("seed", 42)),
     )
     lora = cfg.get("lora", {})
+    model, tokenizer, device, bf16 = load_decoder_training_assets(
+        cfg["base_model"],
+        trust_remote_code=bool(cfg.get("trust_remote_code", False)),
+    )
     trainer = DPOTrainer(
-        model=cfg["base_model"],
+        model=model,
         args=dpo_config,
         train_dataset=Dataset.from_list(pairs),
+        processing_class=tokenizer,
         peft_config=LoraConfig(
             r=int(lora.get("r", 16)), lora_alpha=int(lora.get("alpha", 32)), task_type="CAUSAL_LM"
         ),
     )
     trainer.train()
     trainer.save_model(out_dir)
-    print(f"[dpo] saved to {out_dir}")
+    tokenizer.save_pretrained(out_dir)
+    print(f"[dpo] saved to {out_dir} ({device}, {'bf16' if bf16 else 'fp32'})")
     return out_dir

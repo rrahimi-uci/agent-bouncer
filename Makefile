@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup install data data-demo demo report train-sft train-grpo train-dpo train-model test-model eval bench benchmarks benchmarks-full curves baselines incumbents serve studio test lint format clean
+.PHONY: help setup install data data-demo demo report train-sft train-grpo train-dpo build-dataset train-model test-model eval bench benchmarks benchmarks-full curves baselines incumbents serve studio test lint format clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -50,6 +50,9 @@ incumbents:  ## Compare vs OpenAI + gated incumbents on the test subset (uses .e
 
 curves:  ## Compute ROC / PR / AUC curves for local guards -> outputs/curves.json
 	python scripts/compute_curves.py
+
+build-dataset:  ## Build a training set (strategy=balanced name=my-set sources="beavertails xstest")
+	python scripts/build_dataset.py --strategy $(or $(strategy),balanced) --name $(or $(name),my-set) --sources $(sources)
 
 train-model:  ## Train a registered model (model=smollm2-1.7b technique=sft [max_steps=40])
 	python scripts/run_training.py --model $(or $(model),distilbert) --technique $(or $(technique),sft) \

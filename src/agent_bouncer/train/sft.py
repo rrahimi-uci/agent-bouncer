@@ -17,6 +17,7 @@ from typing import Any
 import yaml
 
 from ..data import read_jsonl
+from .runtime import load_decoder_training_assets
 
 BINARY_LABEL2ID = {"safe": 0, "unsafe": 1}
 BINARY_ID2LABEL = {0: "safe", 1: "unsafe"}
@@ -146,7 +147,11 @@ def train_decoder(cfg: dict[str, Any]) -> str:
     )
     t = cfg.get("train", {})
     out_dir = cfg.get("output_dir", "outputs/decoder")
-    bf16 = bool(t.get("bf16", False))  # bf16 LoRA is the Mac path (no bitsandbytes/QLoRA)
+    model, tokenizer, device, bf16 = load_decoder_training_assets(
+        cfg["base_model"],
+        train_cfg=t,
+        trust_remote_code=bool(cfg.get("trust_remote_code", False)),
+    )
     sft_config = SFTConfig(
         output_dir=out_dir,
         num_train_epochs=float(t.get("epochs", 2)),
@@ -156,25 +161,26 @@ def train_decoder(cfg: dict[str, Any]) -> str:
         learning_rate=float(t.get("lr", 2e-4)),
         max_length=int(t.get("max_seq_len", 1024)),
         bf16=bf16,
-        model_init_kwargs={"dtype": "bfloat16"} if bf16 else None,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
     )
+    # Load the model ourselves so TRL does not default to `device_map="auto"`
+    # and create meta/offloaded parameters on single-device runs.
     trainer = SFTTrainer(
-        model=cfg["base_model"],
+        model=model,
         train_dataset=to_text(read_jsonl(cfg["data"]["train"])),
+        processing_class=tokenizer,
         args=sft_config,
         peft_config=peft_config,
     )
     trainer.train()
     # Merge the LoRA adapter into the base weights so the guard loads as a
     # standalone model (otherwise the output dir holds only the adapter).
-    from transformers import AutoTokenizer
 
     merged = trainer.model.merge_and_unload()
     merged.save_pretrained(out_dir)
-    AutoTokenizer.from_pretrained(cfg["base_model"]).save_pretrained(out_dir)
-    print(f"[decoder] merged + saved to {out_dir}")
+    tokenizer.save_pretrained(out_dir)
+    print(f"[decoder] merged + saved to {out_dir} ({device}, {'bf16' if bf16 else 'fp32'})")
     return out_dir
 
 

@@ -20,6 +20,7 @@ from ..models.decoder import parse_verdict
 from ..rewards import RewardWeights, composite_reward
 from ..schema import Decision, Verdict
 from ..taxonomy import Hazard
+from .runtime import load_decoder_training_assets
 
 __all__ = ["make_reward_fn", "run_grpo", "RewardWeights", "composite_reward"]
 
@@ -115,23 +116,26 @@ def run_grpo(config_path: str | Path) -> str:
         if lora
         else None
     )
+    model, tokenizer, device, bf16 = load_decoder_training_assets(
+        cfg["base_model"],
+        trust_remote_code=bool(cfg.get("trust_remote_code", False)),
+    )
     trainer = GRPOTrainer(
-        model=cfg["base_model"],
+        model=model,
         reward_funcs=[make_reward_fn(_weights_from_cfg(cfg))],
         args=grpo_config,
         train_dataset=dataset,
+        processing_class=tokenizer,
         peft_config=peft_config,
     )
     trainer.train()
     # When LoRA is used, merge the adapter into the base weights so the guard loads
     # as a standalone model (mirrors sft.train_decoder); otherwise save as-is.
-    from transformers import AutoTokenizer
-
     if peft_config is not None and hasattr(trainer.model, "merge_and_unload"):
         merged = trainer.model.merge_and_unload()
         merged.save_pretrained(out_dir)
     else:
         trainer.save_model(out_dir)
-    AutoTokenizer.from_pretrained(cfg["base_model"]).save_pretrained(out_dir)
-    print(f"[grpo] merged + saved to {out_dir}")
+    tokenizer.save_pretrained(out_dir)
+    print(f"[grpo] merged + saved to {out_dir} ({device}, {'bf16' if bf16 else 'fp32'})")
     return out_dir

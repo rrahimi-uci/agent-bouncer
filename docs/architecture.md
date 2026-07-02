@@ -149,8 +149,10 @@ flowchart TD
 | `models` | trained guards: `EncoderGuard` (BERT), `DecoderGuard` (Qwen3/Llama) |
 | `train` | `sft.py`, `grpo.py`, `dpo.py` |
 | `models_registry` | base-model catalog (Qwen3, DeepSeek-R1, SmolLM2, Gemma, …) + techniques |
+| `training_sets` | training-set **strategies** (balanced / mixed / over-refusal-aware / red-team) |
 | `split` | deterministic train/test split + **anti-leakage** guards |
 | `experiments` | experiment store + model versioning (JSON, no server) |
+| `envfile` | auto-loads `.env` (OPENAI_API_KEY, HF_TOKEN) into the environment |
 | `hardware` | CPU/GPU/memory/runtime snapshot per run |
 | `training_runner` | train→version→record and leakage-checked test→record orchestration |
 | `eval` | harness, benchmark registry, OpenAI + incumbent guards, ROC/AUC, reports |
@@ -329,7 +331,9 @@ production — and it's the number incumbents underreport. It is also baked into
 ## 9 · Serving & the Benchmark Studio
 
 `serve/api.py` exposes the guard as `POST /screen` **and** serves the Benchmark Studio — a
-web UI to configure a run, stream each step live, and explore the charts.
+web UI to **browse benchmark contents**, **build training sets** (by strategy), **train /
+test** SLM guards (streamed live), and **compare experiments** with hardware + P90 graphs.
+Tabs: Overview · Benchmarks · Datasets · Train & Test · Experiments · ROC & AUC.
 
 ```mermaid
 sequenceDiagram

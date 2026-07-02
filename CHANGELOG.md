@@ -64,6 +64,15 @@ All notable changes to this project are documented here. The format follows
   a **hardware panel**, model comparison, and experiment history. New API endpoints
   (`/api/models`, `/api/experiments`, `/api/train`, `/api/test`, `/api/hardware`).
 - **GitHub Pages** landing page (`docs/index.md` + `_config.yml`).
+- **Studio redesign → AI-engineering studio:** a **Benchmarks browser** (toolbar of
+  benchmarks → view contents: searchable, safe/unsafe filter, hazard tags + per-model
+  results); a **Datasets** tab with training-set **strategies** (`training_sets.py`:
+  balanced / mixed / over-refusal-aware / red-team, split leakage-safe); the "Run pipeline"
+  flow removed in favor of a train/test/experiment-centered nav. New endpoints
+  `/api/benchmark/{name}`, `/api/datasets`, `/api/dataset/build`, `/api/train_sets`
+  (`scripts/build_dataset.py`).
+- **`.env` auto-load** (`envfile.py`): OPENAI_API_KEY / HF_TOKEN are picked up by the CLI,
+  scripts, notebook, and server on import (`setdefault` — real env wins).
 
 ### Fixed
 

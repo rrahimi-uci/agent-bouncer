@@ -52,8 +52,10 @@ def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
         cfg["train"] = {
             "epochs": params.get("epochs", 1), "lr": params.get("lr", 2e-4),
             "batch_size": params.get("batch_size", 8), "grad_accum": params.get("grad_accum", 1),
-            "max_seq_len": params.get("max_seq_len", 512), "bf16": params.get("bf16", False),
+            "max_seq_len": params.get("max_seq_len", 512),
         }
+        if "bf16" in params:
+            cfg["train"]["bf16"] = bool(params["bf16"])
         if params.get("max_steps"):
             cfg["train"]["max_steps"] = int(params["max_steps"])
         if technique == "grpo":

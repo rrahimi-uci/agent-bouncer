@@ -97,9 +97,9 @@ jupyter lab notebooks/agent_bouncer_studio.ipynb     # edit CONFIG → Run All
 
 ## Benchmark Studio (the UI)
 
-A professional dashboard to **configure a run** (benchmarks · models &amp; tuning technique ·
-test-set size), **watch the pipeline stream each step live**, and explore the results as
-**Precision / Recall / F1**, over-blocking (FPR), latency, and **ROC / AUC** charts.
+A professional **AI-engineering studio** to browse benchmark contents, build training sets,
+fine-tune / RL-tune SLM guards, test them (leakage-guarded), and compare experiments — all
+with **Precision / Recall / F1 / ROC-AUC / latency / P90 / throughput** charts.
 
 ```bash
 ./start.sh          # launch → opens http://127.0.0.1:8000   (installs fastapi/uvicorn if needed)
@@ -109,16 +109,18 @@ test-set size), **watch the pipeline stream each step live**, and explore the re
 
 | Tab | What you get |
 |-----|--------------|
-| **Overview** | KPI tiles + macro P/R/F1 bars + over-blocking + latency (p50) + **P90** + **throughput** |
-| **By benchmark** | per-benchmark P/R/F1 bars + full metrics table (incl. ROC-AUC) |
-| **ROC & AUC** | real ROC + precision-recall curves + per-benchmark AUC (all models) |
-| **Train & Test** | pick a base model + technique + params → **train**; then **test** a version (leakage-guarded) — streamed live |
+| **Overview** | KPI tiles + macro P/R/F1 + over-blocking + latency (p50) + **P90** + **throughput** |
+| **Benchmarks** | a **toolbar of benchmarks** — click one to **view its contents** (searchable, filter safe/unsafe, hazard tags) alongside per-model results |
+| **Datasets** | build a training set with a **strategy** (balanced · mixed · over-refusal-aware · red-team), leakage-safe |
+| **Train & Test** | pick a base model + technique + a built training set → **train**; then **test** a version (leakage-guarded), streamed live |
 | **Experiments** | full history with **hardware**, model **comparison**, and **P90 graphs** |
-| **Pipeline** | pick benchmarks/guards → **live** stepper, console, results streaming over SSE |
+| **ROC & AUC** | real ROC + precision-recall curves + per-benchmark AUC (all models) |
 
-Runs **merge** into the scoreboard (a partial run never clobbers it); Chart.js is vendored
-locally (offline); it opens pre-populated from `outputs/benchmark_results.json`. See the
-[ROC view](docs/media/benchmark-studio-roc.png).
+Chart.js is vendored (offline); the studio opens pre-populated from `outputs/`. Screenshots:
+[Benchmarks](docs/media/benchmark-studio-benchmarks.png) ·
+[Datasets](docs/media/benchmark-studio-datasets.png) ·
+[Experiments](docs/media/benchmark-studio-experiments.png) ·
+[ROC](docs/media/benchmark-studio-roc.png).
 
 ### Train, version, and compare — the full experiment lifecycle
 
@@ -130,9 +132,14 @@ experiment with its **hardware** (CPU/GPU/memory/runtime), git commit, params, a
 **Train/test separation is enforced**: at test time any benchmark prompt found in the model's
 training data is dropped and reported (no leakage).
 
+**Training-set strategies** decide *what the guard learns from* — build one (leakage-safe:
+every set is split into disjoint train / held-out test) then train on it:
+
 ```bash
-# from the CLI (or do it all in the Studio's Train & Test tab):
-python scripts/run_training.py --model smollm2-1.7b --technique sft --max-steps 40
+# 1) build a training set (strategy = balanced | mixed | over_refusal_aware | red_team)
+python scripts/build_dataset.py --strategy over_refusal_aware --name low-fpr --sources beavertails
+# 2) train a registered SLM on it   3) test it (leakage-guarded) — or do it all in the Studio
+python scripts/run_training.py --model smollm2-1.7b --technique sft --train-data data/train_sets/low-fpr/train.jsonl --max-steps 40
 python scripts/run_testing.py  --exp <experiment-id> --per-class 40 --device mps
 ```
 
@@ -159,6 +166,14 @@ Live 7-benchmark run, `per_class=100`, one harness. **GPT-5.2 uses `reasoning_ef
 - **Red-teaming (prompt-injection) is the hard axis** for every guard.
 - *Latency is device-dependent (captured per run):* encoder/keyword on **CPU**, decoders on
   **Apple MPS**, OpenAI over the **API** — which is exactly why the Studio records hardware.
+
+**Can an ensemble catch GPT-5.2 Low?** Partly. Combining the SLMs (`combine()` over cached
+per-sample scores) beats *every* single SLM — `ensemble-union2` reaches **macro-F1 0.692** (vs 0.673
+best single) and a weighted vote reaches **AUC 0.773** — and a consensus ensemble **matches GPT-5.2's
+over-blocking** (`ensemble-inter2` FPR 0.188 vs 0.184) at **1.5–4× lower latency and cost**. But at
+GPT-5.2's over-blocking budget the ensemble tops out at F1 ≈ 0.62, ~0.18 short of 0.804 — the SLM
+members are correlated (same training recipe), so voting can't manufacture the missing error
+diversity. Honest write-up: **[`docs/ensembles.md`](docs/ensembles.md)**.
 
 Full per-benchmark tables + analysis: **[`docs/benchmarks.md`](docs/benchmarks.md)** ·
 raw scoreboard: [`outputs/BENCHMARKS.md`](outputs/BENCHMARKS.md).

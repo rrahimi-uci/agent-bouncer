@@ -54,6 +54,38 @@ def test_build_commands_decoder_chains_isolated_eval(monkeypatch):
     assert any("eval_added_guard.py" in j and "decoder-grpo-0.6B" in j for j in joined)
 
 
+def test_benchmark_detail_endpoint():
+    d = client.get("/api/benchmark/xstest").json()
+    assert d["axis"] == "over_refusal" and "samples" in d
+    assert client.get("/api/benchmark/does-not-exist").status_code == 404
+
+
+def test_datasets_endpoint_lists_strategies_and_sources():
+    d = client.get("/api/datasets").json()
+    assert {s["key"] for s in d["strategies"]} >= {"balanced", "mixed", "over_refusal_aware", "red_team"}
+    assert {s["name"] for s in d["sources"]} >= {"beavertails", "xstest"}
+    assert "train_sets" in d
+
+
+def test_build_endpoint_builds_command(monkeypatch):
+    captured = {}
+
+    def fake_launch(cmds):
+        captured["c"] = cmds
+        return "rid2"
+
+    monkeypatch.setattr(api, "_launch", fake_launch)
+    r = client.post("/api/dataset/build", json={"strategy": "mixed", "name": "x",
+                                                "sources": ["beavertails", "xstest"], "per_class": 50})
+    assert r.json()["run_id"] == "rid2"
+    cmd = " ".join(captured["c"][0])
+    assert "build_dataset.py" in cmd and "--strategy mixed" in cmd and "beavertails xstest" in cmd
+
+
+def test_parse_line_dataset_marker():
+    assert api._parse_line("DATASET_BUILT=my-set")["type"] == "dataset"
+
+
 def test_parse_line_result_and_log():
     e = api._parse_line("  [xstest] encoder-distilbert: P=0.5 R=0.6 F1=0.55 FPR=0.3 p50=7ms")
     assert e["type"] == "result" and e["benchmark"] == "xstest" and e["f1"] == 0.55

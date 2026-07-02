@@ -3,339 +3,291 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Agent Bouncer — Benchmark Studio</title>
+<title>Agent Bouncer — Studio</title>
 <script src="/static/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0a0d14; --bg2:#0e1220; --panel:#121829; --panel2:#161d31; --raise:#1b2338;
     --border:#232c44; --line:#2b3652; --text:#e9eef9; --muted:#93a1bd; --faint:#5c6b88;
-    --accent:#4c8dff; --accent2:#8b6dff; --good:#34d399; --warn:#f5a524; --bad:#f87171;
+    --accent:#4c8dff; --accent2:#8b6dff; --good:#34d399; --warn:#f5a524; --bad:#f87171; --cyan:#22d3ee;
     --p:#4c8dff; --r:#34d399; --f1:#a78bfa;
     --shadow:0 10px 30px rgba(0,0,0,.35); --r-lg:16px; --r-md:12px; --r-sm:9px;
-    font-synthesis:none; -webkit-font-smoothing:antialiased;
+    -webkit-font-smoothing:antialiased;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{
-    background:radial-gradient(1200px 600px at 80% -10%, #17203a 0%, transparent 55%),
-               radial-gradient(1000px 500px at -10% 0%, #1a1533 0%, transparent 50%), var(--bg);
-    color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
-    font-size:14px; line-height:1.5;
-  }
+  body{background:radial-gradient(1200px 600px at 80% -10%, #17203a 0%, transparent 55%),
+       radial-gradient(1000px 500px at -10% 0%, #1a1533 0%, transparent 50%), var(--bg);
+       color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif; font-size:14px; line-height:1.5;}
   a{color:var(--accent);text-decoration:none}
-  .app{display:grid;grid-template-columns:340px 1fr;min-height:100vh}
-  /* ---------- header ---------- */
-  header{
-    grid-column:1/3;display:flex;align-items:center;gap:16px;padding:16px 26px;
-    border-bottom:1px solid var(--border);background:rgba(10,13,20,.7);
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-    position:sticky;top:0;z-index:20;
-  }
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+  .app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+  header{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:15px 26px;border-bottom:1px solid var(--border);
+    background:rgba(10,13,20,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20;}
   .brand{display:flex;align-items:center;gap:13px}
   .logo{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:21px;
     background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 18px rgba(76,141,255,.4)}
   .brand h1{font-size:16px;margin:0;letter-spacing:.2px;font-weight:650}
   .brand p{margin:0;color:var(--muted);font-size:12px}
   .spacer{flex:1}
-  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);
-    background:var(--panel);border:1px solid var(--border);padding:6px 12px;border-radius:999px}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);background:var(--panel);
+    border:1px solid var(--border);padding:6px 12px;border-radius:999px}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
   .dot.on{background:var(--good);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
   .dot.off{background:var(--bad);box-shadow:0 0 0 3px rgba(248,113,113,.15)}
-  /* ---------- sidebar ---------- */
-  aside{border-right:1px solid var(--border);padding:20px 18px 40px;overflow-y:auto;height:calc(100vh - 73px);
-    position:sticky;top:73px;background:linear-gradient(180deg,rgba(18,24,41,.5),transparent 40%)}
-  .sec{margin-bottom:22px}
-  .sec>.lab{display:flex;align-items:center;justify-content:space-between;
-    font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:0 2px 10px;font-weight:700}
-  .lab .mini{font-size:11px;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:600}
-  .lab .mini:hover{text-decoration:underline}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md)}
-  .grouptitle{font-size:11px;color:var(--muted);font-weight:650;margin:12px 4px 6px;display:flex;gap:7px;align-items:center}
-  .axisdot{width:7px;height:7px;border-radius:2px}
-  .opt{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:var(--r-sm);cursor:pointer;
-    transition:background .12s;border:1px solid transparent}
-  .opt:hover{background:var(--panel2)}
-  .opt.sel{background:rgba(76,141,255,.10);border-color:rgba(76,141,255,.35)}
-  .opt.dis{opacity:.4;cursor:not-allowed}
-  .opt input{margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex:0 0 auto}
-  .opt .body{flex:1;min-width:0}
-  .opt .t{font-size:13px;font-weight:550;display:flex;gap:8px;align-items:center}
-  .opt .d{font-size:11.5px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis}
-  .badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:650;letter-spacing:.02em;white-space:nowrap}
-  .b-sft{background:rgba(76,141,255,.16);color:#8db6ff}
-  .b-rl{background:rgba(139,109,255,.18);color:#b7a4ff}
-  .b-api{background:rgba(245,165,36,.16);color:#f4c67a}
-  .b-heur{background:rgba(148,161,189,.14);color:var(--muted)}
-  .params{font-size:10.5px;color:var(--faint);margin-left:auto}
-  .slider-wrap{padding:14px 13px}
-  .slider-val{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
-  .slider-val b{font-size:22px;font-weight:700;color:var(--text)}
-  .slider-val span{font-size:12px;color:var(--muted)}
-  input[type=range]{width:100%;accent-color:var(--accent);height:4px}
-  .runbtn{width:100%;margin-top:6px;padding:13px;border:none;border-radius:var(--r-md);cursor:pointer;
-    font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));
-    box-shadow:0 8px 22px rgba(76,141,255,.35);transition:transform .08s,filter .15s}
-  .runbtn:hover{filter:brightness(1.08)}
-  .runbtn:active{transform:translateY(1px)}
-  .runbtn:disabled{filter:grayscale(.6) brightness(.8);cursor:not-allowed;box-shadow:none}
-  .hint{font-size:11px;color:var(--faint);margin-top:9px;text-align:center;line-height:1.45}
-  /* ---------- main ---------- */
-  main{padding:24px 30px 60px;overflow:hidden}
-  .tabs{display:flex;gap:4px;margin-bottom:22px;border-bottom:1px solid var(--border)}
-  .tab{padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;
-    border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s}
-  .tab:hover{color:var(--text)}
-  .tab.on{color:var(--text);border-color:var(--accent)}
-  .tab .n{margin-left:7px;font-size:11px;color:var(--faint);background:var(--panel);padding:1px 7px;border-radius:999px}
-  .view{display:none;animation:fade .25s ease}
-  .view.on{display:block}
+  /* rail */
+  aside{border-right:1px solid var(--border);padding:20px 16px;position:sticky;top:71px;height:calc(100vh - 71px);overflow-y:auto;
+    background:linear-gradient(180deg,rgba(18,24,41,.5),transparent 40%)}
+  .navlab{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:4px 6px 8px;font-weight:700}
+  .nav{display:flex;flex-direction:column;gap:3px;margin-bottom:22px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);color:var(--muted);font-weight:550;cursor:pointer;transition:.12s}
+  .nav a:hover{background:var(--panel2);color:var(--text)}
+  .nav a.on{background:rgba(76,141,255,.12);color:var(--text);box-shadow:inset 2px 0 0 var(--accent)}
+  .nav a .ic{width:18px;text-align:center}
+  .nav a .n{margin-left:auto;font-size:11px;color:var(--faint);background:var(--panel);padding:1px 7px;border-radius:999px}
+  .railcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:13px;margin-bottom:14px}
+  .railcard h4{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+  .stat{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;color:var(--muted)}
+  .stat b{color:var(--text);font-variant-numeric:tabular-nums}
+  .hw{font-size:11.5px;color:var(--muted);line-height:1.5}
+  main{padding:22px 30px 60px;overflow:hidden}
+  .view{display:none;animation:fade .25s ease}.view.on{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  /* KPI */
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-  .kpi{padding:17px 18px;border-radius:var(--r-md);background:linear-gradient(160deg,var(--panel2),var(--panel));
-    border:1px solid var(--border);position:relative;overflow:hidden}
-  .kpi::after{content:"";position:absolute;inset:0 0 auto auto;width:120px;height:120px;
-    background:radial-gradient(circle at 100% 0,var(--glow,rgba(76,141,255,.16)),transparent 70%)}
+  h2.vh{margin:0 0 3px;font-size:19px;font-weight:700;letter-spacing:-.2px}
+  p.vs{margin:0 0 18px;color:var(--muted);font-size:13px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+  .kpi{padding:16px 18px;border-radius:var(--r-md);background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--border);position:relative;overflow:hidden}
+  .kpi::after{content:"";position:absolute;inset:0 0 auto auto;width:120px;height:120px;background:radial-gradient(circle at 100% 0,var(--glow,rgba(76,141,255,.16)),transparent 70%)}
   .kpi .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650}
-  .kpi .v{font-size:27px;font-weight:750;margin:5px 0 1px;letter-spacing:-.5px}
+  .kpi .v{font-size:26px;font-weight:750;margin:5px 0 1px;letter-spacing:-.5px}
   .kpi .s{font-size:12px;color:var(--faint)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .chartcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px;margin-bottom:16px}
   .chartcard h3{margin:0 0 3px;font-size:14px;font-weight:650}
   .chartcard .sub{margin:0 0 12px;font-size:12px;color:var(--muted)}
-  .cbox{position:relative;height:300px}
-  .cbox.tall{height:340px}
+  .cbox{position:relative;height:300px}.cbox.tall{height:340px}
   .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;
-    padding:7px 11px;font-size:13px;font-family:inherit;cursor:pointer}
-  /* forms (train/test) */
-  .form label{display:block;font-size:12px;color:var(--muted);margin:0 0 12px;font-weight:600}
-  .form input,.form select{display:block;width:100%;margin-top:5px;background:var(--panel2);color:var(--text);
-    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
-  .form select[multiple]{height:auto;cursor:pointer}
-  .frow{display:flex;gap:10px}.frow label{flex:1}
-  .mnote{font-size:11.5px;color:var(--faint);margin:2px 0 13px;line-height:1.5}
-  .b-dpo{background:rgba(34,211,238,.16);color:#7fdbe8}
-  tbody tr.pick{background:rgba(76,141,255,.10)}
-  .kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:12.5px;margin:6px 0}
-  .kv .k{color:var(--faint)}
-  /* table */
+  select,input[type=text],input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit}
+  select{cursor:pointer}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
   th:first-child,td:first-child{text-align:left}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:650}
-  tbody tr:hover{background:var(--panel2)}
-  td.name{font-weight:600}
-  .gtag{font-size:10px;padding:2px 6px;border-radius:5px;margin-left:8px;vertical-align:middle}
-  .bar{height:6px;border-radius:3px;background:var(--line);position:relative;min-width:54px;display:inline-block;width:70px;vertical-align:middle}
+  tbody tr:hover{background:var(--panel2)} td.name{font-weight:600}
+  tbody tr.pick{background:rgba(76,141,255,.10)}
+  .bar{height:6px;border-radius:3px;background:var(--line);position:relative;width:70px;display:inline-block;vertical-align:middle}
   .bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
   .mono{font-variant-numeric:tabular-nums}
-  /* pipeline */
-  .pipe{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .stepper{list-style:none;margin:0;padding:0}
-  .stepper li{display:flex;gap:12px;padding:10px 0;align-items:flex-start}
-  .stepper .ic{width:24px;height:24px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
-    font-size:12px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
-  .stepper li.active .ic{background:rgba(76,141,255,.18);border-color:var(--accent);color:#9dc0ff}
-  .stepper li.done .ic{background:rgba(52,211,153,.18);border-color:var(--good);color:var(--good)}
-  .stepper li.err .ic{background:rgba(248,113,113,.18);border-color:var(--bad);color:var(--bad)}
-  .stepper .txt{font-size:13px}
-  .stepper .sub{font-size:11.5px;color:var(--faint)}
-  .spin{width:13px;height:13px;border:2px solid rgba(157,192,255,.35);border-top-color:#9dc0ff;border-radius:50%;animation:sp .7s linear infinite}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .console{background:#070a11;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;
-    height:420px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.65}
+  /* benchmark toolbar */
+  .btoolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .bchip{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;border:1px solid var(--border);background:var(--panel);
+    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);transition:.12s}
+  .bchip:hover{background:var(--panel2);color:var(--text)}
+  .bchip.on{color:#fff;border-color:transparent}
+  .bchip .axd{width:8px;height:8px;border-radius:2px}
+  .bchip .eye{opacity:.5;font-size:13px}
+  .axis-guardrail{--ac:#4c8dff} .axis-red_team{--ac:#f87171} .axis-over_refusal{--ac:#34d399}
+  .bchip.on{background:color-mix(in srgb, var(--ac) 22%, var(--panel));box-shadow:inset 0 0 0 1px var(--ac)}
+  /* sample viewer */
+  .vtools{display:flex;gap:10px;align-items:center;margin:4px 0 12px;flex-wrap:wrap}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--panel2);color:var(--text)}
+  .samples{max-height:520px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+  .scard{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg2)}
+  .scard .lbl{flex:0 0 auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;letter-spacing:.03em;margin-top:1px}
+  .lbl.safe{background:rgba(52,211,153,.16);color:#7fe0bd} .lbl.unsafe{background:rgba(248,113,113,.16);color:#f6a6a6}
+  .scard .txt{flex:1;font-size:13px;line-height:1.5;word-break:break-word}
+  .scard .hz{flex:0 0 auto;font-size:10.5px;color:var(--faint);margin-top:2px}
+  /* forms */
+  .form label{display:block;font-size:12px;color:var(--muted);margin:0 0 12px;font-weight:600}
+  .form input,.form select{display:block;width:100%;margin-top:5px}
+  .form select[multiple]{height:auto}
+  .frow{display:flex;gap:10px}.frow label{flex:1}
+  .mnote{font-size:11.5px;color:var(--faint);margin:2px 0 13px;line-height:1.5}
+  .runbtn{width:100%;margin-top:4px;padding:12px;border:none;border-radius:var(--r-md);cursor:pointer;font-size:14px;font-weight:700;color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 22px rgba(76,141,255,.35);transition:.1s}
+  .runbtn:hover{filter:brightness(1.08)} .runbtn:active{transform:translateY(1px)}
+  .runbtn:disabled{filter:grayscale(.6) brightness(.8);cursor:not-allowed;box-shadow:none}
+  .badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:650;white-space:nowrap}
+  .b-sft{background:rgba(76,141,255,.16);color:#8db6ff} .b-rl{background:rgba(139,109,255,.18);color:#b7a4ff}
+  .b-api{background:rgba(245,165,36,.16);color:#f4c67a} .b-heur{background:rgba(148,161,189,.14);color:var(--muted)}
+  .b-dpo{background:rgba(34,211,238,.16);color:#7fdbe8}
+  /* strategy cards */
+  .strat{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+  .stratcard{padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--panel);cursor:pointer;transition:.12s}
+  .stratcard:hover{background:var(--panel2)}
+  .stratcard.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),0 8px 22px rgba(76,141,255,.14)}
+  .stratcard .t{font-weight:650;font-size:13.5px;margin-bottom:3px}
+  .stratcard .d{font-size:12px;color:var(--muted);line-height:1.5}
+  .srcpick{display:flex;flex-wrap:wrap;gap:8px}
+  .srcpick label{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+  .srcpick label.sel{background:rgba(76,141,255,.1);border-color:rgba(76,141,255,.4);color:var(--text)}
+  .srcpick input{accent-color:var(--accent)}
+  .console{background:#070a11;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;height:280px;overflow:auto;
+    font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.65}
   .console .l{color:var(--muted);white-space:pre-wrap;word-break:break-word}
-  .console .l.res{color:#bfe3c8}
-  .console .l.step{color:#9dc0ff;font-weight:600;margin-top:6px}
-  .console .l.err{color:#ffb4b4}
-  .empty{text-align:center;color:var(--faint);padding:70px 20px}
-  .empty .big{font-size:40px;margin-bottom:10px;opacity:.7}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);z-index:50;
-    background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:13px 20px;box-shadow:var(--shadow);
-    display:flex;gap:11px;align-items:center;font-size:13.5px;transition:transform .3s cubic-bezier(.2,.9,.3,1.2)}
+  .console .l.res{color:#bfe3c8} .console .l.step{color:#9dc0ff;font-weight:600} .console .l.err{color:#ffb4b4}
+  .empty{text-align:center;color:var(--faint);padding:60px 20px}.empty .big{font-size:38px;margin-bottom:10px;opacity:.7}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:12.5px;margin:6px 0}.kv .k{color:var(--faint)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);z-index:50;background:var(--raise);border:1px solid var(--line);
+    border-radius:12px;padding:13px 20px;box-shadow:var(--shadow);font-size:13.5px;transition:transform .3s cubic-bezier(.2,.9,.3,1.2)}
   .toast.show{transform:translateX(-50%) translateY(0)}
-  .footer-note{color:var(--faint);font-size:11.5px;margin-top:18px;line-height:1.6}
-  @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.pipe{grid-template-columns:1fr}}
+  .footer-note{color:var(--faint);font-size:11.5px;margin-top:16px;line-height:1.6}
+  @media(max-width:1100px){.kpis,.strat{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="brand">
-      <div class="logo">🕶️</div>
-      <div><h1>Agent Bouncer — Benchmark Studio</h1><p>SLM guardrails · fine-tuning &amp; RL · standard benchmark suite</p></div>
-    </div>
+    <div class="brand"><div class="logo">🕶️</div>
+      <div><h1>Agent Bouncer — Studio</h1><p>Train · test · experiment with SLM guardrails</p></div></div>
     <div class="spacer"></div>
     <span class="pill" id="openaiPill"><span class="dot" id="openaiDot"></span> OpenAI</span>
-    <span class="pill" id="dataPill"><span class="dot" id="dataDot"></span> <span id="dataTxt">results</span></span>
+    <span class="pill" id="hwPill"><span class="dot on"></span> <span id="hwLabel">…</span></span>
   </header>
 
   <aside>
-    <div class="sec">
-      <div class="lab">Test set size</div>
-      <div class="card slider-wrap">
-        <div class="slider-val"><b id="pcVal">40</b><span>examples / class</span></div>
-        <input type="range" id="perClass" min="10" max="100" step="5" value="40" aria-label="Test set size per class"/>
-        <div class="hint" style="text-align:left;margin-top:8px">Balanced subset per benchmark (½ safe, ½ unsafe). Larger = steadier metrics, slower + more API cost.</div>
-      </div>
+    <div class="navlab">Studio</div>
+    <nav class="nav" id="nav">
+      <a data-view="overview"><span class="ic">📊</span> Overview</a>
+      <a data-view="benchmarks"><span class="ic">📚</span> Benchmarks <span class="n" id="nBench">0</span></a>
+      <a data-view="datasets"><span class="ic">🧪</span> Datasets <span class="n" id="nSets">0</span></a>
+      <a data-view="train"><span class="ic">⚙︎</span> Train &amp; Test <span class="n" id="trainBadge">idle</span></a>
+      <a data-view="experiments"><span class="ic">🧬</span> Experiments <span class="n" id="expBadge">0</span></a>
+      <a data-view="roc"><span class="ic">📈</span> ROC &amp; AUC</a>
+    </nav>
+    <div class="railcard"><h4>This machine</h4><div class="hw" id="hwRail">…</div></div>
+    <div class="railcard"><h4>At a glance</h4>
+      <div class="stat"><span>Guards scored</span><b id="sgGuards">–</b></div>
+      <div class="stat"><span>Benchmarks</span><b id="sgBench">–</b></div>
+      <div class="stat"><span>Base models</span><b id="sgModels">–</b></div>
+      <div class="stat"><span>Experiments</span><b id="sgExp">–</b></div>
+      <div class="stat"><span>Training sets</span><b id="sgSets">–</b></div>
     </div>
-
-    <div class="sec">
-      <div class="lab">Benchmarks <span class="mini" id="allBench">select all</span></div>
-      <div class="card" id="benchList" style="padding:6px"></div>
-    </div>
-
-    <div class="sec">
-      <div class="lab">Models &amp; tuning <span class="mini" id="allGuards">reset</span></div>
-      <div class="card" id="guardList" style="padding:6px"></div>
-    </div>
-
-    <button type="button" class="runbtn" id="runBtn">▶  Run pipeline</button>
-    <div class="hint" id="runHint">Runs the selected guards on the chosen benchmarks through one harness.</div>
+    <div class="footer-note">Local guards on CPU · decoders on MPS · OpenAI via API. Hardware is recorded per run for fair comparison.</div>
   </aside>
 
   <main>
-    <div class="tabs">
-      <div class="tab on" data-view="overview">Overview</div>
-      <div class="tab" data-view="bench">By benchmark</div>
-      <div class="tab" data-view="roc">ROC &amp; AUC</div>
-      <div class="tab" data-view="train">Train &amp; Test <span class="n" id="trainBadge">idle</span></div>
-      <div class="tab" data-view="experiments">Experiments <span class="n" id="expBadge">0</span></div>
-      <div class="tab" data-view="pipeline">Pipeline <span class="n" id="pipeBadge">idle</span></div>
-    </div>
-
     <!-- OVERVIEW -->
     <section class="view on" id="v-overview">
+      <h2 class="vh">Scoreboard</h2><p class="vs">Every guard through one harness — positive class = <code>unsafe</code>. Over-blocking (FPR@benign) is the usability metric.</p>
       <div class="kpis" id="kpis"></div>
-      <div class="chartcard">
-        <div class="row-between"><div><h3>Macro-average across benchmarks</h3><p class="sub">Precision / Recall / F1 per guard — positive class = <code>unsafe</code></p></div></div>
-        <div class="cbox tall"><canvas id="cMacro"></canvas></div>
+      <div class="chartcard"><h3>Macro-average — Precision / Recall / F1</h3><p class="sub">Averaged across all benchmarks</p><div class="cbox tall"><canvas id="cMacro"></canvas></div></div>
+      <div class="grid2">
+        <div class="chartcard"><h3>Over-blocking (FPR@benign) ↓</h3><p class="sub">Share of benign traffic wrongly blocked</p><div class="cbox"><canvas id="cFpr"></canvas></div></div>
+        <div class="chartcard"><h3>Latency p50 (log) ↓</h3><p class="sub">Per-request cost</p><div class="cbox"><canvas id="cLat"></canvas></div></div>
       </div>
       <div class="grid2">
-        <div class="chartcard"><h3>Over-blocking (FPR@benign) ↓</h3><p class="sub">Share of <em>benign</em> traffic wrongly blocked — the usability metric</p><div class="cbox"><canvas id="cFpr"></canvas></div></div>
-        <div class="chartcard"><h3>Latency (p50, log scale) ↓</h3><p class="sub">Per-request cost — decisive on the request path</p><div class="cbox"><canvas id="cLat"></canvas></div></div>
-      </div>
-      <div class="grid2">
-        <div class="chartcard"><h3>Tail latency (P90, log scale) ↓</h3><p class="sub">90th-percentile per-request latency — the SLO number</p><div class="cbox"><canvas id="cP90"></canvas></div></div>
-        <div class="chartcard"><h3>Throughput (queries/sec) ↑</h3><p class="sub">Single-stream throughput (1000 / mean latency)</p><div class="cbox"><canvas id="cThru"></canvas></div></div>
+        <div class="chartcard"><h3>Tail latency P90 (log) ↓</h3><p class="sub">90th-percentile — the SLO number</p><div class="cbox"><canvas id="cP90"></canvas></div></div>
+        <div class="chartcard"><h3>Throughput (queries/sec) ↑</h3><p class="sub">Single-stream (1000 / mean latency)</p><div class="cbox"><canvas id="cThru"></canvas></div></div>
       </div>
       <p class="footer-note" id="methodNote"></p>
     </section>
 
-    <!-- BY BENCHMARK -->
-    <section class="view" id="v-bench">
-      <div class="chartcard">
-        <div class="row-between" style="margin-bottom:12px">
-          <div><h3>Per-benchmark breakdown</h3><p class="sub" id="benchSub" style="margin:0">Select a benchmark to inspect all guards</p></div>
-          <select id="benchPick" aria-label="Select benchmark"></select>
+    <!-- BENCHMARKS -->
+    <section class="view" id="v-benchmarks">
+      <h2 class="vh">Benchmarks</h2><p class="vs">Click a benchmark to view its contents and per-model results.</p>
+      <div class="btoolbar" id="btoolbar"></div>
+      <div id="benchHead"></div>
+      <div class="grid2">
+        <div class="chartcard" style="margin:0">
+          <div class="row-between" style="margin-bottom:8px"><h3 id="samplesTitle">Contents</h3>
+            <div class="vtools">
+              <input type="text" id="sampleSearch" placeholder="search prompts…" style="width:170px"/>
+              <div class="seg" id="labelSeg"><button data-f="all" class="on">All</button><button data-f="safe">Safe</button><button data-f="unsafe">Unsafe</button></div>
+            </div>
+          </div>
+          <div class="samples" id="samples"></div>
         </div>
-        <div class="cbox tall"><canvas id="cBench"></canvas></div>
+        <div class="chartcard" style="margin:0"><h3>Model results on this benchmark</h3><p class="sub" id="benchResSub">Precision / Recall / F1 per guard</p>
+          <div class="cbox"><canvas id="cBench"></canvas></div>
+          <div id="benchTable" style="margin-top:12px"></div>
+        </div>
       </div>
-      <div class="chartcard"><div id="benchTable"></div></div>
     </section>
 
-    <!-- ROC / AUC -->
-    <section class="view" id="v-roc">
+    <!-- DATASETS -->
+    <section class="view" id="v-datasets">
+      <h2 class="vh">Training sets</h2><p class="vs">Choose a <b>strategy</b> for what your guard learns from. Every set is split into disjoint train / held-out test — <b>no leakage</b>.</p>
       <div class="grid2">
-        <div class="chartcard">
-          <div class="row-between" style="margin-bottom:10px">
-            <div><h3>ROC curves</h3><p class="sub" id="rocSub" style="margin:0">True-positive vs false-positive rate</p></div>
-            <select id="rocPick" aria-label="Select benchmark for ROC"></select>
+        <div class="chartcard" style="margin:0">
+          <h3>① Strategy</h3><p class="sub">How to compose the training data</p>
+          <div class="strat" id="stratCards"></div>
+          <h3 style="margin-top:6px">② Sources</h3><p class="sub" id="srcHint">Pick datasets to draw from</p>
+          <div class="srcpick" id="srcPick"></div>
+          <div class="form" style="margin-top:14px">
+            <div class="frow">
+              <label>Set name<input id="dsName" type="text" value="my-trainset"></label>
+              <label>Examples / class<input id="dsPerClass" type="number" value="200" min="20"></label>
+            </div>
+            <div class="mnote" id="dsNote"></div>
+            <button type="button" class="runbtn" id="buildBtn">🧪  Build training set</button>
           </div>
-          <div class="cbox tall"><canvas id="cRoc"></canvas></div>
         </div>
-        <div class="chartcard">
-          <h3>Precision–Recall curves</h3><p class="sub">Same threshold sweep, precision vs recall</p>
-          <div class="cbox tall"><canvas id="cPr"></canvas></div>
+        <div class="chartcard" style="margin:0">
+          <h3>Built training sets</h3><p class="sub">Reusable in the Train &amp; Test tab</p>
+          <div id="setsList"><div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div></div>
+          <div class="console" id="buildConsole" style="height:180px;margin-top:12px;display:none"></div>
         </div>
-      </div>
-      <div class="chartcard">
-        <h3>ROC-AUC by benchmark</h3><p class="sub">Area under the ROC curve for every guard. The encoder emits a continuous score → a threshold-<em>swept</em> curve; hard-decision guards (keyword · decoders · OpenAI) have a single operating point, so AUC = (recall + 1 − FPR) / 2.</p>
-        <div class="cbox"><canvas id="cAuc"></canvas></div>
       </div>
     </section>
 
     <!-- TRAIN & TEST -->
     <section class="view" id="v-train">
-      <div class="chartcard" style="margin-bottom:16px">
-        <div class="row-between">
-          <div><h3>This machine</h3><p class="sub" style="margin:0">Hardware recorded with every run for fair comparison</p></div>
-          <span class="pill" id="hwPill"><span class="dot on"></span> <span id="hwLabel">…</span></span>
-        </div>
-      </div>
+      <h2 class="vh">Train &amp; Test</h2><p class="vs">Fine-tune (SFT) or RL-tune (GRPO) a base model → a versioned checkpoint, then test it against benchmarks with leakage guards.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
-          <h3>① Train a model</h3><p class="sub">Fine-tune (SFT) or RL-tune (GRPO) a base model → a versioned checkpoint + experiment</p>
+          <h3>① Train a model</h3><p class="sub">Any registered SLM · same SFT / GRPO / DPO</p>
           <div class="form">
             <label>Base model<select id="tModel" aria-label="Base model"></select></label>
             <label>Technique<select id="tTech" aria-label="Technique"></select></label>
+            <label>Training set<select id="tData" aria-label="Training set"></select></label>
             <div class="frow">
-              <label>Epochs<input id="tEpochs" type="number" step="0.5" value="1" min="0.1"></label>
-              <label>Max steps<input id="tMaxSteps" type="number" value="" placeholder="(bounded)"></label>
+              <label>Epochs<input id="tEpochs" type="number" step="0.5" value="1"></label>
+              <label>Max steps<input id="tMaxSteps" type="number" placeholder="(bounded)"></label>
+              <label>LoRA r<input id="tLoraR" type="number" value="16"></label>
             </div>
-            <div class="frow">
-              <label>LR<input id="tLr" type="text" value="" placeholder="auto"></label>
-              <label>Batch<input id="tBatch" type="number" value="8" min="1"></label>
-              <label>LoRA r<input id="tLoraR" type="number" value="16" min="1"></label>
-            </div>
-            <label>Train data<input id="tData" type="text" value="data/demo/train.jsonl"></label>
             <div class="mnote" id="tNote"></div>
             <button type="button" class="runbtn" id="trainBtn">⚙︎  Train model</button>
           </div>
         </div>
         <div class="chartcard" style="margin:0">
-          <h3>② Test against the pipeline</h3><p class="sub">Score a trained version on benchmarks — with <b>train/test leakage guards</b></p>
+          <h3>② Test against the pipeline</h3><p class="sub">Leakage-guarded: any test prompt seen in training is dropped &amp; reported</p>
           <div class="form">
             <label>Trained version<select id="tVersion" aria-label="Trained version"></select></label>
             <div class="frow">
-              <label>Test size / class<input id="tPerClass" type="number" value="40" min="5" max="200"></label>
+              <label>Test size / class<input id="tPerClass" type="number" value="40"></label>
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
             <label>Benchmarks<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
-            <div class="mnote">Leakage-checked: any test prompt seen in training is dropped &amp; reported.</div>
             <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test model</button>
           </div>
         </div>
       </div>
-      <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="trainConsole"><div class="empty" style="padding:30px"><div class="big">⚙︎</div>Configure and press Train or Test.</div></div></div>
+      <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="trainConsole"><div class="empty" style="padding:26px"><div class="big">⚙︎</div>Configure and press Train or Test.</div></div></div>
     </section>
 
     <!-- EXPERIMENTS -->
     <section class="view" id="v-experiments">
+      <h2 class="vh">Experiments</h2><p class="vs">Every training &amp; evaluation run — versioned, with the hardware it ran on.</p>
       <div class="grid2">
-        <div class="chartcard" style="margin:0">
-          <h3>P90 latency by model</h3><p class="sub">90th-percentile latency across guards + trained models (log scale)</p>
-          <div class="cbox"><canvas id="cP90All"></canvas></div>
-        </div>
-        <div class="chartcard" style="margin:0">
-          <h3>Model comparison</h3><p class="sub" id="cmpSub">Tick rows in the history to compare macro metrics</p>
-          <div class="cbox"><canvas id="cCompare"></canvas></div>
-        </div>
+        <div class="chartcard" style="margin:0"><h3>P90 latency by model</h3><p class="sub">90th-percentile across guards + trained models (log)</p><div class="cbox"><canvas id="cP90All"></canvas></div></div>
+        <div class="chartcard" style="margin:0"><h3>Model comparison</h3><p class="sub" id="cmpSub">Tick eval rows to compare macro metrics</p><div class="cbox"><canvas id="cCompare"></canvas></div></div>
       </div>
-      <div class="chartcard" style="margin-top:16px">
-        <h3>Experiment history</h3><p class="sub">Every training &amp; evaluation run — with the hardware it ran on</p>
-        <div id="expTable"><div class="empty"><div class="big">🧬</div>No experiments yet — train a model in the Train &amp; Test tab.</div></div>
-      </div>
-      <div class="chartcard" id="expDetailCard" style="margin-top:16px;display:none">
-        <h3>Experiment detail</h3><div id="expDetail"></div>
-      </div>
+      <div class="chartcard" style="margin-top:16px"><h3>Experiment history</h3><p class="sub">Newest first</p>
+        <div id="expTable"><div class="empty"><div class="big">🧬</div>No experiments yet — train a model in Train &amp; Test.</div></div></div>
+      <div class="chartcard" id="expDetailCard" style="margin-top:16px;display:none"><h3>Detail</h3><div id="expDetail"></div></div>
     </section>
 
-    <!-- PIPELINE -->
-    <section class="view" id="v-pipeline">
-      <div class="pipe">
-        <div class="chartcard" style="margin:0">
-          <h3>Run progress</h3><p class="sub" id="pipeSummary">Configure on the left, then press Run.</p>
-          <ul class="stepper" id="stepper"></ul>
-        </div>
-        <div class="chartcard" style="margin:0">
-          <h3>Live results</h3><p class="sub">Fills in as each guard × benchmark completes</p>
-          <div id="liveTable"><div class="empty"><div class="big">📡</div>No live run yet.</div></div>
-        </div>
+    <!-- ROC / AUC -->
+    <section class="view" id="v-roc">
+      <h2 class="vh">ROC &amp; AUC</h2><p class="vs">Threshold curves for continuous-score guards; single operating point otherwise.</p>
+      <div class="grid2">
+        <div class="chartcard" style="margin:0"><div class="row-between" style="margin-bottom:10px"><h3>ROC curves</h3><select id="rocPick" aria-label="benchmark"></select></div><div class="cbox tall"><canvas id="cRoc"></canvas></div></div>
+        <div class="chartcard" style="margin:0"><h3>Precision–Recall</h3><p class="sub">Same threshold sweep</p><div class="cbox tall"><canvas id="cPr"></canvas></div></div>
       </div>
-      <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="console"></div></div>
+      <div class="chartcard" style="margin-top:16px"><h3>ROC-AUC by benchmark</h3><p class="sub">Encoder emits a continuous score (swept); hard-decision guards use AUC=(recall+1−FPR)/2</p><div class="cbox"><canvas id="cAuc"></canvas></div></div>
     </section>
   </main>
 </div>
@@ -348,396 +300,220 @@ const PALETTE=['#4c8dff','#34d399','#f5a524','#a78bfa','#f87171','#22d3ee','#f47
 const METRIC={precision:'#4c8dff',recall:'#34d399',f1:'#a78bfa'};
 const AXIS={guardrail:{c:'#4c8dff',t:'Guardrail'},red_team:{c:'#f87171',t:'Red-teaming'},over_refusal:{c:'#34d399',t:'Over-refusal'}};
 const ORDER=['keyword-baseline','encoder-distilbert','decoder-sft-0.6B','decoder-sft-1.7B','decoder-grpo-0.6B','openai-moderation','openai-gpt-4o-mini','openai-gpt-5.2-low'];
-const BADGE={'SFT · classifier':'b-sft','SFT · LoRA':'b-sft','GRPO · RL':'b-rl','API classifier':'b-api','LLM judge':'b-api','reasoning judge':'b-api','heuristic':'b-heur'};
-let CONFIG={}, RESULTS={}, CURVES={}, charts={};
-const sel={benchmarks:new Set(), guards:new Set(), perClass:40};
+const TECHLABELS_BADGE={sft:'b-sft',grpo:'b-rl',dpo:'b-dpo'};
+let CONFIG={},RESULTS={},CURVES={},MODELS=[],TECHLABELS={},EXPERIMENTS=[],VERSIONS={},DATA={strategies:[],sources:[],train_sets:[]},charts={};
+let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set();
 
-Chart.defaults.color='#93a1bd';
-Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";
-Chart.defaults.font.size=12;
-Chart.defaults.borderColor='#232c44';
-Chart.defaults.plugins.legend.labels.usePointStyle=true;
-Chart.defaults.plugins.legend.labels.boxWidth=8;
-Chart.defaults.plugins.legend.labels.padding=16;
+Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
+Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
 
 const gLabel=n=>({'keyword-baseline':'Keyword','encoder-distilbert':'Encoder 66M','decoder-sft-0.6B':'Decoder-SFT 0.6B','decoder-sft-1.7B':'Decoder-SFT 1.7B','decoder-grpo-0.6B':'Decoder-GRPO','openai-moderation':'OpenAI-Mod','openai-gpt-4o-mini':'GPT-4o-mini','openai-gpt-5.2-low':'GPT-5.2 low'}[n]||n);
-const guardsInResults=()=>{const s=new Set();for(const b in RESULTS.results||{})for(const g in RESULTS.results[b])s.add(g);return ORDER.filter(x=>s.has(x)).concat([...s].filter(x=>!ORDER.includes(x)));};
-const benchesInResults=()=>Object.keys(RESULTS.results||{});
-
-function macro(){
-  const out={};
-  for(const b in RESULTS.results||{})for(const g in RESULTS.results[b]){
-    const m=RESULTS.results[b][g];(out[g]=out[g]||{});
-    for(const k of ['precision','recall','f1','roc_auc','fpr_on_benign','latency_p50_ms','latency_p90_ms','throughput_per_s']){(out[g][k]=out[g][k]||[]);if(m[k]!=null)out[g][k].push(m[k]);}
-  }
-  const avg={};for(const g in out){avg[g]={};for(const k in out[g]){const a=out[g][k];avg[g][k]=a.length?a.reduce((x,y)=>x+y,0)/a.length:null;}}
-  return avg;
-}
+const guardsIn=()=>{const s=new Set();for(const b in RESULTS.results||{})for(const g in RESULTS.results[b])s.add(g);return ORDER.filter(x=>s.has(x)).concat([...s].filter(x=>!ORDER.includes(x)));};
+const benchesIn=()=>Object.keys(RESULTS.results||{});
+function macro(){const out={};for(const b in RESULTS.results||{})for(const g in RESULTS.results[b]){const m=RESULTS.results[b][g];(out[g]=out[g]||{});for(const k of ['precision','recall','f1','roc_auc','fpr_on_benign','latency_p50_ms','latency_p90_ms','throughput_per_s']){(out[g][k]=out[g][k]||[]);if(m[k]!=null)out[g][k].push(m[k]);}}
+  const a={};for(const g in out){a[g]={};for(const k in out[g]){const v=out[g][k];a[g][k]=v.length?v.reduce((x,y)=>x+y,0)/v.length:null;}}return a;}
 function destroy(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function gridX(){return{grid:{display:false},ticks:{maxRotation:0,autoSkip:false,font:{size:11}}};}
+function barOpts(max,h){return{indexAxis:h?'y':'x',responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:!h,position:'top',align:'end'},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed[h?'x':'y'])}`}}},
+  scales:h?{y:{grid:{display:false},ticks:{font:{size:11}}},x:{beginAtZero:true,max:max||undefined,grid:{color:'#1c2439'}}}
+          :{x:gridX(),y:{beginAtZero:true,max:max||undefined,grid:{color:'#1c2439'},ticks:{stepSize:.2}}}};}
+function hlog(id,guards,vals,color,unit){destroy(id);charts[id]=new Chart($('#'+id),{type:'bar',
+  data:{labels:guards.map(gLabel),datasets:[{data:vals,backgroundColor:color,borderRadius:5,maxBarThickness:28}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:c=>` ${c.parsed.x<10?c.parsed.x.toFixed(2):Math.round(c.parsed.x)} ${unit}`}}},
+    scales:{y:{grid:{display:false},ticks:{font:{size:11}}},x:{type:'logarithmic',min:0.01,grid:{color:'#1c2439'},ticks:{callback:v=>[0.01,0.1,1,10,100,1000,10000].includes(v)?v:''}}}}});}
 
-/* ---------------- sidebar ---------------- */
-function buildSidebar(){
-  const bl=$('#benchList'); bl.innerHTML='';
-  const groups={guardrail:[],red_team:[],over_refusal:[]};
-  CONFIG.benchmarks.forEach(b=>groups[b.axis]?.push(b));
-  for(const ax of ['guardrail','red_team','over_refusal']){
-    if(!groups[ax].length)continue;
-    const gt=document.createElement('div');gt.className='grouptitle';
-    gt.innerHTML=`<span class="axisdot" style="background:${AXIS[ax].c}"></span>${AXIS[ax].t}`;bl.appendChild(gt);
-    groups[ax].forEach(b=>{
-      sel.benchmarks.add(b.name);
-      const o=document.createElement('label');o.className='opt sel';o.title=b.hf_id;
-      o.innerHTML=`<input type="checkbox" checked><div class="body"><div class="t">${b.name}</div><div class="d">${b.description.split(' — ').pop()}</div></div>`;
-      o.querySelector('input').onchange=e=>{e.target.checked?sel.benchmarks.add(b.name):sel.benchmarks.delete(b.name);o.classList.toggle('sel',e.target.checked);};
-      bl.appendChild(o);
-    });
-  }
-  const gl=$('#guardList'); gl.innerHTML='';
-  CONFIG.guards.forEach(g=>{
-    const on=g.available && g.name!=='keyword-baseline'? (g.kind!=='local-decoder') : g.available;
-    const def=g.available && g.kind!=='local-decoder'; // default-select fast available guards
-    if(def) sel.guards.add(g.name);
-    const o=document.createElement('label');o.className='opt'+(def?' sel':'')+(g.available?'':' dis');
-    if(!g.available)o.title=g.kind==='openai'?'Set OPENAI_API_KEY to enable':'Train this model first (missing checkpoint)';
-    const bc=BADGE[g.technique]||'b-heur';
-    o.innerHTML=`<input type="checkbox" ${def?'checked':''} ${g.available?'':'disabled'}>
-      <div class="body"><div class="t">${g.label}<span class="badge ${bc}">${g.technique}</span></div>
-      <div class="d">${g.name} <span class="params">${g.params}</span></div></div>`;
-    o.querySelector('input').onchange=e=>{e.target.checked?sel.guards.add(g.name):sel.guards.delete(g.name);o.classList.toggle('sel',e.target.checked);};
-    gl.appendChild(o);
-  });
-  $('#allBench').onclick=()=>{const all=sel.benchmarks.size<CONFIG.benchmarks.length;$$('#benchList input').forEach((c,i)=>{c.checked=all;c.dispatchEvent(new Event('change'));});};
-  $('#allGuards').onclick=()=>location.reload();
-}
-
-/* ---------------- overview ---------------- */
+/* ---------- overview ---------- */
 function renderOverview(){
-  const avg=macro(), guards=guardsInResults();
-  if(!guards.length){$('#kpis').innerHTML='';return;}
-  // KPIs
-  let bF1=-1,bF1g,lF=2,lFg,fast=1e12,fastg;
-  guards.forEach(g=>{const m=avg[g];if(m.f1>bF1){bF1=m.f1;bF1g=g;}if(m.fpr_on_benign<lF){lF=m.fpr_on_benign;lFg=g;}if(m.latency_p50_ms<fast){fast=m.latency_p50_ms;fastg=g;}});
-  const nCells=Object.values(RESULTS.results).reduce((a,b)=>a+Object.keys(b).length,0);
-  const kpi=(k,v,s,glow)=>`<div class="kpi" style="--glow:${glow}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
-  $('#kpis').innerHTML=
-    kpi('Best F1',fmt(bF1),gLabel(bF1g),'rgba(167,139,250,.22)')+
-    kpi('Lowest over-block',fmt(lF),`${gLabel(lFg)} · FPR@benign`,'rgba(52,211,153,.2)')+
-    kpi('Fastest guard',(fast<10?fmt(fast,1):Math.round(fast))+' ms',gLabel(fastg)+' · p50','rgba(76,141,255,.22)')+
-    kpi('Coverage',`${benchesInResults().length} × ${guards.length}`,`${nCells} benchmark×guard cells`,'rgba(245,165,36,.2)');
-  // macro grouped bars
-  destroy('cMacro');
-  charts.cMacro=new Chart($('#cMacro'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:['precision','recall','f1'].map(k=>({
-      label:k[0].toUpperCase()+k.slice(1),data:guards.map(g=>avg[g][k]),backgroundColor:METRIC[k],borderRadius:5,maxBarThickness:26}))},
-    options:barOpts(1)});
-  destroy('cFpr');
-  charts.cFpr=new Chart($('#cFpr'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:[{label:'FPR@benign',data:guards.map(g=>avg[g].fpr_on_benign),
-      backgroundColor:guards.map(g=>avg[g].fpr_on_benign<.2?'#34d399':avg[g].fpr_on_benign<.35?'#f5a524':'#f87171'),borderRadius:5,maxBarThickness:30}]},
-    options:barOpts(1,true)});
-  destroy('cLat');
-  charts.cLat=new Chart($('#cLat'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:[{label:'p50 latency (ms)',data:guards.map(g=>Math.max(avg[g].latency_p50_ms,.01)),
-      backgroundColor:'#4c8dff',borderRadius:5,maxBarThickness:30}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x<10?c.parsed.x.toFixed(2):Math.round(c.parsed.x)} ms`}}},
-      scales:{y:{grid:{display:false},ticks:{font:{size:11}}},
-              x:{type:'logarithmic',min:0.01,grid:{color:'#1c2439'},
-                 ticks:{callback:v=>[0.01,0.1,1,10,100,1000].includes(v)?v:''}}}}});
-  // P90 latency (log) + throughput
-  const hasP90=guards.some(g=>avg[g].latency_p90_ms!=null);
-  destroy('cP90');
-  charts.cP90=new Chart($('#cP90'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:[{label:'p90 latency (ms)',
-      data:guards.map(g=>Math.max(avg[g].latency_p90_ms||0.01,0.01)),backgroundColor:'#8b6dff',borderRadius:5,maxBarThickness:30}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>hasP90?` ${c.parsed.x<10?c.parsed.x.toFixed(2):Math.round(c.parsed.x)} ms`:' n/a — re-run for P90'}}},
-      scales:{y:{grid:{display:false},ticks:{font:{size:11}}},x:{type:'logarithmic',min:0.01,grid:{color:'#1c2439'},ticks:{callback:v=>[0.01,0.1,1,10,100,1000].includes(v)?v:''}}}}});
-  destroy('cThru');
-  charts.cThru=new Chart($('#cThru'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:[{label:'queries/sec',
-      data:guards.map(g=>avg[g].throughput_per_s||0),backgroundColor:'#22d3ee',borderRadius:5,maxBarThickness:30}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x.toFixed(1)} q/s`}}},
-      scales:{y:{grid:{display:false},ticks:{font:{size:11}}},x:{type:'logarithmic',min:0.1,grid:{color:'#1c2439'}}}}});
-  $('#methodNote').innerHTML=`Scored through one harness on balanced subsets (≤${RESULTS.per_class||'?'}/class). Local guards (keyword / encoder / decoder) run on CPU; OpenAI guards are live API calls. Gated benchmarks not run: ${Object.keys(CONFIG.gated||{}).join(', ')}.`;
-}
-function gridX(){return {grid:{display:false},ticks:{maxRotation:0,autoSkip:false,font:{size:11}}};}
-function barOpts(max,horizontal){
-  return {indexAxis:horizontal?'y':'x',responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:!horizontal,position:'top',align:'end'},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed[horizontal?'x':'y'])}`}}},
-    scales:horizontal?{y:{grid:{display:false},ticks:{font:{size:11}}},x:{beginAtZero:true,max:max||undefined,grid:{color:'#1c2439'}}}
-                     :{x:gridX(),y:{beginAtZero:true,max:max||undefined,grid:{color:'#1c2439'},ticks:{stepSize:.2}}}};
+  const a=macro(),gs=guardsIn();if(!gs.length){$('#kpis').innerHTML='<div class="empty">Run the suite (make bench) to populate.</div>';return;}
+  let bF=-1,bFg,lF=2,lFg,fast=1e12,fg;
+  gs.forEach(g=>{const m=a[g];if(m.f1>bF){bF=m.f1;bFg=g;}if(m.fpr_on_benign<lF){lF=m.fpr_on_benign;lFg=g;}if(m.latency_p50_ms<fast){fast=m.latency_p50_ms;fg=g;}});
+  const nCells=Object.values(RESULTS.results).reduce((x,b)=>x+Object.keys(b).length,0);
+  const kpi=(k,v,s,gl)=>`<div class="kpi" style="--glow:${gl}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  $('#kpis').innerHTML=kpi('Best F1',fmt(bF),gLabel(bFg),'rgba(167,139,250,.22)')+kpi('Lowest over-block',fmt(lF),gLabel(lFg)+' · FPR',' rgba(52,211,153,.2)')
+    +kpi('Fastest',(fast<10?fmt(fast,1):Math.round(fast))+' ms',gLabel(fg)+' · p50','rgba(76,141,255,.22)')+kpi('Coverage',`${benchesIn().length} × ${gs.length}`,`${nCells} cells`,'rgba(245,165,36,.2)');
+  destroy('cMacro');charts.cMacro=new Chart($('#cMacro'),{type:'bar',data:{labels:gs.map(gLabel),datasets:['precision','recall','f1'].map(k=>({label:k[0].toUpperCase()+k.slice(1),data:gs.map(g=>a[g][k]),backgroundColor:METRIC[k],borderRadius:5,maxBarThickness:24}))},options:barOpts(1)});
+  destroy('cFpr');charts.cFpr=new Chart($('#cFpr'),{type:'bar',data:{labels:gs.map(gLabel),datasets:[{data:gs.map(g=>a[g].fpr_on_benign),backgroundColor:gs.map(g=>a[g].fpr_on_benign<.2?'#34d399':a[g].fpr_on_benign<.35?'#f5a524':'#f87171'),borderRadius:5,maxBarThickness:30}]},options:{...barOpts(1,true),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.parsed.x)}}}}});
+  hlog('cLat',gs,gs.map(g=>Math.max(a[g].latency_p50_ms||.01,.01)),'#4c8dff','ms');
+  hlog('cP90',gs,gs.map(g=>Math.max(a[g].latency_p90_ms||.01,.01)),'#8b6dff','ms');
+  hlog('cThru',gs,gs.map(g=>Math.max(a[g].throughput_per_s||.1,.1)),'#22d3ee','q/s');
+  $('#methodNote').innerHTML=`Balanced subsets (≤${RESULTS.per_class||'?'}/class). Gated not run: ${Object.keys(CONFIG.gated||{}).join(', ')||'—'}.`;
 }
 
-/* ---------------- by benchmark ---------------- */
-function renderBench(){
-  const picker=$('#benchPick'), benches=benchesInResults();
-  if(picker.options.length!==benches.length||![...picker.options].every((o,i)=>o.value===benches[i])){
-    picker.innerHTML=benches.map(b=>`<option value="${b}">${b}</option>`).join('');picker.onchange=drawBench;}
-  drawBench();
+/* ---------- benchmarks browser ---------- */
+function buildToolbar(){
+  const t=$('#btoolbar');const bs=CONFIG.benchmarks||[];
+  t.innerHTML=bs.map(b=>`<div class="bchip axis-${b.axis}" data-b="${b.name}" title="${b.description}"><span class="axd" style="background:${AXIS[b.axis].c}"></span>${b.name}<span class="eye">👁</span></div>`).join('');
+  $$('#btoolbar .bchip').forEach(c=>c.onclick=()=>selectBenchmark(c.dataset.b));
 }
-function drawBench(){
-  const b=$('#benchPick').value; if(!b||!RESULTS.results[b])return;
-  const meta=RESULTS.meta[b]||{}; const guards=ORDER.filter(g=>RESULTS.results[b][g]);
-  $('#benchSub').textContent=`${meta.description||b} · n=${meta.n_safe||'?'} safe + ${meta.n_unsafe||'?'} unsafe · ${AXIS[meta.axis]?.t||meta.axis}`;
+async function selectBenchmark(name){
+  curBench=name;$$('#btoolbar .bchip').forEach(c=>c.classList.toggle('on',c.dataset.b===name));
+  const d=await (await fetch('/api/benchmark/'+name)).json();
+  $('#benchHead').innerHTML=`<div class="chartcard"><div class="row-between"><div>
+    <h3>${name} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
+    <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · <b>${d.n_safe}</b> safe + <b>${d.n_unsafe}</b> unsafe (n=${d.total})</p></div></div></div>`;
+  $('#samplesTitle').textContent=`Contents — ${d.total} prompts`;
+  window._samples=d.samples;sampleFilter='all';$$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));$('#sampleSearch').value='';
+  renderSamples(); drawBenchResults(name);
+}
+function renderSamples(){
+  const q=$('#sampleSearch').value.toLowerCase();const rows=(window._samples||[]).filter(s=>(sampleFilter==='all'||s.label===sampleFilter)&&(!q||s.text.toLowerCase().includes(q)));
+  $('#samples').innerHTML=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div>${s.hazard&&s.hazard!=='none'?`<span class="hz">${s.hazard}</span>`:''}</div>`).join(''):'<div class="empty">No matching prompts.</div>';
+}
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function drawBenchResults(b){
+  const gm=(RESULTS.results||{})[b]||{};const gs=ORDER.filter(g=>gm[g]);
   destroy('cBench');
-  charts.cBench=new Chart($('#cBench'),{type:'bar',
-    data:{labels:guards.map(gLabel),datasets:['precision','recall','f1'].map(k=>({
-      label:k[0].toUpperCase()+k.slice(1),data:guards.map(g=>RESULTS.results[b][g][k]),backgroundColor:METRIC[k],borderRadius:5,maxBarThickness:26}))},
-    options:barOpts(1)});
-  const auc=g=>{const c=(CURVES[b]||{})[g]; return c&&c.auc!=null?fmt(c.auc):(RESULTS.results[b][g].roc_auc!=null?fmt(RESULTS.results[b][g].roc_auc):'—');};
-  const rows=guards.map(g=>{const m=RESULTS.results[b][g];
-    return `<tr><td class="name">${gLabel(g)}</td>
-      <td class="mono">${fmt(m.precision)}</td><td class="mono">${fmt(m.recall)}</td>
-      <td class="mono"><span class="bar"><i style="width:${(m.f1*100).toFixed(0)}%"></i></span> ${fmt(m.f1)}</td>
-      <td class="mono">${auc(g)}</td>
-      <td class="mono">${fmt(m.fpr_on_benign)}</td><td class="mono">${m.latency_p50_ms<10?fmt(m.latency_p50_ms,1):Math.round(m.latency_p50_ms)}</td></tr>`;}).join('');
-  $('#benchTable').innerHTML=`<table><thead><tr><th>Guard</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>FPR@benign ↓</th><th>p50 ms ↓</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if(!gs.length){$('#benchTable').innerHTML='<div class="empty" style="padding:20px">No model results yet.</div>';return;}
+  charts.cBench=new Chart($('#cBench'),{type:'bar',data:{labels:gs.map(gLabel),datasets:['precision','recall','f1'].map(k=>({label:k[0].toUpperCase()+k.slice(1),data:gs.map(g=>gm[g][k]),backgroundColor:METRIC[k],borderRadius:5,maxBarThickness:22}))},options:barOpts(1)});
+  $('#benchTable').innerHTML=`<table><thead><tr><th>Guard</th><th>P</th><th>R</th><th>F1</th><th>AUC</th><th>FPR ↓</th><th>p90 ↓</th></tr></thead><tbody>`+
+    gs.map(g=>{const m=gm[g];return `<tr><td class="name">${gLabel(g)}</td><td class="mono">${fmt(m.precision)}</td><td class="mono">${fmt(m.recall)}</td><td class="mono">${fmt(m.f1)}</td><td class="mono">${fmt(m.roc_auc)}</td><td class="mono">${fmt(m.fpr_on_benign)}</td><td class="mono">${m.latency_p90_ms==null?'—':(m.latency_p90_ms<10?fmt(m.latency_p90_ms,1):Math.round(m.latency_p90_ms))}</td></tr>`;}).join('')+'</tbody></table>';
 }
 
-/* ---------------- ROC / AUC ---------------- */
-function renderROC(){
-  const benches=Object.keys(CURVES); const picker=$('#rocPick');
-  if(!benches.length){['cRoc','cPr','cAuc'].forEach(destroy);$('#rocSub').textContent='Run the pipeline to compute curves.';return;}
-  if(picker.options.length!==benches.length){picker.innerHTML=benches.map(b=>`<option>${b}</option>`).join('');picker.onchange=drawROC;}
-  drawAUC(); drawROC();
+/* ---------- datasets ---------- */
+function renderDatasets(){
+  $('#stratCards').innerHTML=DATA.strategies.map(s=>`<div class="stratcard" data-s="${s.key}"><div class="t">${s.label}</div><div class="d">${s.desc}</div></div>`).join('');
+  $$('#stratCards .stratcard').forEach(c=>c.onclick=()=>{curStrat=c.dataset.s;$$('#stratCards .stratcard').forEach(x=>x.classList.toggle('on',x===c));updateStratNote();});
+  if(!curStrat&&DATA.strategies[0]){curStrat=DATA.strategies[0].key;}
+  $$('#stratCards .stratcard').forEach(c=>c.classList.toggle('on',c.dataset.s===curStrat));
+  $('#srcPick').innerHTML=DATA.sources.map(s=>`<label class="sel"><input type="checkbox" value="${s.name}" checked><span class="axd" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${AXIS[s.axis].c}"></span>${s.name}</label>`).join('');
+  $$('#srcPick label').forEach(l=>l.querySelector('input').onchange=e=>l.classList.toggle('sel',e.target.checked));
+  updateStratNote();renderSetsList();
 }
-function drawROC(){
-  const b=$('#rocPick').value||Object.keys(CURVES)[0]; const data=CURVES[b]||{};
-  const gs=Object.keys(data);
-  $('#rocSub').textContent=`${b} · ${gs.map(g=>gLabel(g)+' AUC '+(data[g].auc==null?'—':data[g].auc.toFixed(3))).join(' · ')}`;
-  const mk=(key)=>gs.map((g,i)=>({label:gLabel(g)+(data[g].auc!=null?` (AUC ${data[g].auc.toFixed(2)})`:''),
-    data:data[g][key].map(p=>({x:p[0],y:p[1]})),borderColor:PALETTE[i%8],backgroundColor:PALETTE[i%8]+'22',
-    borderWidth:2,pointRadius:0,tension:.15,fill:false}));
-  const diag={label:'chance',data:[{x:0,y:0},{x:1,y:1}],borderColor:'#39435f',borderDash:[5,5],borderWidth:1,pointRadius:0,fill:false};
-  destroy('cRoc');
-  charts.cRoc=new Chart($('#cRoc'),{type:'line',data:{datasets:[...mk('roc'),diag]},options:curveOpts('FPR','TPR')});
-  destroy('cPr');
-  charts.cPr=new Chart($('#cPr'),{type:'line',data:{datasets:mk('pr')},options:curveOpts('Recall','Precision')});
+function updateStratNote(){const s=DATA.strategies.find(x=>x.key===curStrat)||{};$('#dsNote').textContent=`${s.desc||''} (needs ${s.min_sources}–${s.max_sources} source${s.max_sources>1?'s':''}).`;}
+function renderSetsList(){
+  const ts=DATA.train_sets;$('#sgSets').textContent=ts.length;$('#nSets').textContent=ts.length;
+  $('#setsList').innerHTML=ts.length?`<table><thead><tr><th>Name</th><th>Strategy</th><th>Train</th><th>Test</th><th>Sources</th></tr></thead><tbody>`+
+    ts.map(t=>`<tr><td class="name">${t.name}</td><td>${t.strategy}</td><td class="mono">${t.n_train} <span style="color:var(--faint)">(${t.train_safe}/${t.train_unsafe})</span></td><td class="mono">${t.n_test}</td><td style="font-size:11px">${(t.sources||[]).join(', ')}</td></tr>`).join('')+'</tbody></table>'
+    :'<div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div>';
 }
-function drawAUC(){
-  const benches=Object.keys(CURVES); const gset=new Set();benches.forEach(b=>Object.keys(CURVES[b]).forEach(g=>gset.add(g)));
-  const gs=ORDER.filter(g=>gset.has(g));
-  destroy('cAuc');
-  charts.cAuc=new Chart($('#cAuc'),{type:'bar',
-    data:{labels:benches,datasets:gs.map((g,i)=>({label:gLabel(g),
-      data:benches.map(b=>CURVES[b][g]?.auc??null),backgroundColor:PALETTE[i%8],borderRadius:5,maxBarThickness:26}))},
-    options:{...barOpts(1),scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30,minRotation:0}},y:{beginAtZero:true,max:1,grid:{color:'#1c2439'}}}}});
-}
-function curveOpts(xl,yl){
-  return {responsive:true,maintainAspectRatio:false,parsing:false,
-    plugins:{legend:{position:'top',align:'start',labels:{boxWidth:20,usePointStyle:false}},
-      tooltip:{callbacks:{label:c=>` ${xl} ${c.parsed.x.toFixed(2)}, ${yl} ${c.parsed.y.toFixed(2)}`}}},
-    scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:xl},grid:{color:'#1c2439'}},
-            y:{type:'linear',min:0,max:1,title:{display:true,text:yl},grid:{color:'#1c2439'}}}};
-}
-
-/* ---------------- run pipeline ---------------- */
-let steps=[];
-function setStepper(labels){
-  steps=labels; $('#stepper').innerHTML=labels.map((t,i)=>
-    `<li data-i="${i}"><span class="ic">${i+1}</span><div><div class="txt">${t.title}</div><div class="sub">${t.sub}</div></div></li>`).join('');
-}
-function stepState(i,state){const li=$$('#stepper li')[i];if(!li)return;li.className=state;
-  const ic=li.querySelector('.ic');ic.innerHTML=state==='active'?'<span class="spin"></span>':state==='done'?'✓':state==='err'?'!':(i+1);}
-function logLine(cls,txt){const c=$('#console');const d=document.createElement('div');d.className='l '+cls;d.textContent=txt;c.appendChild(d);c.scrollTop=c.scrollHeight;}
-const liveRows={};
-function liveResult(e){
-  const key=e.benchmark+'|'+e.guard; liveRows[key]=e;
-  const rows=Object.values(liveRows).map(r=>`<tr><td class="name">${r.benchmark}</td><td>${gLabel(r.guard)}</td>
-    <td class="mono">${fmt(r.precision)}</td><td class="mono">${fmt(r.recall)}</td><td class="mono">${fmt(r.f1)}</td>
-    <td class="mono">${fmt(r.fpr_on_benign)}</td></tr>`).join('');
-  $('#liveTable').innerHTML=`<table><thead><tr><th>Benchmark</th><th>Guard</th><th>P</th><th>R</th><th>F1</th><th>FPR</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-async function run(){
-  const benchmarks=[...sel.benchmarks], guards=[...sel.guards];
-  if(!benchmarks.length||!guards.length){toast('Select at least one benchmark and one model.');return;}
-  const btn=$('#runBtn');btn.disabled=true;btn.textContent='● Running…';
-  $('#pipeBadge').textContent='running';$('#console').innerHTML='';Object.keys(liveRows).forEach(k=>delete liveRows[k]);
-  $('#liveTable').innerHTML='<div class="empty"><div class="big">⏳</div>Waiting for first result…</div>';
-  switchView('pipeline');
-  const hasDec=guards.some(g=>g.startsWith('decoder-')), hasOa=guards.some(g=>g.startsWith('openai-'));
-  const st=[{title:'Score fast guards',sub:'keyword · encoder · OpenAI through the harness'}];
-  if(guards.includes('decoder-sft-0.6B'))st.push({title:'Score Decoder-SFT',sub:'Qwen3-0.6B on CPU (slower)'});
-  if(guards.includes('decoder-grpo-0.6B'))st.push({title:'Score Decoder-GRPO (RL)',sub:'Qwen3-0.6B on CPU (slower)'});
-  st.push({title:'Compute ROC / AUC curves',sub:'per-sample scores → AUC'});
-  setStepper(st);
-  $('#pipeSummary').textContent=`${guards.length} guards × ${benchmarks.length} benchmarks · ${sel.perClass}/class`+(hasOa?' · live OpenAI calls':'')+(hasDec?' · CPU decoder (be patient)':'');
-  let stepIdx=0; stepState(0,'active');
-  let resp;
-  try{resp=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({benchmarks,guards,per_class:sel.perClass})});}
-  catch(err){logLine('err','failed to start: '+err);finishRun(btn,true);return;}
+async function buildDataset(){
+  const sources=[...$$('#srcPick input:checked')].map(i=>i.value);
+  const name=$('#dsName').value.trim()||'my-trainset';
+  if(!curStrat||!sources.length){toast('Pick a strategy and at least one source.');return;}
+  const btn=$('#buildBtn');btn.disabled=true;btn.textContent='● Building…';
+  const con=$('#buildConsole');con.style.display='block';con.innerHTML='';
+  let resp;try{resp=await fetch('/api/dataset/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:curStrat,name,sources,per_class:Number($('#dsPerClass').value)||200})});}
+  catch(e){toast('build failed to start');btn.disabled=false;btn.textContent='🧪  Build training set';return;}
   const {run_id}=await resp.json();
-  const es=new EventSource(`/api/run/${run_id}/events`);
-  es.onmessage=ev=>{
-    const e=JSON.parse(ev.data);
-    if(e.type==='step'){ if(stepIdx>0)stepState(stepIdx-1,'done'); stepState(stepIdx,'active'); stepIdx++; logLine('step','▶ '+e.text);}
-    else if(e.type==='result'){liveResult(e);logLine('res',e.text.trim());}
-    else if(e.type==='loading'){logLine('l','· loading '+e.benchmark);}
-    else if(e.type==='error'){stepState(stepIdx-1,'err');logLine('err','✗ '+e.text);}
-    else if(e.type==='done'){es.close();for(let i=0;i<steps.length;i++)if(!$$('#stepper li')[i].classList.contains('err'))stepState(i,'done');finishRun(btn,false);}
-    else logLine('l',e.text);
-  };
-  es.onerror=()=>{es.close();finishRun(btn,false);};
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();toast('✓ Training set built');});
 }
-async function finishRun(btn,failed){
-  btn.disabled=false;btn.innerHTML='▶  Run pipeline';$('#pipeBadge').textContent=failed?'error':'done';
-  await loadData();renderAll();
-  if(!failed){toast('✓ Pipeline complete — charts updated');}
-}
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 
-/* ================ TRAIN · TEST · EXPERIMENTS ================ */
-let MODELS=[], TECHLABELS={}, EXPERIMENTS=[], VERSIONS={}, cmpPick=new Set();
-const TBADGE={sft:'b-sft',grpo:'b-rl',dpo:'b-dpo'};
-
-async function loadStudio(){
-  const m=await (await fetch('/api/models')).json(); MODELS=m.models; TECHLABELS=m.techniques;
-  const hw=await (await fetch('/api/hardware')).json(); $('#hwLabel').textContent=hw.label;
-  const ex=await (await fetch('/api/experiments')).json(); EXPERIMENTS=ex.experiments; VERSIONS=ex.versions;
-  $('#expBadge').textContent=EXPERIMENTS.length;
-  renderTrainControls(); renderExperiments();
+/* ---------- train & test ---------- */
+function fillTrainData(){
+  const opts=['<option value="data/demo/train.jsonl">demo · BeaverTails balanced</option>']
+    .concat(DATA.train_sets.map(t=>`<option value="${t.train_path}">${t.name} · ${t.strategy} (${t.n_train})</option>`));
+  $('#tData').innerHTML=opts.join('');
 }
 function renderTrainControls(){
-  const ms=$('#tModel');
-  ms.innerHTML=MODELS.map(m=>`<option value="${m.key}">${m.key} · ${m.family} ${m.params}${m.gated?' 🔒':''}</option>`).join('');
-  ms.onchange=updateTech; updateTech();
-  // benchmarks multiselect
+  $('#tModel').innerHTML=MODELS.map(m=>`<option value="${m.key}">${m.key} · ${m.family} ${m.params}${m.gated?' 🔒':''}</option>`).join('');
+  $('#tModel').onchange=updateTech;updateTech();
   $('#tBenchmarks').innerHTML=(CONFIG.benchmarks||[]).map(b=>`<option value="${b.name}" selected>${b.name}</option>`).join('');
-  // trained versions
-  const vs=[]; Object.entries(VERSIONS).forEach(([mk,list])=>list.forEach(v=>vs.push({mk,...v})));
+  const vs=[];Object.entries(VERSIONS).forEach(([mk,list])=>list.forEach(v=>vs.push({mk,...v})));
   vs.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
-  $('#tVersion').innerHTML=vs.length?vs.map(v=>`<option value="${v.id}">${v.mk} · ${v.technique} · ${v.version}</option>`).join('')
-    :'<option value="">— no trained versions yet —</option>';
+  $('#tVersion').innerHTML=vs.length?vs.map(v=>`<option value="${v.id}">${v.mk} · ${v.technique} · ${v.version}</option>`).join(''):'<option value="">— no trained versions yet —</option>';
+  fillTrainData();
 }
-function updateTech(){
-  const m=MODELS.find(x=>x.key===$('#tModel').value)||{};
+function updateTech(){const m=MODELS.find(x=>x.key===$('#tModel').value)||{};
   $('#tTech').innerHTML=(m.techniques||['sft']).map(t=>`<option value="${t}">${TECHLABELS[t]||t}</option>`).join('');
-  $('#tNote').innerHTML=(m.gated?'🔒 <b>Gated</b> — needs HF_TOKEN + license. ':'')+(m.note||'')
-    +(m.arch==='decoder'?' Larger decoders: use <b>Max steps</b> for a bounded run.':'');
-}
-function streamRun(run_id, consoleEl, onEvt, onDone){
-  const es=new EventSource(`/api/run/${run_id}/events`);
-  es.onmessage=ev=>{const e=JSON.parse(ev.data);
-    if(e.type==='done'){es.close();onDone&&onDone();return;}
-    const cls=e.type==='error'?'err':(e.type==='test_result'||e.type==='result')?'res':e.type==='step'?'step':'l';
-    const d=document.createElement('div');d.className='l '+cls;d.textContent=(e.text||'').trim()||JSON.stringify(e);
-    consoleEl.appendChild(d);consoleEl.scrollTop=consoleEl.scrollHeight; onEvt&&onEvt(e);};
-  es.onerror=()=>{es.close();onDone&&onDone();};
-}
+  $('#tNote').innerHTML=(m.gated?'🔒 <b>Gated</b> — needs HF_TOKEN + license. ':'')+(m.note||'')+(m.arch==='decoder'?' Larger decoders: use <b>Max steps</b>.':'');}
+function streamRun(run_id,con,onEvt,onDone){const es=new EventSource(`/api/run/${run_id}/events`);
+  es.onmessage=ev=>{const e=JSON.parse(ev.data);if(e.type==='done'){es.close();onDone&&onDone();return;}
+    const cls=e.type==='error'?'err':(e.type==='result'||e.type==='test_result')?'res':e.type==='step'?'step':'l';
+    const d=document.createElement('div');d.className='l '+cls;d.textContent=(e.text||'').trim()||JSON.stringify(e);con.appendChild(d);con.scrollTop=con.scrollHeight;onEvt&&onEvt(e);};
+  es.onerror=()=>{es.close();onDone&&onDone();};}
 async function runTrain(){
-  const model=$('#tModel').value, technique=$('#tTech').value;
-  const params={};
-  const grab=(id,key,num)=>{const v=$(id).value.trim(); if(v!==''){params[key]=num?Number(v):v;}};
-  grab('#tEpochs','epochs',true); grab('#tMaxSteps','max_steps',true); grab('#tLr','lr',true);
-  grab('#tBatch','batch_size',true); grab('#tLoraR','lora_r',true);
-  const btn=$('#trainBtn'); btn.disabled=true; btn.textContent='● Training…'; $('#trainBadge').textContent='training';
-  const con=$('#trainConsole'); con.innerHTML='';
-  let resp; try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model,technique,train_data:$('#tData').value.trim(),params})});}
-  catch(err){toast('failed to start training');btn.disabled=false;btn.textContent='⚙︎  Train model';return;}
+  const params={};const grab=(id,k,n)=>{const v=$(id).value.trim();if(v!==''){params[k]=n?Number(v):v;}};
+  grab('#tEpochs','epochs',true);grab('#tMaxSteps','max_steps',true);grab('#tLoraR','lora_r',true);
+  const btn=$('#trainBtn');btn.disabled=true;btn.textContent='● Training…';$('#trainBadge').textContent='training';
+  const con=$('#trainConsole');con.innerHTML='';
+  let resp;try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:$('#tModel').value,technique:$('#tTech').value,train_data:$('#tData').value,params})});}
+  catch(e){toast('train failed to start');btn.disabled=false;btn.textContent='⚙︎  Train model';return;}
   const {run_id}=await resp.json();
-  streamRun(run_id, con, null, async()=>{btn.disabled=false;btn.textContent='⚙︎  Train model';$('#trainBadge').textContent='done';
-    await loadStudio(); toast('✓ Training complete — version registered');});
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='⚙︎  Train model';$('#trainBadge').textContent='done';await loadExperiments();renderTrainControls();renderExperiments();toast('✓ Training complete — version registered');});
 }
 async function runTest(){
-  const exp=$('#tVersion').value; if(!exp){toast('Train a model first.');return;}
+  const exp=$('#tVersion').value;if(!exp){toast('Train a model first.');return;}
   const benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);
-  const btn=$('#testBtn'); btn.disabled=true; btn.textContent='● Testing…'; $('#trainBadge').textContent='testing';
-  const con=$('#trainConsole'); con.innerHTML='';
-  let resp; try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({exp,benchmarks,per_class:Number($('#tPerClass').value)||40,device:$('#tDevice').value})});}
-  catch(err){toast('failed to start test');btn.disabled=false;btn.textContent='🧪  Test model';return;}
+  const btn=$('#testBtn');btn.disabled=true;btn.textContent='● Testing…';$('#trainBadge').textContent='testing';
+  const con=$('#trainConsole');con.innerHTML='';
+  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exp,benchmarks,per_class:Number($('#tPerClass').value)||40,device:$('#tDevice').value})});}
+  catch(e){toast('test failed to start');btn.disabled=false;btn.textContent='🧪  Test model';return;}
   const {run_id}=await resp.json();
-  streamRun(run_id, con, null, async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';
-    await loadStudio(); await loadData(); renderAll(); toast('✓ Test complete — experiment recorded');});
-}
-function renderExperiments(){
-  $('#expBadge').textContent=EXPERIMENTS.length;
-  // history table
-  if(!EXPERIMENTS.length){renderP90All();return;}
-  const rows=EXPERIMENTS.map(e=>{
-    const s=e.metrics_summary||{}; const f1=s.f1!=null?fmt(s.f1):(s.train_seconds!=null?s.train_seconds+'s':'—');
-    const hw=(e.hardware||{}); const dev=hw.gpu_name||hw.gpu||'cpu';
-    const kindTag=e.kind==='train'?'<span class="badge b-sft">train</span>':'<span class="badge b-dpo">eval</span>';
-    const canCmp=e.kind==='eval'&&e.metrics_summary&&e.metrics_summary.f1!=null;
-    return `<tr data-id="${e.id}" class="${cmpPick.has(e.id)?'pick':''}">
-      <td>${canCmp?`<input type="checkbox" ${cmpPick.has(e.id)?'checked':''} onclick="event.stopPropagation();toggleCmp('${e.id}')">`:''}</td>
-      <td class="name">${e.model_key} ${kindTag}</td><td>${e.technique||'—'}</td><td class="mono">${e.version||'—'}</td>
-      <td class="mono">${e.kind==='eval'?f1:(s.train_seconds!=null?s.train_seconds+'s':'—')}</td>
-      <td>${dev}</td><td class="mono" style="font-size:11px">${(e.created||'').replace('T',' ').slice(0,16)}</td></tr>`;}).join('');
-  $('#expTable').innerHTML=`<table><thead><tr><th></th><th>Model</th><th>Technique</th><th>Version</th><th>F1 / time</th><th>Device</th><th>When</th></tr></thead><tbody>${rows}</tbody></table>`;
-  $$('#expTable tbody tr').forEach(tr=>tr.onclick=()=>showExpDetail(tr.dataset.id));
-  renderP90All(); renderCompare();
-}
-window.toggleCmp=function(id){cmpPick.has(id)?cmpPick.delete(id):cmpPick.add(id);renderExperiments();};
-function renderP90All(){
-  const avg=macro(), pts=[];
-  guardsInResults().forEach(g=>{if(avg[g].latency_p90_ms!=null)pts.push({label:gLabel(g),p90:avg[g].latency_p90_ms,c:'#8b6dff'});});
-  EXPERIMENTS.filter(e=>e.kind==='eval'&&(e.metrics_summary||{}).latency_p90_ms!=null)
-    .forEach(e=>pts.push({label:e.model_key+'@'+e.version,p90:e.metrics_summary.latency_p90_ms,c:'#34d399'}));
-  destroy('cP90All');
-  if(!pts.length){return;}
-  charts.cP90All=new Chart($('#cP90All'),{type:'bar',
-    data:{labels:pts.map(p=>p.label),datasets:[{label:'p90 ms',data:pts.map(p=>Math.max(p.p90,0.01)),backgroundColor:pts.map(p=>p.c),borderRadius:5,maxBarThickness:26}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>` ${c.parsed.x<10?c.parsed.x.toFixed(2):Math.round(c.parsed.x)} ms p90`}}},
-      scales:{y:{grid:{display:false},ticks:{font:{size:10}}},x:{type:'logarithmic',min:0.01,grid:{color:'#1c2439'},ticks:{callback:v=>[0.01,0.1,1,10,100,1000].includes(v)?v:''}}}}});
-}
-function renderCompare(){
-  const chosen=EXPERIMENTS.filter(e=>cmpPick.has(e.id));
-  destroy('cCompare');
-  if(!chosen.length){$('#cmpSub').textContent='Tick eval rows in the history to compare macro metrics';return;}
-  $('#cmpSub').textContent=`${chosen.length} run(s) — macro Precision / Recall / F1 / AUC`;
-  charts.cCompare=new Chart($('#cCompare'),{type:'bar',
-    data:{labels:chosen.map(e=>e.model_key+'@'+e.version),datasets:['precision','recall','f1','roc_auc'].map((k,i)=>({
-      label:k==='roc_auc'?'AUC':k[0].toUpperCase()+k.slice(1),data:chosen.map(e=>(e.metrics_summary||{})[k]??0),
-      backgroundColor:PALETTE[i],borderRadius:5,maxBarThickness:22}))},
-    options:barOpts(1)});
-}
-async function showExpDetail(id){
-  const e=await (await fetch('/api/experiment/'+id)).json();
-  const hw=e.hardware||{}, d=e.data||{};
-  const kv=(k,v)=>`<div class="k">${k}</div><div>${v}</div>`;
-  let leak=''; if(d.leakage){const tot=Object.values(d.leakage).reduce((a,b)=>a+(b.dropped_leaked||0),0);
-    leak=kv('Leakage guard',`${tot} test item(s) dropped as train-overlap · checked=${d.leakage_checked}`);}
-  let mtab='';
-  if(e.metrics&&Object.keys(e.metrics).length){
-    mtab='<table style="margin-top:10px"><thead><tr><th>Benchmark</th><th>P</th><th>R</th><th>F1</th><th>AUC</th><th>FPR</th><th>p90 ms</th><th>q/s</th></tr></thead><tbody>'
-      +Object.entries(e.metrics).map(([b,m])=>`<tr><td class="name">${b}</td><td class="mono">${fmt(m.precision)}</td><td class="mono">${fmt(m.recall)}</td><td class="mono">${fmt(m.f1)}</td><td class="mono">${fmt(m.roc_auc)}</td><td class="mono">${fmt(m.fpr_on_benign)}</td><td class="mono">${m.latency_p90_ms<10?fmt(m.latency_p90_ms,1):Math.round(m.latency_p90_ms)}</td><td class="mono">${fmt(m.throughput_per_s,1)}</td></tr>`).join('')+'</tbody></table>';}
-  $('#expDetail').innerHTML=`<div class="kv">
-    ${kv('Experiment',e.id)}${kv('Kind',e.kind)}${kv('Model',e.model_key+' ('+(e.base_hf_id||'')+')')}
-    ${kv('Technique',e.technique||'—')}${kv('Version',e.version||'—')}${kv('Params',JSON.stringify(e.params||{}))}
-    ${kv('Data',JSON.stringify({train:d.train,n_train:d.n_train,benchmarks:d.benchmarks}))}${leak}
-    ${kv('Hardware',`${hw.gpu_name||hw.gpu} · ${hw.cpu} · ${hw.cpu_count} cores · ${hw.memory_gb} GB · py${hw.python} · torch ${hw.torch}`)}
-    ${kv('Git',e.git_commit||'—')}</div>${mtab}`;
-  $('#expDetailCard').style.display='block';
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';await loadExperiments();renderExperiments();toast('✓ Test complete — experiment recorded');});
 }
 
-/* ---------------- shell ---------------- */
-function switchView(v){$$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
-  $$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
-  if(location.hash.slice(1)!==v)history.replaceState(null,'','#'+v);
-  if(v==='bench')renderBench(); if(v==='roc')renderROC(); if(v==='experiments')renderExperiments();}
-function renderAll(){renderOverview();if($('#v-bench').classList.contains('on'))renderBench();if($('#v-roc').classList.contains('on'))renderROC();
-  if($('#v-experiments').classList.contains('on'))renderExperiments();
-  const has=benchesInResults().length; $('#dataDot').className='dot '+(has?'on':'off'); $('#dataTxt').textContent=has?`${has} benchmarks loaded`:'no results yet';}
-async function loadData(){
-  RESULTS=await (await fetch('/api/results')).json();
-  CURVES=await (await fetch('/api/curves')).json();
+/* ---------- experiments ---------- */
+function renderExperiments(){
+  $('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;
+  if(EXPERIMENTS.length){
+    $('#expTable').innerHTML=`<table><thead><tr><th></th><th>Model</th><th>Technique</th><th>Version</th><th>F1 / time</th><th>Device</th><th>When</th></tr></thead><tbody>`+
+    EXPERIMENTS.map(e=>{const s=e.metrics_summary||{};const hw=e.hardware||{};const dev=hw.gpu_name||hw.gpu||'cpu';const can=e.kind==='eval'&&s.f1!=null;
+      return `<tr data-id="${e.id}" class="${cmpPick.has(e.id)?'pick':''}"><td>${can?`<input type="checkbox" ${cmpPick.has(e.id)?'checked':''} onclick="event.stopPropagation();toggleCmp('${e.id}')">`:''}</td>
+      <td class="name">${e.model_key} <span class="badge ${e.kind==='train'?'b-sft':'b-dpo'}">${e.kind}</span></td><td>${e.technique||'—'}</td><td class="mono">${e.version||'—'}</td>
+      <td class="mono">${e.kind==='eval'?fmt(s.f1):(s.train_seconds!=null?s.train_seconds+'s':'—')}</td><td>${dev}</td><td class="mono" style="font-size:11px">${(e.created||'').replace('T',' ').slice(0,16)}</td></tr>`;}).join('')+'</tbody></table>';
+    $$('#expTable tbody tr').forEach(tr=>tr.onclick=()=>showExpDetail(tr.dataset.id));
+  }
+  renderP90All();renderCompare();
 }
+window.toggleCmp=id=>{cmpPick.has(id)?cmpPick.delete(id):cmpPick.add(id);renderExperiments();};
+function renderP90All(){const a=macro(),pts=[];
+  guardsIn().forEach(g=>{if(a[g].latency_p90_ms!=null)pts.push({l:gLabel(g),v:a[g].latency_p90_ms,c:'#8b6dff'});});
+  EXPERIMENTS.filter(e=>e.kind==='eval'&&(e.metrics_summary||{}).latency_p90_ms!=null).forEach(e=>pts.push({l:e.model_key+'@'+e.version,v:e.metrics_summary.latency_p90_ms,c:'#34d399'}));
+  destroy('cP90All');if(!pts.length)return;
+  charts.cP90All=new Chart($('#cP90All'),{type:'bar',data:{labels:pts.map(p=>p.l),datasets:[{data:pts.map(p=>Math.max(p.v,.01)),backgroundColor:pts.map(p=>p.c),borderRadius:5,maxBarThickness:24}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x<10?c.parsed.x.toFixed(2):Math.round(c.parsed.x)} ms p90`}}},scales:{y:{grid:{display:false},ticks:{font:{size:10}}},x:{type:'logarithmic',min:.01,grid:{color:'#1c2439'},ticks:{callback:v=>[.01,.1,1,10,100,1000].includes(v)?v:''}}}}});}
+function renderCompare(){const ch=EXPERIMENTS.filter(e=>cmpPick.has(e.id));destroy('cCompare');
+  if(!ch.length){$('#cmpSub').textContent='Tick eval rows in the history to compare macro metrics';return;}
+  $('#cmpSub').textContent=`${ch.length} run(s)`;
+  charts.cCompare=new Chart($('#cCompare'),{type:'bar',data:{labels:ch.map(e=>e.model_key+'@'+e.version),datasets:['precision','recall','f1','roc_auc'].map((k,i)=>({label:k==='roc_auc'?'AUC':k[0].toUpperCase()+k.slice(1),data:ch.map(e=>(e.metrics_summary||{})[k]??0),backgroundColor:PALETTE[i],borderRadius:5,maxBarThickness:20}))},options:barOpts(1)});}
+async function showExpDetail(id){const e=await (await fetch('/api/experiment/'+id)).json();const hw=e.hardware||{},d=e.data||{};
+  const kv=(k,v)=>`<div class="k">${k}</div><div>${v}</div>`;
+  let leak='';if(d.leakage){const tot=Object.values(d.leakage).reduce((a,b)=>a+(b.dropped_leaked||0),0);leak=kv('Leakage guard',`${tot} test item(s) dropped as train-overlap · checked=${d.leakage_checked}`);}
+  let mt='';if(e.metrics&&Object.keys(e.metrics).length){mt='<table style="margin-top:10px"><thead><tr><th>Benchmark</th><th>P</th><th>R</th><th>F1</th><th>AUC</th><th>FPR</th><th>p90</th><th>q/s</th></tr></thead><tbody>'+Object.entries(e.metrics).map(([b,m])=>`<tr><td class="name">${b}</td><td class="mono">${fmt(m.precision)}</td><td class="mono">${fmt(m.recall)}</td><td class="mono">${fmt(m.f1)}</td><td class="mono">${fmt(m.roc_auc)}</td><td class="mono">${fmt(m.fpr_on_benign)}</td><td class="mono">${m.latency_p90_ms<10?fmt(m.latency_p90_ms,1):Math.round(m.latency_p90_ms)}</td><td class="mono">${fmt(m.throughput_per_s,1)}</td></tr>`).join('')+'</tbody></table>';}
+  $('#expDetail').innerHTML=`<div class="kv">${kv('Experiment',e.id)}${kv('Kind',e.kind)}${kv('Model',e.model_key+' ('+(e.base_hf_id||'')+')')}${kv('Technique',e.technique||'—')}${kv('Params',JSON.stringify(e.params||{}))}${kv('Data',JSON.stringify({train:d.train,n_train:d.n_train,benchmarks:d.benchmarks}))}${leak}${kv('Hardware',`${hw.gpu_name||hw.gpu} · ${hw.cpu} · ${hw.cpu_count} cores · ${hw.memory_gb} GB · py${hw.python} · torch ${hw.torch}`)}${kv('Git',e.git_commit||'—')}</div>${mt}`;
+  $('#expDetailCard').style.display='block';$('#expDetailCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ---------- roc ---------- */
+function renderROC(){const bs=Object.keys(CURVES);if(!bs.length){['cRoc','cPr','cAuc'].forEach(destroy);return;}
+  if($('#rocPick').options.length!==bs.length){$('#rocPick').innerHTML=bs.map(b=>`<option>${b}</option>`).join('');$('#rocPick').onchange=drawROC;}
+  drawAUC();drawROC();}
+function drawROC(){const b=$('#rocPick').value||Object.keys(CURVES)[0],data=CURVES[b]||{},gs=Object.keys(data);
+  const mk=key=>gs.map((g,i)=>({label:gLabel(g)+(data[g].auc!=null?` (AUC ${data[g].auc.toFixed(2)})`:''),data:data[g][key].map(p=>({x:p[0],y:p[1]})),borderColor:PALETTE[i%8],borderWidth:2,pointRadius:0,tension:.15,fill:false}));
+  const diag={label:'chance',data:[{x:0,y:0},{x:1,y:1}],borderColor:'#39435f',borderDash:[5,5],borderWidth:1,pointRadius:0,fill:false};
+  destroy('cRoc');charts.cRoc=new Chart($('#cRoc'),{type:'line',data:{datasets:[...mk('roc'),diag]},options:curveOpts('FPR','TPR')});
+  destroy('cPr');charts.cPr=new Chart($('#cPr'),{type:'line',data:{datasets:mk('pr')},options:curveOpts('Recall','Precision')});}
+function drawAUC(){const bs=Object.keys(CURVES),gset=new Set();bs.forEach(b=>Object.keys(CURVES[b]).forEach(g=>gset.add(g)));const gs=ORDER.filter(g=>gset.has(g));
+  destroy('cAuc');charts.cAuc=new Chart($('#cAuc'),{type:'bar',data:{labels:bs,datasets:gs.map((g,i)=>({label:gLabel(g),data:bs.map(b=>CURVES[b][g]?.auc??null),backgroundColor:PALETTE[i%8],borderRadius:5,maxBarThickness:24}))},options:{...barOpts(1),scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{beginAtZero:true,max:1,grid:{color:'#1c2439'}}}}});}
+function curveOpts(xl,yl){return{responsive:true,maintainAspectRatio:false,parsing:false,plugins:{legend:{position:'top',align:'start',labels:{boxWidth:20,usePointStyle:false}},tooltip:{callbacks:{label:c=>` ${xl} ${c.parsed.x.toFixed(2)}, ${yl} ${c.parsed.y.toFixed(2)}`}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:xl},grid:{color:'#1c2439'}},y:{type:'linear',min:0,max:1,title:{display:true,text:yl},grid:{color:'#1c2439'}}}};}
+
+/* ---------- shell ---------- */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function switchView(v){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  if(location.hash.slice(1)!==v)history.replaceState(null,'','#'+v);
+  if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name);
+  if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
+function renderAll(){renderOverview();
+  $('#sgGuards').textContent=guardsIn().length;$('#sgBench').textContent=benchesIn().length;$('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
+async function loadResults(){RESULTS=await (await fetch('/api/results')).json();CURVES=await (await fetch('/api/curves')).json();}
+async function loadModels(){const m=await (await fetch('/api/models')).json();MODELS=m.models;TECHLABELS=m.techniques;$('#sgModels').textContent=MODELS.length;}
+async function loadExperiments(){const e=await (await fetch('/api/experiments')).json();EXPERIMENTS=e.experiments;VERSIONS=e.versions;$('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;}
+async function loadDatasets(){DATA=await (await fetch('/api/datasets')).json();}
+async function loadHardware(){const h=await (await fetch('/api/hardware')).json();$('#hwLabel').textContent=h.label;const i=h.info;
+  const acc=(i.gpu==='cuda'||i.gpu==='mps')?(i.gpu_name+(i.gpu_memory_gb?` (${i.gpu_memory_gb} GB)`:'')+(i.gpu_count>1?` ×${i.gpu_count}`:'')):'CPU-only';
+  $('#hwRail').innerHTML=`<b>${acc}</b><br>${i.cpu} · ${i.cpu_count} cores<br>${i.memory_gb?i.memory_gb+' GB':'? RAM'} · ${i.system} · py${i.python}${i.torch?' · torch '+i.torch:''}`;}
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
-  const oa=CONFIG.openai_available; $('#openaiDot').className='dot '+(oa?'on':'off');
-  $('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
-  buildSidebar();
-  $('#perClass').oninput=e=>{sel.perClass=+e.target.value;$('#pcVal').textContent=e.target.value;};
-  $$('.tab').forEach(t=>t.onclick=()=>switchView(t.dataset.view));
-  $('#runBtn').onclick=run; $('#trainBtn').onclick=runTrain; $('#testBtn').onclick=runTest;
-  await loadData(); await loadStudio(); renderAll();
-  const h=location.hash.slice(1); if(['overview','bench','roc','train','experiments','pipeline'].includes(h))switchView(h);
+  const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
+  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware()]);
+  buildToolbar();renderTrainControls();renderDatasets();renderAll();
+  $$('#nav a').forEach(a=>a.onclick=()=>switchView(a.dataset.view));
+  $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
+  $('#sampleSearch').oninput=renderSamples;
+  $$('#labelSeg button').forEach(b=>b.onclick=()=>{sampleFilter=b.dataset.f;$$('#labelSeg button').forEach(x=>x.classList.toggle('on',x===b));renderSamples();});
+  const h=location.hash.slice(1);if(['overview','benchmarks','datasets','train','experiments','roc'].includes(h))switchView(h);
 }
 init();
 </script>

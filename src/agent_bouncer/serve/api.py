@@ -21,11 +21,13 @@ import uuid
 from pathlib import Path
 
 from .. import experiments as X
+from ..data import read_jsonl
 from ..eval.benchmarks import BENCHMARKS, GATED_BENCHMARKS
 from ..guard import KeywordGuard
 from ..hardware import hardware_info, hardware_label
 from ..models_registry import TECHNIQUES, catalog
 from ..schema import Surface, Verdict
+from ..training_sets import STRATEGIES, list_training_sets
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -173,6 +175,38 @@ def experiment(exp_id: str) -> JSONResponse:
     return JSONResponse(exp)
 
 
+# ------------------------------------------------------- benchmark viewer + datasets
+@app.get("/api/benchmark/{name}")
+def benchmark_detail(name: str, limit: int = 120) -> dict:
+    """Benchmark metadata + a sample of its contents (from the cached subset)."""
+    if name not in BENCHMARKS:
+        raise HTTPException(404, "unknown benchmark")
+    b = BENCHMARKS[name]
+    cache = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
+    recs = read_jsonl(str(cache)) if cache.exists() else []
+    n_unsafe = sum(r.get("label") == "unsafe" for r in recs)
+    return {
+        "name": name, "axis": b.axis, "description": b.description, "hf_id": b.hf_id,
+        "cached": cache.exists(), "total": len(recs),
+        "n_safe": len(recs) - n_unsafe, "n_unsafe": n_unsafe,
+        "samples": [{"text": r.get("text", ""), "label": r.get("label"), "hazard": r.get("hazard")}
+                    for r in recs[:limit]],
+    }
+
+
+@app.get("/api/datasets")
+def datasets() -> dict:
+    """Strategies, selectable source datasets, and already-built training sets."""
+    sources = [{"name": n, "axis": b.axis} for n, b in BENCHMARKS.items()]
+    strategies = [{"key": k, **v} for k, v in STRATEGIES.items()]
+    return {"strategies": strategies, "sources": sources, "train_sets": list_training_sets()}
+
+
+@app.get("/api/train_sets")
+def train_sets() -> dict:
+    return {"train_sets": list_training_sets()}
+
+
 # ------------------------------------------------------------------- run pipeline
 class RunConfig(BaseModel):
     benchmarks: list[str] = []
@@ -208,6 +242,9 @@ def _parse_line(text: str) -> dict:
     m = _EXP_RE.search(text)
     if m:
         return {"type": "experiment", "exp_id": m.group(1), "text": text}
+    m = re.search(r"DATASET_BUILT=(\S+)", text)
+    if m:
+        return {"type": "dataset", "name": m.group(1), "text": text}
     m = _LOADING_RE.search(text)
     if m:
         return {"type": "loading", "benchmark": m.group(1), "text": text}
@@ -318,6 +355,20 @@ async def start_test(cfg: TestConfig) -> dict:
            "--per-class", str(cfg.per_class), "--device", cfg.device]
     if cfg.benchmarks:
         cmd += ["--benchmarks", *cfg.benchmarks]
+    return {"run_id": _launch([cmd]), "steps": 1}
+
+
+class BuildConfig(BaseModel):
+    strategy: str
+    name: str
+    sources: list[str]
+    per_class: int = 200
+
+
+@app.post("/api/dataset/build")
+async def start_build(cfg: BuildConfig) -> dict:
+    cmd = [sys.executable, "scripts/build_dataset.py", "--strategy", cfg.strategy,
+           "--name", cfg.name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
     return {"run_id": _launch([cmd]), "steps": 1}
 
 
