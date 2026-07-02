@@ -28,10 +28,11 @@ def test_parse_regex_fallback_when_not_json():
     assert v.hazard == Hazard.PRIVACY
 
 
-def test_parse_unknown_hazard_falls_back():
+def test_parse_unknown_hazard_becomes_none_not_fabricated():
+    # An invalid category must NOT be silently mapped to a specific crime type.
     v = parse_verdict('{"decision": "unsafe", "hazard": "made_up"}')
     assert v.decision == Decision.UNSAFE
-    assert v.hazard == Hazard.NON_VIOLENT_CRIMES
+    assert v.hazard == Hazard.NONE
 
 
 def test_parse_malformed_returns_none():

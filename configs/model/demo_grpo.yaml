@@ -1,0 +1,28 @@
+# Bounded GRPO demo on the ungated Qwen3-0.6B — proves the RLVR loop runs on a
+# real model and shows the reward trend. NOT a converged run (a full GRPO run
+# needs a GPU / hours); see configs/model/grpo_qwen3_1_7b.yaml for the real config.
+arch: decoder
+mode: reasoning
+base_model: Qwen/Qwen3-0.6B
+
+data:
+  train: data/demo/train.jsonl
+
+grpo:
+  num_generations: 4
+  max_completion_len: 64
+  steps: 20
+  log_steps: 1
+  lr: 1.0e-6
+  kl_coef: 0.04
+
+reward:
+  correctness: 1.0
+  category: 0.5
+  format: 0.2
+  false_positive_penalty: 1.0
+  brevity: 0.1
+  rationale_budget: 256
+
+output_dir: outputs/demo-grpo
+seed: 42

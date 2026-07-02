@@ -48,6 +48,8 @@ def false_positive_penalty(pred: Verdict, gold: Verdict) -> float:
 def brevity_reward(rationale: str | None, budget: int) -> float:
     """Encourage short rationales (latency matters on the request path)."""
     n = len(rationale or "")
+    if budget <= 0:
+        return 1.0 if n == 0 else 0.0
     if n <= budget:
         return 1.0
     return max(0.0, 1.0 - (n - budget) / budget)

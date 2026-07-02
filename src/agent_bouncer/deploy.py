@@ -16,10 +16,11 @@ from .metrics import _percentile
 def build_gguf_command(
     model_dir: str,
     out_file: str,
-    quant: str = "Q4_K_M",
+    outtype: str = "f16",
     llama_cpp_dir: str = "llama.cpp",
 ) -> list[str]:
-    """llama.cpp HF->GGUF conversion command (run after cloning llama.cpp)."""
+    """llama.cpp HF->GGUF conversion. `--outtype` is a *precision* (f16/bf16/q8_0/
+    auto) — k-quants like Q4_K_M come from a separate llama-quantize step below."""
     return [
         "python",
         f"{llama_cpp_dir}/convert_hf_to_gguf.py",
@@ -27,8 +28,18 @@ def build_gguf_command(
         "--outfile",
         out_file,
         "--outtype",
-        quant.lower(),
+        outtype.lower(),
     ]
+
+
+def build_llama_quantize_command(
+    in_gguf: str,
+    out_gguf: str,
+    quant: str = "Q4_K_M",
+    llama_cpp_dir: str = "llama.cpp",
+) -> list[str]:
+    """Second step: k-quantize an f16 GGUF with the llama-quantize binary."""
+    return [f"{llama_cpp_dir}/llama-quantize", in_gguf, out_gguf, quant]
 
 
 def build_mlx_convert_command(model_dir: str, out_dir: str, quantize: bool = True) -> list[str]:

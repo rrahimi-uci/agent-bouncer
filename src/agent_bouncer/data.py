@@ -138,8 +138,10 @@ def normalize_xstest(row: dict, text_field: str = "prompt", source: str = "xstes
     text = _text(row, text_field)
     if not text:
         return None
-    label = (row.get("label") or "safe").strip().lower()
-    unsafe = label in {"unsafe", "harmful", "contrast"}
+    # Real XSTest encodes unsafe prompts via a `contrast_`-prefixed `type`
+    # (e.g. "contrast_homonyms"); fall back to an explicit label if present.
+    kind = (row.get("type") or row.get("label") or "safe").strip().lower()
+    unsafe = kind.startswith("contrast") or kind in {"unsafe", "harmful"}
     return _record(
         text,
         Decision.UNSAFE if unsafe else Decision.SAFE,

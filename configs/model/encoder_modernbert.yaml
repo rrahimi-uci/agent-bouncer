@@ -2,7 +2,8 @@
 arch: encoder
 backend: transformers
 base_model: answerdotai/ModernBERT-large
-num_labels: 13          # len(Hazard): NONE + 12 hazards
+num_labels: 2           # binary safe/unsafe (what train_encoder builds today;
+                        # per-hazard multi-class is a future extension)
 
 train:
   epochs: 3

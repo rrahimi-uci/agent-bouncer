@@ -86,7 +86,9 @@ def parse_verdict(
         try:
             hazard = Hazard(hazard_str)
         except ValueError:
-            hazard = Hazard.NON_VIOLENT_CRIMES
+            # Unknown/invalid category: keep NONE rather than fabricating a
+            # specific crime type (which would corrupt category_reward in GRPO).
+            hazard = Hazard.NONE
 
     return Verdict(
         decision=decision,
@@ -124,9 +126,10 @@ class DecoderGuard:
             self._load()
         prompt = build_prompt(text, surface, reasoning=(self.mode == "reasoning"))
         inputs = self._tokenizer(prompt, return_tensors="pt")
+        max_new = 200 if self.mode == "reasoning" else 48  # verdict JSON is short
         start = time.perf_counter()
         with torch.no_grad():
-            out = self._model.generate(**inputs, max_new_tokens=256, do_sample=False)
+            out = self._model.generate(**inputs, max_new_tokens=max_new, do_sample=False)
         decoded = self._tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
         latency = (time.perf_counter() - start) * 1000
         verdict = parse_verdict(decoded, surface=surface, latency_ms=latency, model=self.name)

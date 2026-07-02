@@ -49,9 +49,10 @@ def test_aegis_substring_match():
     assert normalize_aegis(row)["hazard"] == Hazard.SUICIDE_SELF_HARM.value
 
 
-def test_xstest_contrast_is_unsafe():
-    assert normalize_xstest({"prompt": "x", "label": "contrast"})["label"] == "unsafe"
-    assert normalize_xstest({"prompt": "x", "label": "safe"})["label"] == "safe"
+def test_xstest_contrast_type_is_unsafe():
+    # Real XSTest schema: unsafe rows carry a `contrast_`-prefixed `type`.
+    assert normalize_xstest({"prompt": "x", "type": "contrast_homonyms"})["label"] == "unsafe"
+    assert normalize_xstest({"prompt": "x", "type": "homonyms"})["label"] == "safe"
 
 
 def test_empty_text_dropped():

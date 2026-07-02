@@ -84,23 +84,43 @@ def run_grpo(config_path: str | Path) -> str:
         ]
     )
 
+    from peft import LoraConfig
+
     g = cfg.get("grpo", {})
     out_dir = cfg.get("output_dir", "outputs/grpo")
+    num_gen = int(g.get("num_generations", 8))
     grpo_config = GRPOConfig(
         output_dir=out_dir,
-        num_generations=int(g.get("num_generations", 8)),
+        num_generations=num_gen,
+        # generation_batch_size (= per_device batch x grad_accum) must be a
+        # multiple of num_generations, so default the batch to num_generations.
+        per_device_train_batch_size=int(g.get("batch_size", num_gen)),
+        gradient_accumulation_steps=int(g.get("grad_accum", 1)),
         max_completion_length=int(g.get("max_completion_len", 256)),
         learning_rate=float(g.get("lr", 1e-6)),
         beta=float(g.get("kl_coef", 0.04)),
         max_steps=int(g.get("steps", 1000)),
+        logging_steps=int(g.get("log_steps", 10)),
         report_to="none",
         seed=int(cfg.get("seed", 42)),
+    )
+    lora = cfg.get("lora", {})
+    peft_config = (
+        LoraConfig(
+            r=int(lora.get("r", 16)),
+            lora_alpha=int(lora.get("alpha", 32)),
+            lora_dropout=float(lora.get("dropout", 0.05)),
+            task_type="CAUSAL_LM",
+        )
+        if lora
+        else None
     )
     trainer = GRPOTrainer(
         model=cfg["base_model"],
         reward_funcs=[make_reward_fn(_weights_from_cfg(cfg))],
         args=grpo_config,
         train_dataset=dataset,
+        peft_config=peft_config,
     )
     trainer.train()
     trainer.save_model(out_dir)

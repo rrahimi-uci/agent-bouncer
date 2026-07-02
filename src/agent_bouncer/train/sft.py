@@ -146,12 +146,16 @@ def train_decoder(cfg: dict[str, Any]) -> str:
     )
     t = cfg.get("train", {})
     out_dir = cfg.get("output_dir", "outputs/decoder")
+    bf16 = bool(t.get("bf16", False))  # bf16 LoRA is the Mac path (no bitsandbytes/QLoRA)
     sft_config = SFTConfig(
         output_dir=out_dir,
         num_train_epochs=float(t.get("epochs", 2)),
         per_device_train_batch_size=int(t.get("batch_size", 8)),
+        gradient_accumulation_steps=int(t.get("grad_accum", 1)),
         learning_rate=float(t.get("lr", 2e-4)),
         max_length=int(t.get("max_seq_len", 1024)),
+        bf16=bf16,
+        model_init_kwargs={"dtype": "bfloat16"} if bf16 else None,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
     )
@@ -162,8 +166,14 @@ def train_decoder(cfg: dict[str, Any]) -> str:
         peft_config=peft_config,
     )
     trainer.train()
-    trainer.save_model(out_dir)
-    print(f"[decoder] saved to {out_dir}")
+    # Merge the LoRA adapter into the base weights so the guard loads as a
+    # standalone model (otherwise the output dir holds only the adapter).
+    from transformers import AutoTokenizer
+
+    merged = trainer.model.merge_and_unload()
+    merged.save_pretrained(out_dir)
+    AutoTokenizer.from_pretrained(cfg["base_model"]).save_pretrained(out_dir)
+    print(f"[decoder] merged + saved to {out_dir}")
     return out_dir
 
 

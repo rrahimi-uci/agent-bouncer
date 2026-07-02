@@ -29,11 +29,13 @@ def build_preference_pairs(records: list[dict], *, reasoning: bool = False) -> l
     pairs = []
     for r in records:
         gold = Verdict(decision=Decision(r["label"]), hazard=Hazard(r.get("hazard", "none")))
+        # Leading space on the completion matches the SFT/inference boundary
+        # ("Verdict: {json}"), so DPO optimizes the tokens the model actually emits.
         pairs.append(
             {
                 "prompt": build_prompt(r["text"], reasoning=reasoning),
-                "chosen": format_target(gold, reasoning=reasoning),
-                "rejected": format_target(_flip(gold), reasoning=reasoning),
+                "chosen": " " + format_target(gold, reasoning=reasoning),
+                "rejected": " " + format_target(_flip(gold), reasoning=reasoning),
             }
         )
     return pairs

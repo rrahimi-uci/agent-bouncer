@@ -37,6 +37,12 @@ def test_brevity_decays_past_budget():
     assert brevity_reward("x" * 512, budget=256) < 1.0
 
 
+def test_brevity_reward_handles_zero_budget():
+    # budget=0 must not raise ZeroDivisionError
+    assert brevity_reward("", budget=0) == 1.0
+    assert brevity_reward("nonempty", budget=0) == 0.0
+
+
 def test_weights_are_configurable():
     gold = _v(Decision.SAFE)
     strict = RewardWeights(false_positive_penalty=5.0)

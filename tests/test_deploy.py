@@ -1,12 +1,24 @@
-from agent_bouncer.deploy import build_gguf_command, build_mlx_convert_command, measure_latency
+from agent_bouncer.deploy import (
+    build_gguf_command,
+    build_llama_quantize_command,
+    build_mlx_convert_command,
+    measure_latency,
+)
 from agent_bouncer.guard import KeywordGuard
 
 
-def test_gguf_command_structure():
-    cmd = build_gguf_command("outputs/enc", "enc.gguf", quant="Q4_K_M")
+def test_gguf_command_uses_precision_outtype():
+    # --outtype takes a precision (f16), NOT a k-quant name like q4_k_m.
+    cmd = build_gguf_command("outputs/dec", "dec.gguf", outtype="f16")
     assert cmd[0] == "python"
-    assert "enc.gguf" in cmd
-    assert cmd[-1] == "q4_k_m"
+    assert "dec.gguf" in cmd
+    assert cmd[-1] == "f16"
+
+
+def test_quantize_command_structure():
+    cmd = build_llama_quantize_command("in.gguf", "out.gguf", quant="Q4_K_M")
+    assert cmd[-1] == "Q4_K_M"
+    assert "out.gguf" in cmd
 
 
 def test_mlx_command_quantize_flag():

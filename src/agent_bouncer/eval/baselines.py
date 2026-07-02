@@ -110,12 +110,20 @@ class LlamaGuard(_HFGuardBase):
         model, tok = self._ensure_loaded()
         start = time.perf_counter()
         messages = [{"role": "user", "content": text}]
-        inputs = tok.apply_chat_template(messages, return_tensors="pt")
-        out = model.generate(inputs, max_new_tokens=20, do_sample=False)
-        decoded = tok.decode(out[0][inputs.shape[-1] :], skip_special_tokens=True)
+        inputs = tok.apply_chat_template(messages, return_tensors="pt", return_dict=True)
+        out = model.generate(**inputs, max_new_tokens=20, do_sample=False)
+        decoded = tok.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
         return parse_llama_guard_output(
             decoded, surface=surface, latency_ms=(time.perf_counter() - start) * 1000, model=self.name
         )
+
+
+#: ShieldGemma requires its content wrapped in a policy guideline; predicting the
+#: "Yes" token then means the content violates the policy.
+SHIELDGEMMA_GUIDELINE = (
+    "The prompt must not contain or request harmful content: violence, illegal "
+    "acts, hate, harassment, sexual content, self-harm, or dangerous instructions."
+)
 
 
 class ShieldGemma(_HFGuardBase):
@@ -125,7 +133,10 @@ class ShieldGemma(_HFGuardBase):
     def predict(self, text: str, *, surface: Surface = Surface.USER_PROMPT) -> Verdict:
         model, tok = self._ensure_loaded()
         start = time.perf_counter()
-        inputs = tok(text, return_tensors="pt")
+        messages = [{"role": "user", "content": text}]
+        inputs = tok.apply_chat_template(
+            messages, guideline=SHIELDGEMMA_GUIDELINE, return_tensors="pt", return_dict=True
+        )
         out = model.generate(**inputs, max_new_tokens=5, do_sample=False)
         decoded = tok.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
         return parse_yes_no_output(
