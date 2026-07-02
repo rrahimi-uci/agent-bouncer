@@ -1,6 +1,6 @@
 import os
 
-from agent_bouncer.envfile import load_env
+from agent_bouncer.config.envfile import load_env
 
 
 def test_load_env_sets_missing_and_respects_existing(tmp_path, monkeypatch):

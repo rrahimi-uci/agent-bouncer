@@ -2,8 +2,8 @@ import builtins
 import sys
 from types import SimpleNamespace
 
-from agent_bouncer.eval.harness import evaluate
-from agent_bouncer.schema import Decision, Surface, Verdict
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.evaluation.harness import evaluate
 
 
 class _PerfectGuard:

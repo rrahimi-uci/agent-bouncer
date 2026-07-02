@@ -1,10 +1,10 @@
+from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.deploy import (
     build_gguf_command,
     build_llama_quantize_command,
     build_mlx_convert_command,
     measure_latency,
 )
-from agent_bouncer.guard import KeywordGuard
 
 
 def test_gguf_command_uses_precision_outtype():

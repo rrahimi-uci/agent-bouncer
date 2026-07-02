@@ -1,7 +1,7 @@
 import pytest
 
-from agent_bouncer import training_sets as TS
-from agent_bouncer.split import find_leakage
+from agent_bouncer.data import training_sets as TS
+from agent_bouncer.data.split import find_leakage
 
 
 def _fake_loader(n_safe=80, n_unsafe=80):

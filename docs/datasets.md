@@ -22,7 +22,7 @@ All training data is chosen to be **license-compatible** with an Apache-2.0 rele
 
 ## Evaluation (standard benchmark suite)
 
-Run via `make bench` / `scripts/run_benchmarks.py`; registered in
+Run via `make bench` / `scripts/eval/run_benchmarks.py`; registered in
 `agent_bouncer/eval/benchmarks.py` and normalized in `agent_bouncer/data.py`. All are
 **ungated** (download without `HF_TOKEN`) and scored on class-balanced subsets.
 

@@ -1,7 +1,7 @@
-import agent_bouncer.hardware as HW
-from agent_bouncer.hardware import hardware_info, hardware_label
-from agent_bouncer.models_registry import BASE_MODELS, catalog, get_base_model
-from agent_bouncer.training_runner import build_config
+import agent_bouncer.tracking.hardware as HW
+from agent_bouncer.models.registry import BASE_MODELS, catalog, get_base_model
+from agent_bouncer.tracking.hardware import hardware_info, hardware_label
+from agent_bouncer.training.runner import build_config
 
 
 def test_new_models_registered_with_rl():

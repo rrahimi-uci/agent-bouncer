@@ -6,13 +6,13 @@ Eval-driven: we build the scoreboard first, then climb it.
   guard, metrics (incl. `fpr_on_benign`), eval harness, optional MLflow logging, CLI, tests, CI.
 - [x] **Phase 1 — Data.** Unification code + tests (`data.py`; WildGuardMix /
   BeaverTails / Aegis / XSTest normalizers, deterministic splits). Ran a live
-  BeaverTails download for the demo dataset (`scripts/prepare_beavertails_demo.py`).
+  BeaverTails download for the demo dataset (`scripts/data/prepare_beavertails_demo.py`).
 - [x] **Phase 2 — Baselines.** Llama Guard / ShieldGemma / PromptGuard2 wrappers with
   unit-tested output parsers (`eval/baselines.py`). Live scoring needs `HF_TOKEN`
   (gated checkpoints).
 - [x] **Phase 3 — SFT.** Encoder (`Trainer`) + decoder LoRA (TRL `SFTTrainer`).
   **Encoder trained for real** (see benchmarks.md); decoder SFT **smoke-verified**
-  end-to-end on a tiny model (`scripts/smoke_train.py`).
+  end-to-end on a tiny model (`scripts/train/smoke_train.py`).
 - [x] **Phase 4 — GRPO.** Reasoning guard with verifiable reward; reward adapter
   unit-tested. **Ran real GRPO from the SFT checkpoint** (`configs/model/grpo_from_sft.yaml`):
   completions stay short/terminal (0% clipped), live reward, KL stable; the RL model
@@ -21,7 +21,7 @@ Eval-driven: we build the scoreboard first, then climb it.
 - [x] **Phase 6 — Deploy.** GGUF/MLX command builders + ONNX export + latency
   measurement (`deploy.py`), with tests.
 - [x] **Phase 7 — Ship.** Results-table + model-card generators (`eval/report.py`,
-  tested); `scripts/make_report.py`. Remaining: push to GitHub + Hugging Face release.
+  tested); `scripts/report/make_report.py`. Remaining: push to GitHub + Hugging Face release.
 - [x] **Phase 8 — Standard benchmark suite.** Registry-driven multi-benchmark runner
   (`eval/benchmarks.py`) over **7 ungated standard benchmarks** across guardrail /
   red-teaming / over-refusal axes; **live comparison vs GPT-4o-mini and GPT-5.2 (low

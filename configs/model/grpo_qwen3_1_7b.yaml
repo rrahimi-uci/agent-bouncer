@@ -15,7 +15,7 @@ grpo:
   kl_coef: 0.04
   steps: 1000
 
-# Verifiable reward weights -> agent_bouncer.rewards.RewardWeights
+# Verifiable reward weights -> agent_bouncer.training.rewards.RewardWeights
 reward:
   correctness: 1.0
   category: 0.5

@@ -1,5 +1,5 @@
-from agent_bouncer.metrics import compute_metrics
-from agent_bouncer.schema import Decision
+from agent_bouncer.core.schema import Decision
+from agent_bouncer.evaluation.metrics import compute_metrics
 
 U, S = Decision.UNSAFE, Decision.SAFE
 

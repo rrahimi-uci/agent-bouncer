@@ -1,6 +1,6 @@
+from agent_bouncer.core.schema import Decision
+from agent_bouncer.core.taxonomy import Hazard
 from agent_bouncer.models.encoder import aggregate_unsafe
-from agent_bouncer.schema import Decision
-from agent_bouncer.taxonomy import Hazard
 
 
 def test_binary_head_unsafe():

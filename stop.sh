@@ -19,7 +19,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 # 2) fallback: kill any stray uvicorn serving the studio app
-if pkill -f 'uvicorn agent_bouncer.serve.api' 2>/dev/null; then
+if pkill -f 'uvicorn agent_bouncer.serving.api' 2>/dev/null; then
   stopped=1
 fi
 

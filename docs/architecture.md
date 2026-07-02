@@ -27,7 +27,7 @@ flowchart LR
     G -.->|"metrics · latency (optional MLflow)"| O[("mlruns/")]
 ```
 
-**Surfaces** (`agent_bouncer.schema.Surface`) — guarding *agents* means screening more than
+**Surfaces** (`agent_bouncer.core.schema.Surface`) — guarding *agents* means screening more than
 user text:
 
 | Surface | What it protects against |
@@ -93,70 +93,86 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    subgraph C["Contracts (dependency-light core)"]
-        TAX["taxonomy.py — Hazard"]
-        SCH["schema.py — Decision·Surface·Verdict"]
-        GRD["guard.py — Guard protocol + KeywordGuard"]
-        MET["metrics.py — P/R/F1 · FPR@benign · latency"]
-        REW["rewards.py — verifiable GRPO reward"]
+    subgraph C["core/ — contracts (dependency-light)"]
+        TAX["core/taxonomy.py — Hazard"]
+        SCH["core/schema.py — Decision·Surface·Verdict"]
+        GRD["core/guard.py — Guard protocol + KeywordGuard"]
     end
-    subgraph D["Data"]
-        DAT["data.py — normalizers + loaders → unified JSONL"]
+    subgraph CFG["config/"]
+        ENV["config/envfile.py — .env / settings"]
     end
-    subgraph MDL["Models (guards)"]
+    subgraph D["data/"]
+        DAT["data/loaders.py — normalizers + loaders → unified JSONL"]
+        SPL["data/split.py — disjoint splits + anti-leakage"]
+        TS["data/training_sets.py — strategy-built train/test sets"]
+    end
+    subgraph MDL["models/ — guards"]
         ENC["models/encoder.py — EncoderGuard"]
         DEC["models/decoder.py — DecoderGuard + prompt/parse"]
+        ENS["models/ensemble.py — EnsembleGuard + combine()"]
+        REG["models/registry.py — base-model catalog"]
     end
-    subgraph TR["Training"]
-        SFT["train/sft.py — encoder + decoder LoRA"]
-        GRPO["train/grpo.py — RLVR"]
-        DPO["train/dpo.py — preference tuning"]
+    subgraph TR["training/"]
+        SFT["training/sft.py — encoder + decoder LoRA"]
+        GRPO["training/grpo.py — RLVR"]
+        DPO["training/dpo.py — preference tuning"]
+        REW["training/rewards.py — verifiable GRPO reward"]
+        RUN["training/runner.py — train→version→record"]
     end
-    subgraph EV["Evaluation"]
-        HAR["eval/harness.py — evaluate()"]
-        BEN["eval/benchmarks.py — registry + runner"]
-        OAI["eval/openai_guards.py — Moderation · GPT-4o-mini · GPT-5.2"]
-        BAS["eval/baselines.py — Llama Guard · ShieldGemma · PromptGuard"]
-        CUR["eval/curves.py — ROC · PR · AUC"]
-        REP["eval/report.py — tables · model card"]
+    subgraph EV["evaluation/"]
+        MET["evaluation/metrics.py — P/R/F1 · FPR@benign · latency"]
+        HAR["evaluation/harness.py — evaluate()"]
+        BEN["evaluation/benchmarks.py — registry + runner"]
+        OAI["evaluation/openai_guards.py — Moderation · GPT-4o-mini · GPT-5.2"]
+        BAS["evaluation/baselines.py — Llama Guard · ShieldGemma · PromptGuard"]
+        CUR["evaluation/curves.py — ROC · PR · AUC"]
+        REP["evaluation/report.py — tables · model card"]
     end
-    subgraph SV["Serving"]
-        API["serve/api.py — FastAPI /screen + Studio"]
-        DASH["serve/dashboard.html — Benchmark Studio UI"]
+    subgraph TRK["tracking/"]
+        EXP["tracking/experiments.py — experiment store + versioning"]
+        HW["tracking/hardware.py — cross-OS hardware snapshot"]
+    end
+    subgraph SV["serving/"]
+        API["serving/api.py — FastAPI /screen + Studio"]
+        DASH["serving/dashboard.html — Benchmark Studio UI"]
     end
 
     SCH --> GRD --> MET
     TAX --> SCH
+    ENV --> DAT
     DAT --> HAR
+    SPL --> TS --> SFT
     GRD --> ENC & DEC
     REW --> GRPO
     SFT --> ENC & DEC
     GRPO --> DEC
     DPO --> DEC
-    ENC & DEC & OAI & BAS --> HAR --> BEN --> REP
+    REG --> RUN --> EXP
+    HW --> EXP
+    ENC & DEC --> ENS
+    ENC & DEC & ENS & OAI & BAS --> HAR --> BEN --> REP
     BEN --> CUR
     HAR --> API --> DASH
 ```
 
 | Module | Role |
 |--------|------|
-| `taxonomy` | single hazard label space (content + injection/jailbreak) |
-| `schema` | the `Verdict` contract every guard returns |
-| `guard` | `Guard` protocol + dependency-free reference `KeywordGuard` |
-| `metrics` | F1, precision/recall, **false-positive-on-benign**, latency percentiles |
-| `rewards` | verifiable GRPO rewards (label = reward) |
-| `data` | dataset loaders/normalizers → unified taxonomy (train sets **and** benchmarks) |
-| `models` | trained guards: `EncoderGuard` (BERT), `DecoderGuard` (Qwen3/Llama) |
-| `train` | `sft.py`, `grpo.py`, `dpo.py` |
-| `models_registry` | base-model catalog (Qwen3, DeepSeek-R1, SmolLM2, Gemma, …) + techniques |
-| `training_sets` | training-set **strategies** (balanced / mixed / over-refusal-aware / red-team) |
-| `split` | deterministic train/test split + **anti-leakage** guards |
-| `experiments` | experiment store + model versioning (JSON, no server) |
-| `envfile` | auto-loads `.env` (OPENAI_API_KEY, HF_TOKEN) into the environment |
-| `hardware` | CPU/GPU/memory/runtime snapshot per run |
-| `training_runner` | train→version→record and leakage-checked test→record orchestration |
-| `eval` | harness, benchmark registry, OpenAI + incumbent guards, ROC/AUC, reports |
-| `serve` | FastAPI `/screen` API **and** the Benchmark Studio dashboard (train/test/experiments) |
+| `core/taxonomy` | single hazard label space (content + injection/jailbreak) |
+| `core/schema` | the `Verdict` contract every guard returns |
+| `core/guard` | `Guard` protocol + dependency-free reference `KeywordGuard` |
+| `config/envfile` | auto-loads `.env` (OPENAI_API_KEY, HF_TOKEN) into the environment |
+| `data/loaders` | dataset loaders/normalizers → unified taxonomy (train sets **and** benchmarks) |
+| `data/split` | deterministic train/test split + **anti-leakage** guards |
+| `data/training_sets` | training-set **strategies** (balanced / mixed / over-refusal-aware / red-team) |
+| `models/*` | trained guards: `EncoderGuard` (BERT), `DecoderGuard` (Qwen3/…), `ensemble`, `registry` |
+| `models/registry` | base-model catalog (Qwen3, DeepSeek-R1, SmolLM2, Gemma, …) + techniques |
+| `models/ensemble` | `EnsembleGuard` + pure `combine()` (union/intersection/majority/mean/weighted) |
+| `training/*` | `sft.py`, `grpo.py`, `dpo.py`, `rewards.py` (label = reward), `runner.py` |
+| `training/runner` | train→version→record and leakage-checked test→record orchestration |
+| `evaluation/*` | `metrics`, `harness`, benchmark registry, OpenAI + incumbent guards, ROC/AUC, reports |
+| `tracking/experiments` | experiment store + model versioning (JSON, no server) |
+| `tracking/hardware` | CPU/GPU/memory/runtime snapshot per run (cross-OS) |
+| `serving` | FastAPI `/screen` API **and** the Benchmark Studio dashboard (train/test/experiments) |
 
 ---
 
@@ -264,7 +280,7 @@ A dedicated training subsystem turns "run a script" into a tracked, reproducible
 
 ```mermaid
 flowchart LR
-    REG["models_registry<br/>base model + arch + techniques"] --> CFG["configure params<br/>(epochs · lr · LoRA · max_steps)"]
+    REG["models/registry<br/>base model + arch + techniques"] --> CFG["configure params<br/>(epochs · lr · LoRA · max_steps)"]
     CFG --> TR["train_and_record<br/>SFT / GRPO / DPO"]
     TR --> V["versioned checkpoint<br/>outputs/models/&lt;key&gt;/&lt;version&gt;"]
     TR --> EXPT["experiment (kind=train)<br/>params · hardware · git · timing"]
@@ -275,15 +291,15 @@ flowchart LR
     EXPT & EXPE --> HIST["experiment history<br/>comparison · P90 graphs"]
 ```
 
-- **Model registry** (`models_registry.py`) — base models + arch + supported techniques.
-- **Versioning** (`experiments.py`) — every train writes `outputs/models/<key>/<version>/`.
+- **Model registry** (`models/registry.py`) — base models + arch + supported techniques.
+- **Versioning** (`tracking/experiments.py`) — every train writes `outputs/models/<key>/<version>/`.
 - **Experiment store** — one JSON per run under `outputs/experiments/` + an index; captures
-  params, dataset, **hardware** (`hardware.py`: CPU/GPU/memory/runtime), git commit, and metrics.
-- **Dataset separation** (`split.py`) — deterministic disjoint splits + `assert_no_leakage`;
+  params, dataset, **hardware** (`tracking/hardware.py`: CPU/GPU/memory/runtime), git commit, and metrics.
+- **Dataset separation** (`data/split.py`) — deterministic disjoint splits + `assert_no_leakage`;
   at test time, any benchmark prompt found in the model's *training* data is **dropped and
   reported**, so a model is never scored on what it trained on.
-- **Orchestration** (`training_runner.py`) — `train_and_record` / `evaluate_and_record`, driven
-  by `scripts/run_training.py`, `scripts/run_testing.py`, and the Studio's `/api/train` `/api/test`.
+- **Orchestration** (`training/runner.py`) — `train_and_record` / `evaluate_and_record`, driven
+  by `scripts/train/run_training.py`, `scripts/eval/run_testing.py`, and the Studio's `/api/train` `/api/test`.
 
 ## 7 · Evaluation harness & the benchmark suite
 
@@ -311,7 +327,7 @@ Three axes are covered: **guardrail** (BeaverTails, OpenAI-Moderation, ToxicChat
 
 ## 8 · Metrics & curves
 
-`UNSAFE` is the positive class. Definitions in `metrics.py` / `curves.py`:
+`UNSAFE` is the positive class. Definitions in `evaluation/metrics.py` / `evaluation/curves.py`:
 
 | Metric | Meaning | Direction |
 |--------|---------|-----------|
@@ -330,7 +346,7 @@ production — and it's the number incumbents underreport. It is also baked into
 
 ## 9 · Serving & the Benchmark Studio
 
-`serve/api.py` exposes the guard as `POST /screen` **and** serves the Benchmark Studio — a
+`serving/api.py` exposes the guard as `POST /screen` **and** serves the Benchmark Studio — a
 web UI to **browse benchmark contents**, **build training sets** (by strategy), **train /
 test** SLM guards (streamed live), and **compare experiments** with hardware + P90 graphs.
 Tabs: Overview · Benchmarks · Datasets · Train & Test · Experiments · ROC & AUC.
@@ -338,7 +354,7 @@ Tabs: Overview · Benchmarks · Datasets · Train & Test · Experiments · ROC &
 ```mermaid
 sequenceDiagram
     participant B as Browser (dashboard.html)
-    participant API as FastAPI (serve/api.py)
+    participant API as FastAPI (serving/api.py)
     participant P as Subprocesses
     B->>API: GET /api/config, /api/results, /api/curves
     API-->>B: benchmarks · guard catalog · latest results
@@ -383,8 +399,8 @@ same path from a single file.
 
 ## 11 · Extending it
 
-- **Add a benchmark** — write a pure `normalize_*` in `data.py` (+ a loader), register a
-  `Benchmark(name, loader, axis, description)` in `eval/benchmarks.py`. It flows into the
+- **Add a benchmark** — write a pure `normalize_*` in `data/loaders.py` (+ a loader), register a
+  `Benchmark(name, loader, axis, description)` in `evaluation/benchmarks.py`. It flows into the
   suite, the report, and the dashboard automatically.
 - **Add a guard** — implement `.name` + `.predict(text, *, surface) -> Verdict`. It's
   immediately scorable and comparable.

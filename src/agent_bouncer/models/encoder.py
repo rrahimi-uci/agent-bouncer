@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import time
 
-from ..schema import Decision, Surface, Verdict
-from ..taxonomy import Hazard
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.core.taxonomy import Hazard
 
 _SAFE_LABELS = {"safe", "none", "benign", "label_0", "0"}
 

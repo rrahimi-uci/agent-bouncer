@@ -7,12 +7,12 @@ close the gap on headline macro-F1 at a usable operating point. Below is the hon
 ## How it's measured (no leakage, no F1-gaming)
 
 1. Each guard is scored **once** per sample on the cached benchmark subsets
-   ([`scripts/dump_predictions.py`](../scripts/dump_predictions.py)) — one guard per process, so a
+   ([`scripts/eval/dump_predictions.py`](../scripts/eval/dump_predictions.py)) — one guard per process, so a
    BERT encoder and a Qwen decoder never co-load (that deadlocks the tokenizer threadpool).
    Output: `outputs/predictions/<guard>.json` = `{benchmark: [[gold, pred, score, latency_ms], …]}`.
 2. Ensembles are combined **offline** from those per-sample rows
-   ([`scripts/eval_ensembles.py`](../scripts/eval_ensembles.py)) via the pure
-   [`combine()`](../src/agent_bouncer/ensemble.py) function — so any combination is free to explore.
+   ([`scripts/eval/eval_ensembles.py`](../scripts/eval/eval_ensembles.py)) via the pure
+   [`combine()`](../src/agent_bouncer/models/ensemble.py) function — so any combination is free to explore.
    Ensemble latency per sample = **sum** of member latencies (members run sequentially).
 3. The `ensemble-tuned` row tunes its decision threshold on a **validation half** and reports on a
    **disjoint test half**, and maximizes F1 **subject to** `val-FPR ≤ 0.20` — i.e. at GPT-5.2's
@@ -21,11 +21,11 @@ close the gap on headline macro-F1 at a usable operating point. Below is the hon
 Reproduce:
 
 ```bash
-for g in keyword-baseline encoder-distilbert; do python scripts/dump_predictions.py --guard $g; done
-python scripts/dump_predictions.py --guard decoder-sft-0.6B  --device mps
-python scripts/dump_predictions.py --guard decoder-grpo-0.6B --device mps
-python scripts/dump_predictions.py --guard openai-moderation --workers 8
-python scripts/eval_ensembles.py --merge ensemble-maj5 ensemble-union2
+for g in keyword-baseline encoder-distilbert; do python scripts/eval/dump_predictions.py --guard $g; done
+python scripts/eval/dump_predictions.py --guard decoder-sft-0.6B  --device mps
+python scripts/eval/dump_predictions.py --guard decoder-grpo-0.6B --device mps
+python scripts/eval/dump_predictions.py --guard openai-moderation --workers 8
+python scripts/eval/eval_ensembles.py --merge ensemble-maj5 ensemble-union2
 ```
 
 ## Results (7 benchmarks, per_class=100, macro-averaged)

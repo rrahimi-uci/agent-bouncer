@@ -1,4 +1,4 @@
-# Data preparation config (consumed by scripts/download_data.py)
+# Data preparation config (consumed by scripts/data/download_data.py)
 output_dir: data/
 seed: 42
 

@@ -1,7 +1,7 @@
 import pytest
 
-from agent_bouncer.eval import benchmarks as B
-from agent_bouncer.schema import Decision, Surface, Verdict
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.evaluation import benchmarks as B
 
 
 def _recs(n_safe, n_unsafe):

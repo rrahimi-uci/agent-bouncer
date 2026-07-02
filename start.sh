@@ -47,7 +47,7 @@ fi
 # --- launch -----------------------------------------------------------------
 echo "• Starting Benchmark Studio on ${URL} …"
 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 \
-  "$PY" -m uvicorn agent_bouncer.serve.api:app --host "$HOST" --port "$PORT" \
+  "$PY" -m uvicorn agent_bouncer.serving.api:app --host "$HOST" --port "$PORT" \
   > "$LOG" 2>&1 &
 echo $! > "$PIDFILE"
 

@@ -4,9 +4,9 @@ Screens user prompts, tool calls, and agent outputs *before* they reach (or leav
 your model, using a small, low-latency guardrail model. See README.md for the story.
 """
 
-from .envfile import load_env as _load_env
-from .schema import Decision, Surface, Verdict
-from .taxonomy import HAZARD_CATEGORIES, Hazard
+from agent_bouncer.config.envfile import load_env as _load_env
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.core.taxonomy import HAZARD_CATEGORIES, Hazard
 
 # Auto-load .env (OPENAI_API_KEY, HF_TOKEN, …) into the environment on import, so
 # `datasets`/`huggingface_hub` authenticate everywhere. `setdefault` — real env wins.

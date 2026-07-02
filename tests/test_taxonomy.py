@@ -1,4 +1,4 @@
-from agent_bouncer.taxonomy import HAZARD_CATEGORIES, Hazard
+from agent_bouncer.core.taxonomy import HAZARD_CATEGORIES, Hazard
 
 
 def test_none_excluded_from_categories():

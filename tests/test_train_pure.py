@@ -1,11 +1,11 @@
 """Tests for the pure (no-model) parts of the training pipeline:
 the GRPO reward function and the DPO preference-pair builder."""
 
+from agent_bouncer.core.schema import Decision, Verdict
+from agent_bouncer.core.taxonomy import Hazard
 from agent_bouncer.models.decoder import format_target, parse_verdict
-from agent_bouncer.schema import Decision, Verdict
-from agent_bouncer.taxonomy import Hazard
-from agent_bouncer.train.dpo import build_preference_pairs
-from agent_bouncer.train.grpo import make_reward_fn
+from agent_bouncer.training.dpo import build_preference_pairs
+from agent_bouncer.training.grpo import make_reward_fn
 
 
 def test_reward_fn_prefers_correct_completion():

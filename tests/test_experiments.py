@@ -1,4 +1,4 @@
-import agent_bouncer.experiments as X
+import agent_bouncer.tracking.experiments as X
 
 
 def test_ids_and_version_dir():

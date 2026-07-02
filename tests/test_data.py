@@ -1,6 +1,7 @@
 import pytest
 
-from agent_bouncer.data import (
+from agent_bouncer.core.taxonomy import Hazard
+from agent_bouncer.data.loaders import (
     _is_true,
     normalize_aegis,
     normalize_beavertails,
@@ -14,7 +15,6 @@ from agent_bouncer.data import (
     train_val_split,
     unify_to_taxonomy,
 )
-from agent_bouncer.taxonomy import Hazard
 
 
 def test_beavertails_unsafe_maps_flagged_category():

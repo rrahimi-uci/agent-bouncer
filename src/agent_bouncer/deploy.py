@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import subprocess
 
-from .guard import Guard
-from .metrics import _percentile
+from agent_bouncer.core.guard import Guard
+from agent_bouncer.evaluation.metrics import _percentile
 
 
 def build_gguf_command(

@@ -12,7 +12,7 @@ All notable changes to this project are documented here. The format follows
   harness, CLI, and stubs for SFT/GRPO training and standard-benchmark adapters.
 - Data unification (roadmap phase 1): offline-tested normalizers mapping WildGuardMix,
   BeaverTails, Aegis 2.0, and XSTest onto the unified taxonomy; deterministic
-  train/validation split and JSONL I/O; wired `scripts/download_data.py`.
+  train/validation split and JSONL I/O; wired `scripts/data/download_data.py`.
 - Baselines (phase 2): Llama Guard / ShieldGemma / PromptGuard2 guard wrappers with
   unit-tested output parsers.
 - Training (phases 3–5): encoder classifier (`Trainer`), decoder LoRA SFT, GRPO
@@ -27,8 +27,8 @@ All notable changes to this project are documented here. The format follows
   (`eval/benchmarks.py`) over 7 ungated benchmarks — BeaverTails, OpenAI-Moderation,
   ToxicChat (guardrail); deepset prompt-injections, jailbreak-classification,
   JailbreakBench (red-teaming); XSTest (over-refusal) — with loaders/normalizers,
-  balanced subsampling, and a per-axis Markdown report generator. `scripts/run_benchmarks.py`,
-  `scripts/download_full_benchmarks.py`, `scripts/render_benchmarks.py`, `make bench`.
+  balanced subsampling, and a per-axis Markdown report generator. `scripts/eval/run_benchmarks.py`,
+  `scripts/data/download_full_benchmarks.py`, `scripts/report/render_benchmarks.py`, `make bench`.
 - **Live LLM-judge comparison:** `OpenAIChatGuard` now supports reasoning models
   (**GPT-5.2 with `reasoning_effort="low"`**) alongside GPT-4o-mini, and treats an
   OpenAI content-policy prompt refusal as an `unsafe` verdict (so red-team benchmarks
@@ -42,7 +42,7 @@ All notable changes to this project are documented here. The format follows
   Precision / Recall / F1, over-blocking (FPR), latency, and **ROC / AUC** charts
   (Chart.js, vendored). Runs merge into the scoreboard rather than clobbering it.
 - **ROC / PR / AUC** (`eval/curves.py`, pure + unit-tested): tie-corrected Mann–Whitney
-  AUC + curve points; `scripts/compute_curves.py` writes `outputs/curves.json`.
+  AUC + curve points; `scripts/report/compute_curves.py` writes `outputs/curves.json`.
 - **`start.sh` / `stop.sh`** — one-command background launch/stop of the Studio (PID file,
   readiness wait, auto-open, idempotent).
 - **`notebooks/agent_bouncer_studio.ipynb`** — a single self-contained notebook to configure,
@@ -56,7 +56,7 @@ All notable changes to this project are documented here. The format follows
   SFT/GRPO/DPO); **model versioning** + **experiment tracking** (`experiments.py`, JSON store);
   **hardware capture** (`hardware.py`: CPU/GPU/memory/runtime); **train/test separation** with
   anti-leakage guards (`split.py`); and orchestration (`training_runner.py`,
-  `scripts/run_training.py`, `scripts/run_testing.py`) that records params, data, hardware,
+  `scripts/train/run_training.py`, `scripts/eval/run_testing.py`) that records params, data, hardware,
   git, and metrics for every run. Leakage-checked testing drops+reports train∩test overlap.
 - **Metrics:** added **P90 latency** and **throughput** to `GuardMetrics`.
 - **Benchmark Studio lifecycle UI:** new **Train & Test** and **Experiments** tabs — model +
@@ -70,7 +70,7 @@ All notable changes to this project are documented here. The format follows
   balanced / mixed / over-refusal-aware / red-team, split leakage-safe); the "Run pipeline"
   flow removed in favor of a train/test/experiment-centered nav. New endpoints
   `/api/benchmark/{name}`, `/api/datasets`, `/api/dataset/build`, `/api/train_sets`
-  (`scripts/build_dataset.py`).
+  (`scripts/data/build_dataset.py`).
 - **`.env` auto-load** (`envfile.py`): OPENAI_API_KEY / HF_TOKEN are picked up by the CLI,
   scripts, notebook, and server on import (`setdefault` — real env wins).
 

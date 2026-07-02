@@ -1,6 +1,6 @@
 import pytest
 
-from agent_bouncer.eval.report import (
+from agent_bouncer.evaluation.report import (
     generate_model_card,
     macro_average,
     render_benchmark_report,

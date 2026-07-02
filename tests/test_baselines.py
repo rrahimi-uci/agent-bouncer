@@ -1,6 +1,6 @@
-from agent_bouncer.eval.baselines import parse_llama_guard_output, parse_yes_no_output
-from agent_bouncer.schema import Decision
-from agent_bouncer.taxonomy import Hazard
+from agent_bouncer.core.schema import Decision
+from agent_bouncer.core.taxonomy import Hazard
+from agent_bouncer.evaluation.baselines import parse_llama_guard_output, parse_yes_no_output
 
 
 def test_llama_guard_safe():

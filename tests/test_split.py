@@ -1,6 +1,6 @@
 import pytest
 
-from agent_bouncer.split import assert_no_leakage, find_leakage, train_test_split
+from agent_bouncer.data.split import assert_no_leakage, find_leakage, train_test_split
 
 
 def _recs(texts, label="safe"):

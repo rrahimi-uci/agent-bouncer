@@ -16,8 +16,8 @@ import json
 import re
 import time
 
-from ..schema import Decision, Surface, Verdict
-from ..taxonomy import Hazard
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.core.taxonomy import Hazard
 
 SYSTEM_INSTRUCTION = (
     "You are Agent Bouncer, a safety classifier. Decide whether the input is safe "

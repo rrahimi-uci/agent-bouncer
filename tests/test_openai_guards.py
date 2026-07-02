@@ -1,11 +1,11 @@
-from agent_bouncer.eval.openai_guards import (
+from agent_bouncer.core.taxonomy import Hazard
+from agent_bouncer.evaluation.openai_guards import (
     OpenAIChatGuard,
     build_chat_kwargs,
     is_content_policy_error,
     is_reasoning_model,
     moderation_to_hazard,
 )
-from agent_bouncer.taxonomy import Hazard
 
 
 def test_moderation_maps_flagged_category():

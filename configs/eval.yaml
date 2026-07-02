@@ -1,9 +1,9 @@
-# Evaluation config (consumed by the eval harness / scripts/run_eval.sh)
+# Evaluation config (consumed by the eval harness / scripts/eval/run_eval.sh)
 mlflow:
   experiment_name: agent-bouncer
   tracking_uri: null   # null -> local ./mlruns
 
-# Standard benchmark suite (ungated; run via scripts/run_benchmarks.py).
+# Standard benchmark suite (ungated; run via scripts/eval/run_benchmarks.py).
 # Grouped by axis; gated sets (WildGuardMix/HarmBench/AdvBench/PINT) need HF_TOKEN.
 benchmarks:
   guardrail: [beavertails, openai_moderation, toxicchat]

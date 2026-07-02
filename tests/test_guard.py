@@ -1,5 +1,5 @@
-from agent_bouncer.guard import Guard, KeywordGuard
-from agent_bouncer.schema import Decision
+from agent_bouncer.core.guard import Guard, KeywordGuard
+from agent_bouncer.core.schema import Decision
 
 
 def test_reference_guard_satisfies_protocol():

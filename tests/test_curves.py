@@ -1,6 +1,6 @@
 import math
 
-from agent_bouncer.eval.curves import downsample, pr_curve, roc_auc, roc_curve
+from agent_bouncer.evaluation.curves import downsample, pr_curve, roc_auc, roc_curve
 
 
 def test_roc_auc_perfect_separation():

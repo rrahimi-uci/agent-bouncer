@@ -1,11 +1,11 @@
-from agent_bouncer.rewards import (
+from agent_bouncer.core.schema import Decision, Verdict
+from agent_bouncer.core.taxonomy import Hazard
+from agent_bouncer.training.rewards import (
     RewardWeights,
     brevity_reward,
     composite_reward,
     false_positive_penalty,
 )
-from agent_bouncer.schema import Decision, Verdict
-from agent_bouncer.taxonomy import Hazard
 
 
 def _v(decision, hazard=Hazard.NONE, rationale=None):

@@ -1,6 +1,6 @@
 # Hazard taxonomy
 
-One canonical label space (`agent_bouncer.taxonomy.Hazard`), aligned to the
+One canonical label space (`agent_bouncer.core.taxonomy.Hazard`), aligned to the
 MLCommons AILuminate hazard set and extended with two agent-specific surfaces.
 
 | Hazard | Notes |

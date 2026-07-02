@@ -10,9 +10,9 @@ import argparse
 import json
 import sys
 
-from . import __version__
-from .guard import KeywordGuard
-from .schema import Surface
+from agent_bouncer import __version__
+from agent_bouncer.core.guard import KeywordGuard
+from agent_bouncer.core.schema import Surface
 
 
 def _cmd_predict(args: argparse.Namespace) -> int:
@@ -22,7 +22,7 @@ def _cmd_predict(args: argparse.Namespace) -> int:
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    from .eval.harness import evaluate
+    from agent_bouncer.evaluation.harness import evaluate
 
     with open(args.data) as fh:
         samples = [json.loads(line) for line in fh if line.strip()]
@@ -34,15 +34,15 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 
 def _cmd_train(args: argparse.Namespace) -> int:
     if args.method == "sft":
-        from .train.sft import run_sft
+        from agent_bouncer.training.sft import run_sft
 
         run_sft(args.config)
     elif args.method == "grpo":
-        from .train.grpo import run_grpo
+        from agent_bouncer.training.grpo import run_grpo
 
         run_grpo(args.config)
     else:
-        from .train.dpo import run_dpo
+        from agent_bouncer.training.dpo import run_dpo
 
         run_dpo(args.config)
     return 0

@@ -137,10 +137,10 @@ every set is split into disjoint train / held-out test) then train on it:
 
 ```bash
 # 1) build a training set (strategy = balanced | mixed | over_refusal_aware | red_team)
-python scripts/build_dataset.py --strategy over_refusal_aware --name low-fpr --sources beavertails
+python scripts/data/build_dataset.py --strategy over_refusal_aware --name low-fpr --sources beavertails
 # 2) train a registered SLM on it   3) test it (leakage-guarded) — or do it all in the Studio
-python scripts/run_training.py --model smollm2-1.7b --technique sft --train-data data/train_sets/low-fpr/train.jsonl --max-steps 40
-python scripts/run_testing.py  --exp <experiment-id> --per-class 40 --device mps
+python scripts/train/run_training.py --model smollm2-1.7b --technique sft --train-data data/train_sets/low-fpr/train.jsonl --max-steps 40
+python scripts/eval/run_testing.py  --exp <experiment-id> --per-class 40 --device mps
 ```
 
 ## Results
@@ -205,26 +205,30 @@ guard not to over-block benign traffic. See the GRPO loop diagram in
 
 ## Project layout
 
+The package is grouped by concern — dependency-light **contracts** at the center, heavier
+concerns (models, training, serving) at the edges:
+
 ```text
 src/agent_bouncer/
-├── taxonomy.py     # unified hazard label space (MLCommons + injection/jailbreak)
-├── schema.py       # the Verdict contract every guard returns
-├── guard.py        # Guard protocol + dependency-free reference guard
-├── rewards.py      # verifiable GRPO rewards (label = reward)
-├── metrics.py      # precision/recall/F1, FPR-on-benign, latency (p50/p90/p95), throughput
-├── data.py         # dataset loaders/normalizers -> unified taxonomy
-├── split.py        # deterministic train/test split + anti-leakage guards
-├── models_registry.py  # base-model catalog (Qwen3 · DeepSeek-R1 · SmolLM2 · Gemma)
-├── experiments.py  # experiment store + model versioning · hardware.py  # run environment
-├── training_runner.py  # train→version→record · leakage-checked test→record
-├── models/         # EncoderGuard (BERT), DecoderGuard (Qwen3/DeepSeek/SmolLM2/Gemma)
-├── train/          # sft.py, grpo.py, dpo.py
-├── eval/           # harness, benchmark registry, incumbents, OpenAI guards, ROC/AUC, report
-├── serve/          # FastAPI /screen API + Benchmark Studio dashboard
-└── cli.py          # `agent-bouncer` CLI
-notebooks/          # agent_bouncer_studio.ipynb — run & configure everything from a notebook
-configs/  docs/  scripts/  start.sh  stop.sh
+├── core/         # domain contracts: Verdict schema · hazard taxonomy · Guard protocol (no heavy deps)
+├── config/       # .env / settings loading
+├── data/         # dataset loaders → unified taxonomy · leakage-safe splits · training-set builder
+├── models/       # EncoderGuard (BERT) · DecoderGuard (Qwen3/DeepSeek/SmolLM2/Gemma) · ensemble · registry
+├── training/     # SFT · GRPO · DPO · verifiable rewards · runtime · train→version→record runner
+├── evaluation/   # harness · benchmark registry · metrics · ROC/AUC curves · OpenAI guards · report
+├── tracking/     # experiment store + versioning · cross-OS hardware snapshot
+├── serving/      # FastAPI /screen API + Benchmark Studio dashboard
+├── cli.py        # `agent-bouncer` CLI          └── deploy.py   # deployment helper
+└── __init__.py   # re-exports Verdict/Decision/Hazard; auto-loads .env
+
+scripts/     # grouped entry points → data/ · train/ · eval/ · report/
+notebooks/   # agent_bouncer_studio.ipynb — run & configure everything from a notebook
+configs/  docs/  tests/  start.sh  stop.sh
 ```
+
+Each subpackage's `__init__` re-exports its public API (e.g. `from agent_bouncer.core import
+Verdict, Guard`), while internal modules import each other explicitly — so imports read as
+`agent_bouncer.<area>.<module>` and the dependency direction is obvious.
 
 ## Reproduce
 

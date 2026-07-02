@@ -1,6 +1,6 @@
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.core.taxonomy import Hazard
 from agent_bouncer.models.decoder import build_prompt, format_target, parse_verdict
-from agent_bouncer.schema import Decision, Surface, Verdict
-from agent_bouncer.taxonomy import Hazard
 
 
 def test_parse_json_verdict():

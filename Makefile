@@ -11,7 +11,7 @@ install:  ## Editable install (core only)
 	pip install -e .
 
 data:  ## Download + unify the training datasets (WildGuardMix / BeaverTails / Aegis)
-	python scripts/download_data.py
+	python scripts/data/download_data.py
 
 train-sft:  ## Supervised fine-tune (config=configs/model/sft_qwen3_0_6b.yaml)
 	agent-bouncer train sft --config $(or $(config),configs/model/sft_qwen3_0_6b.yaml)
@@ -23,13 +23,13 @@ train-dpo:  ## DPO over-refusal tuning (config=configs/model/dpo_qwen3.yaml)
 	agent-bouncer train dpo --config $(or $(config),configs/model/dpo_qwen3.yaml)
 
 data-demo:  ## Build the balanced BeaverTails demo dataset (ungated)
-	python scripts/prepare_beavertails_demo.py
+	python scripts/data/prepare_beavertails_demo.py
 
 demo:  ## Train Regime-A encoder and check it beats the baseline (end-to-end)
-	python scripts/demo_train_eval.py
+	python scripts/train/demo_train_eval.py
 
 report:  ## Render results table + model card from outputs/demo_results.json
-	python scripts/make_report.py
+	python scripts/report/make_report.py
 
 eval:  ## Run the eval harness on the smoke set (uses the reference guard)
 	agent-bouncer eval tests/data/smoke.jsonl --run-name keyword-baseline
@@ -37,34 +37,34 @@ eval:  ## Run the eval harness on the smoke set (uses the reference guard)
 bench: benchmarks  ## Alias for `benchmarks`
 
 benchmarks:  ## Download + run the standard benchmark suite (uses .env keys); writes outputs/BENCHMARKS.md
-	python scripts/run_benchmarks.py $(if $(per_class),--per-class $(per_class),)
+	python scripts/eval/run_benchmarks.py $(if $(per_class),--per-class $(per_class),)
 
 benchmarks-full:  ## Download the full-size ungated benchmark datasets to data/benchmarks/full
-	python scripts/download_full_benchmarks.py $(if $(benchmarks),--benchmarks $(benchmarks),)
+	python scripts/data/download_full_benchmarks.py $(if $(benchmarks),--benchmarks $(benchmarks),)
 
 baselines:  ## Score incumbent guards (Llama Guard / ShieldGemma) on our harness
-	python -m agent_bouncer.eval.baselines
+	python -m agent_bouncer.evaluation.baselines
 
 incumbents:  ## Compare vs OpenAI + gated incumbents on the test subset (uses .env keys)
-	python scripts/run_incumbents.py $(if $(limit),--limit $(limit),)
+	python scripts/eval/run_incumbents.py $(if $(limit),--limit $(limit),)
 
 curves:  ## Compute ROC / PR / AUC curves for local guards -> outputs/curves.json
-	python scripts/compute_curves.py
+	python scripts/report/compute_curves.py
 
 build-dataset:  ## Build a training set (strategy=balanced name=my-set sources="beavertails xstest")
-	python scripts/build_dataset.py --strategy $(or $(strategy),balanced) --name $(or $(name),my-set) --sources $(sources)
+	python scripts/data/build_dataset.py --strategy $(or $(strategy),balanced) --name $(or $(name),my-set) --sources $(sources)
 
 train-model:  ## Train a registered model (model=smollm2-1.7b technique=sft [max_steps=40])
-	python scripts/run_training.py --model $(or $(model),distilbert) --technique $(or $(technique),sft) \
+	python scripts/train/run_training.py --model $(or $(model),distilbert) --technique $(or $(technique),sft) \
 	  $(if $(max_steps),--max-steps $(max_steps),) $(if $(epochs),--epochs $(epochs),)
 
 test-model:  ## Test a trained version against benchmarks (exp=<experiment-id> [device=mps])
-	python scripts/run_testing.py --exp $(exp) $(if $(device),--device $(device),) $(if $(per_class),--per-class $(per_class),)
+	python scripts/eval/run_testing.py --exp $(exp) $(if $(device),--device $(device),) $(if $(per_class),--per-class $(per_class),)
 
 serve: studio  ## Alias for `studio`
 
 studio:  ## Launch the Benchmark Studio dashboard + /screen API (http://127.0.0.1:8000)
-	uvicorn agent_bouncer.serve.api:app --host 127.0.0.1 --port 8000
+	uvicorn agent_bouncer.serving.api:app --host 127.0.0.1 --port 8000
 
 test:  ## Run tests
 	pytest

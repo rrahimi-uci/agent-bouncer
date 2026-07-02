@@ -9,7 +9,7 @@ The research questions this repo answers:
 >    judges — **GPT-4o-mini** and **GPT-5.2 (low reasoning)** — and to a purpose-built
 >    moderation API?
 
-Everything below is scored through **one harness** (`agent_bouncer.eval`), so the
+Everything below is scored through **one harness** (`agent_bouncer.evaluation`), so the
 numbers are directly comparable. Metrics: **precision / recall / F1** (positive class =
 `unsafe`), **`fpr_on_benign`** (over-blocking — the headline usability metric), and
 **p50 latency**.
@@ -17,7 +17,7 @@ numbers are directly comparable. Metrics: **precision / recall / F1** (positive 
 ## The standard benchmark suite
 
 We download and run **7 ungated standard benchmarks** across three axes. Each is
-normalized to the unified taxonomy in [`data.py`](../src/agent_bouncer/data.py) and
+normalized to the unified taxonomy in [`data/loaders.py`](../src/agent_bouncer/data/loaders.py) and
 scored on a **class-balanced subset (≤100/class)** so precision/recall are meaningful.
 
 | Axis | Benchmark | HF dataset | Measures |
@@ -93,7 +93,7 @@ Latency is **device-dependent** (captured per run): encoder/keyword on **CPU**, 
 
 ### ROC-AUC (all guards)
 
-`scripts/compute_curves.py` reports **ROC-AUC for every guard**, written into
+`scripts/report/compute_curves.py` reports **ROC-AUC for every guard**, written into
 `outputs/curves.json` and merged back into the results:
 
 - **Continuous-score guard (the encoder)** → a **threshold-swept** ROC/PR curve and its true
@@ -116,9 +116,9 @@ latency. See the `decoder-sft-1.7B` row in [`outputs/BENCHMARKS.md`](../outputs/
 ## RL: verifiable-reward GRPO (RLVR) on a real SLM
 
 The guard has ground-truth labels, so the **label is the reward** — no reward model.
-[`rewards.py`](../src/agent_bouncer/rewards.py) scores each rollout on correctness +
+[`training/rewards.py`](../src/agent_bouncer/training/rewards.py) scores each rollout on correctness +
 hazard category + parseable format − **false-positive penalty** + brevity;
-[`train/grpo.py`](../src/agent_bouncer/train/grpo.py) wires it into TRL's `GRPOTrainer`
+[`training/grpo.py`](../src/agent_bouncer/training/grpo.py) wires it into TRL's `GRPOTrainer`
 and (like SFT) merges the LoRA adapter so the RL model loads as a standalone guard.
 
 `configs/model/grpo_from_sft.yaml` runs GRPO **from the SFT checkpoint** — the recommended
@@ -148,11 +148,11 @@ training data** to close the prompt-injection recall gap the suite exposes.
 
 ```bash
 make bench                                     # download + run the whole suite
-python scripts/run_benchmarks.py --per-class 100          # with knobs
-python scripts/run_benchmarks.py --no-openai              # local guards only (offline)
-python scripts/eval_added_guard.py --path outputs/grpo-qwen3-0.6b \
+python scripts/eval/run_benchmarks.py --per-class 100          # with knobs
+python scripts/eval/run_benchmarks.py --no-openai              # local guards only (offline)
+python scripts/eval/eval_added_guard.py --path outputs/grpo-qwen3-0.6b \
     --mode reasoning --name decoder-grpo-0.6B --params 0.6B   # add the RL guard
-python scripts/download_full_benchmarks.py                # full-size datasets
+python scripts/data/download_full_benchmarks.py                # full-size datasets
 ```
 
 Runs log to MLflow when installed (`mlruns/`). Caveats bound the *absolute* numbers

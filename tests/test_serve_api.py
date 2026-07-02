@@ -3,7 +3,7 @@ import pytest
 pytest.importorskip("fastapi")  # serve extra optional
 from fastapi.testclient import TestClient  # noqa: E402
 
-from agent_bouncer.serve import api  # noqa: E402
+from agent_bouncer.serving import api  # noqa: E402
 
 client = TestClient(api.app)
 

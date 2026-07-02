@@ -1,7 +1,7 @@
 import pytest
 
-from agent_bouncer.ensemble import EnsembleGuard, combine
-from agent_bouncer.schema import Decision, Surface, Verdict
+from agent_bouncer.core.schema import Decision, Surface, Verdict
+from agent_bouncer.models.ensemble import EnsembleGuard, combine
 
 
 def test_union_and_intersection():
