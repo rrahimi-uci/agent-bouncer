@@ -5,6 +5,11 @@ arch: decoder
 mode: reasoning
 base_model: Qwen/Qwen3-0.6B
 
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
 data:
   train: data/demo/train.jsonl
 

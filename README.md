@@ -107,7 +107,9 @@ decoder SFT + GRPO wiring is smoke-verified end-to-end.
 
 **Verified result:** a fine-tuned encoder (Regime A, distilbert, 2 epochs, 73 s on
 an M4 Max) beats the keyword baseline **~100× on F1 (0.007 → 0.703)** on a held-out
-BeaverTails test set — see [`docs/benchmarks.md`](docs/benchmarks.md). Reproduce:
+BeaverTails test set. A 0.6B/1.7B decoder size sweep found the **tiny encoder is the
+best accuracy/latency tradeoff** — the decoders matched its F1 at best but ran
+70–160× slower. Details in [`docs/benchmarks.md`](docs/benchmarks.md). Reproduce:
 
 ```bash
 make data-demo && make demo    # download data, fine-tune, compare vs baseline

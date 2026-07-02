@@ -8,26 +8,51 @@ The research question this repo answers:
 We compare three regimes against the incumbents, all through the *same* harness so
 numbers are apples-to-apples.
 
-## In-session demo result (Regime A)
+## Results (in-session, on an M4 Max)
 
-Fine-tuned `distilbert-base-uncased` (Regime A, binary safe/unsafe) for 2 epochs
-(**73 s on an M4 Max**) on a balanced BeaverTails subset, evaluated on a held-out
-621-prompt test set through the harness — vs. the reference keyword baseline:
+**Headline (full 621-prompt held-out test):** a fine-tuned `distilbert` encoder
+(Regime A, 2 epochs, **73 s**) scores **F1 0.703 / recall 0.708** vs. the keyword
+baseline's **F1 0.007** — the learned approach moves the baseline ~100×.
+Reproduce: `make data-demo && make demo`.
 
-| Guard | Params | F1 | Recall | FPR@benign | p50 latency |
-|-------|-------:|---:|-------:|-----------:|------------:|
-| keyword-baseline | 0 | 0.007 | 0.003 | 0.00 | 0.004 ms |
-| **agent-bouncer-encoder** | 66M | **0.703** | **0.708** | 0.27 | 6.7 ms |
+### Regime + size sweep (balanced 250-prompt subset, identical harness)
 
-**The learned approach moved the baseline ~100× on F1** (0.007 → 0.703, recall
-0.003 → 0.708). Reproduce with `make data-demo && make demo`.
+| Guard | Params | F1 | Recall | Prec. | FPR@benign ↓ | p50 latency ↓ |
+|-------|-------:|---:|-------:|------:|-------------:|--------------:|
+| keyword-baseline         | 0    | 0.016 | 0.008 | 1.00 | 0.000 | 0.005 ms |
+| **encoder (distilbert)** | 66M  | 0.683 | 0.672 | 0.69 | 0.296 | **7 ms** |
+| decoder-SFT (Qwen3)      | 0.6B | **0.694** | 0.680 | 0.71 | 0.280 | 472 ms |
+| decoder-SFT (Qwen3)      | 1.7B | 0.649 | 0.592 | 0.72 | **0.232** | 1093 ms |
 
-Honest caveats: (1) the baseline here is our *naive keyword matcher* — beating the
-**incumbents** (Llama Guard / ShieldGemma) needs their gated checkpoints + `HF_TOKEN`
-(wrappers in `eval/baselines.py`). (2) BeaverTails labels *response* safety, so the
-prompt-level labels are noisy — hence the modest absolute F1. (3) The 0.27
-false-positive-on-benign rate is exactly the over-blocking problem DPO (phase 5)
-and reward shaping (phase 4) are designed to reduce.
+Takeaways (reported straight):
+1. **Every learned guard beats the keyword baseline ~40×** on F1.
+2. **The 66M encoder is the best tradeoff** — ~99% of the top F1 at **~1/70th–1/160th
+   the latency** of the decoders, which is decisive on the request path.
+3. **Bigger ≠ better here.** The 1.7B decoder got more conservative (highest
+   precision, lowest over-blocking at FPR 0.23) but *lower* recall/F1 than 0.6B, at
+   2.3× the latency. With 1-epoch LoRA on noisy labels, scaling didn't buy accuracy —
+   revisit with more epochs / higher LoRA rank / cleaner labels.
+4. **Over-blocking is real** (FPR 0.23–0.30) — the target of DPO (phase 5) and the
+   GRPO false-positive reward term.
+
+### GRPO (RLVR) on a real model
+
+Bounded GRPO on Qwen3-0.6B (LoRA, reasoning mode, 20 steps, ~40 s) runs end-to-end:
+the verifiable reward is live (per-step mean reward swung ~−0.35 → +0.33, std > 0),
+KL stayed ~0.001. This **validates the RLVR loop on a real SLM**, but 20 steps is a
+pipeline smoke, not convergence — completions clip at max length (the base model
+doesn't yet emit terminal JSON), so a real run needs many more steps, a GPU, and
+ideally GRPO *from the SFT checkpoint*. See `configs/model/grpo_qwen3_1_7b.yaml`.
+
+### Not runnable here
+
+The gated incumbents — Llama Guard 3, ShieldGemma, PromptGuard2 — require `HF_TOKEN`
+(confirmed 401 in this environment). Their `Guard` wrappers are implemented and their
+output parsers unit-tested; run `make baselines` with a token to add their rows.
+
+Caveats bound the *absolute* numbers (not the relative comparison, which uses one
+test set + harness for all guards): BeaverTails labels *response* safety, so
+prompt-level labels are noisy; the keyword baseline is deliberately naive.
 
 ## The table (populated by `make bench`)
 

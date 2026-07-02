@@ -24,8 +24,10 @@ Eval-driven: we build the scoreboard first, then climb it.
 ### Verified in-session
 - Encoder fine-tune (distilbert, 2 epochs, 73 s on M4 Max) **beat the keyword
   baseline ~100× on F1** (0.007 → 0.703) on a held-out test set.
-- Decoder SFT + GRPO wiring run end-to-end (tiny-model smoke) — code is correct,
-  not just plausible.
+- Real decoder SFT size sweep on Qwen3 **0.6B and 1.7B** — the tiny encoder stays the
+  best F1/latency tradeoff (decoders ≤ its F1 at 70–160× the latency). See benchmarks.md.
+- Bounded GRPO on real Qwen3-0.6B (LoRA) runs end-to-end with a live verifiable reward
+  — validates the RLVR loop (not a converged model).
 
 ### Follow-ups needing external access
 - Score the gated incumbents (Llama Guard / ShieldGemma) — needs `HF_TOKEN`.
