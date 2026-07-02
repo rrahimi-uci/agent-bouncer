@@ -1,6 +1,8 @@
-import torch
+import pytest
 
-from agent_bouncer.train.runtime import decoder_bf16_enabled, decoder_model_load_kwargs
+torch = pytest.importorskip("torch")  # torch is an optional (train/eval) extra, absent in CI
+
+from agent_bouncer.train.runtime import decoder_bf16_enabled, decoder_model_load_kwargs  # noqa: E402
 
 
 def test_decoder_training_defaults_to_bf16_on_mps():
