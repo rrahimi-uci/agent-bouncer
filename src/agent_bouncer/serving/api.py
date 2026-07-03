@@ -84,7 +84,9 @@ def health() -> dict[str, str]:
 # ------------------------------------------------------------------ dashboard API
 @app.get("/")
 def dashboard() -> FileResponse:
-    return FileResponse(str(HERE / "dashboard.html"))
+    # no-store so the browser always serves the latest UI (no stale cached dashboard)
+    return FileResponse(str(HERE / "dashboard.html"),
+                        headers={"Cache-Control": "no-store, must-revalidate"})
 
 
 @app.get("/benchmarks")
