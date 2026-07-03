@@ -20,28 +20,30 @@ OUT_DIR = "data/train_sets"
 
 
 #: Strategy catalog surfaced to the UI/CLI.
+#: Every strategy accepts **any number** of sources (1 → all available); the strategy only
+#: decides how the drawn data is *composed*, not how many benchmarks you may pick.
 STRATEGIES: dict[str, dict] = {
     "balanced": {
-        "label": "Balanced (single source)",
-        "desc": "½ safe / ½ unsafe from one dataset — the clean classification baseline.",
-        "min_sources": 1, "max_sources": 1,
+        "label": "Balanced",
+        "desc": "½ safe / ½ unsafe from your chosen source(s) — the clean classification baseline.",
+        "min_sources": 1, "max_sources": None,
     },
     "mixed": {
         "label": "Mixed sources (diversity)",
-        "desc": "Blend several datasets so the guard generalizes beyond one distribution.",
-        "min_sources": 2, "max_sources": None,
+        "desc": "Blend the chosen datasets so the guard generalizes beyond one distribution.",
+        "min_sources": 1, "max_sources": None,
     },
     "over_refusal_aware": {
         "label": "Over-refusal-aware",
-        "desc": "A content-safety source + extra benign-but-scary prompts (XSTest-style) so "
-                "the guard learns not to over-block — directly targets FPR@benign.",
-        "min_sources": 1, "max_sources": 4,
+        "desc": "Your chosen source(s) + extra benign-but-scary prompts (XSTest-style) so the "
+                "guard learns not to over-block — directly targets FPR@benign.",
+        "min_sources": 1, "max_sources": None,
     },
     "red_team": {
         "label": "Red-team hardening",
         "desc": "Prompt-injection + jailbreak sources so the guard learns to catch attacks, "
                 "not just harmful content.",
-        "min_sources": 1, "max_sources": 4,
+        "min_sources": 1, "max_sources": None,
     },
 }
 

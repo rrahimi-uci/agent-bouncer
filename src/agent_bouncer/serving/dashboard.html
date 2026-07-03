@@ -467,26 +467,15 @@ function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':
 
 /* ---------- datasets ---------- */
 function datasetStrategySpec(){return DATA.strategies.find(x=>x.key===curStrat)||{};}
-function datasetSourceBoundsText(spec){
-  const min=Number(spec.min_sources||0),max=spec.max_sources;
-  if(max==null)return `${min}+ sources`;
-  if(min===max)return `exactly ${min} source${min===1?'':'s'}`;
-  return `${min}-${max} sources`;
-}
 function selectedDatasetSources(){return [...$$('#srcPick input:checked')].map(i=>i.value);}
-function datasetSelectionOk(spec,sources){
-  const min=Number(spec.min_sources||0),max=spec.max_sources,n=sources.length;
-  return n>=min&&(max==null||n<=max);
-}
 function syncDatasetSourceState(){
   const chosen=selectedDatasetSources();dsSources=new Set(chosen);
   $$('#srcPick label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
-  const spec=datasetStrategySpec(),count=chosen.length,bounds=datasetSourceBoundsText(spec),ok=datasetSelectionOk(spec,chosen);
-  $('#srcHint').textContent=spec.label?`Choose ${bounds} for ${spec.label.toLowerCase()}.`:'Pick datasets to draw from';
+  const spec=datasetStrategySpec(),count=chosen.length,ok=count>=1;
+  $('#srcHint').textContent='Pick any benchmarks to draw from — one or more.';
   $('#buildBtn').disabled=!curStrat||!ok;
-  let note=spec.desc?`${spec.desc} (needs ${bounds}).`:'';
-  if(count)note+=` Selected ${count} source${count===1?'':'s'}.`;
-  if(!ok)note+=` Choose ${bounds} before building.`;
+  let note=spec.desc||'';
+  note+=count?` Selected ${count} source${count===1?'':'s'}.`:' Pick at least one source.';
   $('#dsNote').textContent=note;
 }
 function renderDatasets(){

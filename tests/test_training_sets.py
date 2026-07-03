@@ -48,10 +48,15 @@ def test_build_mixed_accepts_many_sources(tmp_path, monkeypatch):
     assert srcs == set(names)
 
 
-def test_build_rejects_wrong_source_count(monkeypatch, tmp_path):
+def test_build_accepts_any_source_count_but_needs_one(monkeypatch, tmp_path):
     monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
-    with pytest.raises(ValueError, match="needs exactly 1 source"):
-        TS.build_training_set("balanced", ["a", "b"], name="x", loader=_fake_loader())  # balanced = 1 source
+    # every strategy now accepts any number of sources — e.g. balanced with several
+    m = TS.build_training_set("balanced", ["a", "b"], name="multi", per_class=20, loader=_fake_loader())
+    from agent_bouncer.data import read_jsonl
+    assert {r["text"].split("-")[0] for r in read_jsonl(m["train_path"])} == {"a", "b"}
+    # ...but at least one source is required, and unknown strategies are rejected
+    with pytest.raises(ValueError):
+        TS.build_training_set("balanced", [], name="x", loader=_fake_loader())
     with pytest.raises(ValueError):
         TS.build_training_set("nope", ["a"], name="x", loader=_fake_loader())
 
