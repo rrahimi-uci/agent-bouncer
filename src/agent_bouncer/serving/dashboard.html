@@ -81,7 +81,7 @@
   /* benchmark toolbar */
   .btoolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
   .bchip{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;border:1px solid var(--border);background:var(--panel);
-    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);transition:.12s}
+    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);transition:.12s;text-decoration:none}
   .bchip:hover{background:var(--panel2);color:var(--text)}
   .bchip.on{color:#fff;border-color:transparent}
   .bchip .axd{width:8px;height:8px;border-radius:2px}
@@ -93,6 +93,14 @@
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{background:transparent;border:none;color:var(--muted);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
   .seg button.on{background:var(--panel2);color:var(--text)}
+  .ghostbtn{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12px;font-family:inherit;cursor:pointer}
+  .ghostbtn:hover{background:var(--panel2);color:var(--text)}
+  .pager{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pager button{background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer}
+  .pager button:hover{color:var(--text)}
+  .pager button.on{background:rgba(76,141,255,.12);border-color:rgba(76,141,255,.45);color:var(--text)}
+  .pager button:disabled{opacity:.45;cursor:not-allowed}
+  .pager .dots{color:var(--faint);font-size:12px}
   .samples{max-height:520px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
   .scard{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg2)}
   .scard .lbl{flex:0 0 auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;letter-spacing:.03em;margin-top:1px}
@@ -224,16 +232,22 @@
 
     <!-- BENCHMARKS -->
     <section class="view" id="v-benchmarks">
-      <h2 class="vh">Explore Benchmarks</h2><p class="vs">Click a benchmark in the toolbar to explore its contents — search, filter safe/unsafe, and inspect hazard labels.</p>
+      <h2 class="vh">Explore Benchmarks</h2><p class="vs">Each benchmark has a deep-linkable page. Browse 100 rows at a time, search prompts, and filter by label or hazard.</p>
       <div class="btoolbar" id="btoolbar"></div>
       <div id="benchHead"></div>
       <div class="chartcard" style="margin:0">
-        <div class="row-between" style="margin-bottom:8px"><h3 id="samplesTitle">Contents</h3>
+        <div class="row-between" style="margin-bottom:8px"><div>
+          <h3 id="samplesTitle">Contents</h3>
+          <p class="sub" id="sampleMeta" style="margin:4px 0 0">100 rows per page.</p>
+        </div>
           <div class="vtools">
-            <input type="text" id="sampleSearch" placeholder="search prompts…" style="width:170px"/>
+            <input type="text" id="sampleSearch" placeholder="search prompts…" style="width:220px"/>
             <div class="seg" id="labelSeg"><button data-f="all" class="on">All</button><button data-f="safe">Safe</button><button data-f="unsafe">Unsafe</button></div>
+            <select id="hazardFilter" aria-label="Hazard filter" style="min-width:190px"><option value="all">All hazards</option></select>
+            <button type="button" class="ghostbtn" id="clearBenchFilters">Clear filters</button>
           </div>
         </div>
+        <div class="row-between" style="margin-bottom:12px"><div class="mnote" id="benchPagerMeta">100 rows per page.</div><div class="pager" id="benchPager"></div></div>
         <div class="samples" id="samples"></div>
       </div>
     </section>
@@ -284,14 +298,17 @@
           </div>
         </div>
         <div class="chartcard" style="margin:0">
-          <h3>② Test on benchmarks</h3><p class="sub">🔒 Leakage-guarded — prompts seen in this model's training set are auto-dropped</p>
+          <h3>② Test</h3><p class="sub">🔒 Leakage-guarded — prompts seen in this model's training set are auto-dropped &amp; reported</p>
           <div class="form">
             <label>Trained version<select id="tVersion" aria-label="Trained version"></select></label>
+            <label>Test on</label>
+            <div class="seg" id="testModeSeg"><button type="button" data-m="set" class="on">Created test set</button><button type="button" data-m="bench">Benchmarks</button></div>
+            <label id="tTestSetWrap">Test set — held-out split (from Datasets Creation)<select id="tTestSet" aria-label="Test set"></select></label>
+            <label id="tBenchWrap" style="display:none">Benchmarks to test on<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
             <div class="frow">
-              <label>Test size / class (0 = full)<input id="tPerClass" type="number" min="0" value="40"></label>
+              <label>Test size / class (0 = full, benchmarks only)<input id="tPerClass" type="number" min="0" value="40"></label>
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
-            <label>Benchmarks to test on<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
             <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test model</button>
           </div>
         </div>
@@ -354,8 +371,9 @@ const METRIC={precision:'#4c8dff',recall:'#34d399',f1:'#a78bfa'};
 const AXIS={guardrail:{c:'#4c8dff',t:'Guardrail'},red_team:{c:'#f87171',t:'Red-teaming'},over_refusal:{c:'#34d399',t:'Over-refusal'}};
 const ORDER=['keyword-baseline','encoder-distilbert','decoder-sft-0.6B','decoder-sft-1.7B','decoder-grpo-0.6B','openai-moderation','openai-gpt-4o-mini','openai-gpt-5.2-low'];
 const TECHLABELS_BADGE={sft:'b-sft',grpo:'b-rl',dpo:'b-dpo'};
+const BENCH_PAGE_SIZE=100;
 let CONFIG={},RESULTS={},CURVES={},MODELS=[],TECHLABELS={},EXPERIMENTS=[],VERSIONS={},DATA={strategies:[],sources:[],train_sets:[]},charts={};
-let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set();
+let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMode='set', benchQueryTimer=null;
 
 Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
 Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
@@ -397,36 +415,99 @@ function renderOverview(){
 /* ---------- benchmarks browser ---------- */
 function buildToolbar(){
   const t=$('#btoolbar');const bs=CONFIG.benchmarks||[];
-  t.innerHTML=bs.map(b=>`<div class="bchip axis-${b.axis}" data-b="${b.name}" title="${b.description}"><span class="axd" style="background:${AXIS[b.axis].c}"></span>${b.name}<span class="eye">👁</span></div>`).join('');
-  $$('#btoolbar .bchip').forEach(c=>c.onclick=()=>selectBenchmark(c.dataset.b));
+  t.innerHTML=bs.map(b=>`<a class="bchip axis-${b.axis}" data-b="${b.name}" href="${benchUrl(b.name)}" title="${b.description}"><span class="axd" style="background:${AXIS[b.axis].c}"></span>${b.name}<span class="eye">👁</span></a>`).join('');
+  $$('#btoolbar .bchip').forEach(c=>c.onclick=e=>{e.preventDefault();selectBenchmark(c.dataset.b,{page:1,replaceHistory:false});});
 }
-async function selectBenchmark(name){
+function benchUrl(name,state={}){
+  const params=new URLSearchParams(),page=Math.max(1,Number(state.page||1)||1),q=(state.q||'').trim();
+  if(page>1)params.set('page',String(page));
+  if(q)params.set('q',q);
+  if(state.label&&state.label!=='all')params.set('label',state.label);
+  if(state.hazard&&state.hazard!=='all')params.set('hazard',state.hazard);
+  const base=name?`/benchmarks/${encodeURIComponent(name)}`:'/benchmarks';
+  return params.toString()?`${base}?${params.toString()}`:base;
+}
+function parseBenchLocation(){
+  const path=location.pathname.replace(/\/+$/,'')||'/';
+  if(path==='/benchmarks')return{name:null,page:1,q:'',label:'all',hazard:'all'};
+  const m=path.match(/^\/benchmarks\/([^/]+)$/);if(!m)return null;
+  const qp=new URLSearchParams(location.search);
+  return {
+    name:decodeURIComponent(m[1]),
+    page:Math.max(1,Number(qp.get('page')||1)||1),
+    q:qp.get('q')||'',
+    label:(qp.get('label')||'all').toLowerCase(),
+    hazard:(qp.get('hazard')||'all').toLowerCase(),
+  };
+}
+function setLabelFilter(value){
+  sampleFilter=['safe','unsafe'].includes(value)?value:'all';
+  $$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f===sampleFilter));
+}
+function syncLabelCounts(counts){
+  $$('#labelSeg button').forEach(b=>{
+    const key=b.dataset.f,base=key==='all'?'All':key[0].toUpperCase()+key.slice(1),n=counts&&counts[key]!=null?counts[key]:'–';
+    b.textContent=`${base} (${n})`;
+  });
+}
+function setHazardOptions(hazards,selected='all'){
+  const opts=(hazards&&hazards.length?hazards:[{value:'all',count:0}]).map(h=>{
+    const label=h.value==='all'?'All hazards':h.value;
+    return `<option value="${h.value}">${label} (${h.count})</option>`;
+  }).join('');
+  $('#hazardFilter').innerHTML=opts;
+  const values=[...$('#hazardFilter').options].map(o=>o.value);
+  $('#hazardFilter').value=values.includes(selected)?selected:'all';
+}
+function currentBenchFilters(){
+  return {q:$('#sampleSearch').value.trim(),label:sampleFilter||'all',hazard:$('#hazardFilter').value||'all'};
+}
+function pagerWindow(page,pages){
+  const keep=[1,pages,page-1,page,page+1].filter(n=>n>=1&&n<=pages),uniq=[...new Set(keep)].sort((a,b)=>a-b),out=[];
+  let prev=0;uniq.forEach(n=>{if(prev&&n-prev>1)out.push(null);out.push(n);prev=n;});return out;
+}
+function renderBenchPager(d){
+  $('#benchPagerMeta').textContent=d.filtered_total?`Page ${d.page} of ${d.pages} · showing ${d.page_start}-${d.page_end} of ${d.filtered_total} match${d.filtered_total===1?'':'es'} · ${d.limit}/page`:`No matches · ${d.limit}/page`;
+  const pager=$('#benchPager');
+  if(d.pages<=1){pager.innerHTML='';return;}
+  let html=`<button type="button" data-page="${d.page-1}" ${d.has_prev?'':'disabled'}>Prev</button>`;
+  pagerWindow(d.page,d.pages).forEach(p=>{html+=p==null?'<span class="dots">…</span>':`<button type="button" data-page="${p}" class="${p===d.page?'on':''}">${p}</button>`;});
+  html+=`<button type="button" data-page="${d.page+1}" ${d.has_next?'':'disabled'}>Next</button>`;
+  pager.innerHTML=html;
+  $$('#benchPager button[data-page]').forEach(b=>b.onclick=()=>selectBenchmark(curBench,{page:Number(b.dataset.page),preserveFilters:true,replaceHistory:false}));
+}
+async function selectBenchmark(name,{page=1,preserveFilters=false,skipHistory=false,replaceHistory=false}={}){
+  if(!preserveFilters){
+    $('#sampleSearch').value='';setLabelFilter('all');setHazardOptions([{value:'all',count:0}],'all');
+  }
   curBench=name;$$('#btoolbar .bchip').forEach(c=>c.classList.toggle('on',c.dataset.b===name));
-  const d=await (await fetch('/api/benchmark/'+name+'?limit=500')).json();
-  window._benchName=name;window._benchTotal=d.total;window._samples=d.samples;
+  const f=currentBenchFilters(),params=new URLSearchParams({limit:String(BENCH_PAGE_SIZE),offset:String(Math.max(0,page-1)*BENCH_PAGE_SIZE)});
+  if(f.q)params.set('q',f.q);
+  if(f.label!=='all')params.set('label',f.label);
+  if(f.hazard!=='all')params.set('hazard',f.hazard);
+  const r=await fetch('/api/benchmark/'+encodeURIComponent(name)+'?'+params.toString());
+  if(!r.ok){toast('failed to load benchmark');return;}
+  const d=await r.json();
+  window._benchName=name;window._benchMeta=d;window._samples=d.samples||[];
+  setLabelFilter(d.filters.label);syncLabelCounts(d.label_counts||{});setHazardOptions(d.hazards||[],d.filters.hazard);
   const kind=d.is_full?'<span class="badge" style="background:#34d39922;color:#34d399">full</span>'
                      :'<span class="badge" style="background:#f5a52422;color:#f5a524">subset</span>';
   $('#benchHead').innerHTML=`<div class="chartcard"><div class="row-between"><div>
     <h3>${name} ${kind} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
-    <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · <b>${d.n_safe}</b> safe + <b>${d.n_unsafe}</b> unsafe (n=${d.total})</p></div></div></div>`;
-  sampleFilter='all';$$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));$('#sampleSearch').value='';
-  renderSamples();
+    <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · dataset <b>${d.total}</b> rows (${d.n_safe} safe / ${d.n_unsafe} unsafe) · current view <b>${d.filtered_total}</b></p></div></div></div>`;
+  $('#sampleMeta').textContent=d.filtered_total?`Showing ${d.page_start}-${d.page_end} of ${d.filtered_total} matching prompts.`:`No matching prompts for the current filters.`;
+  renderBenchPager(d);renderSamples();
+  if(!skipHistory){
+    const next=benchUrl(name,{page:d.page,q:d.filters.q,label:d.filters.label,hazard:d.filters.hazard}),cur=location.pathname+location.search+location.hash;
+    if(cur!==next)history[replaceHistory?'replaceState':'pushState'](null,'',next);
+  }
 }
 function renderSamples(){
-  const q=$('#sampleSearch').value.toLowerCase();const all=window._samples||[];
-  const rows=all.filter(s=>(sampleFilter==='all'||s.label===sampleFilter)&&(!q||s.text.toLowerCase().includes(q)));
-  const total=window._benchTotal||all.length, filtered=q||sampleFilter!=='all';
-  $('#samplesTitle').textContent=`Contents — ${filtered?`${rows.length} match`:`showing ${all.length}`} of ${total}`;
-  let html=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div>${s.hazard&&s.hazard!=='none'?`<span class="hz">${s.hazard}</span>`:''}</div>`).join(''):'<div class="empty">No matching prompts.</div>';
-  if(all.length<total&&!filtered)html+=`<button type="button" class="runbtn" id="loadMore" style="margin-top:10px;width:100%">Load more — ${all.length} / ${total}</button>`;
-  $('#samples').innerHTML=html;
-  const lm=$('#loadMore');if(lm)lm.onclick=loadMoreSamples;
+  const rows=window._samples||[];
+  $('#samples').innerHTML=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div><span class="hz">${s.hazard&&s.hazard!=='none'?s.hazard:'none'}</span></div>`).join(''):'<div class="empty">No matching prompts on this page.</div>';
 }
-async function loadMoreSamples(){
-  const off=(window._samples||[]).length;
-  const d=await (await fetch(`/api/benchmark/${window._benchName}?limit=500&offset=${off}`)).json();
-  window._samples=(window._samples||[]).concat(d.samples||[]);renderSamples();
-}
+function applyBenchFilters(){if(curBench)selectBenchmark(curBench,{page:1,preserveFilters:true,replaceHistory:true});}
+function scheduleBenchSearch(){clearTimeout(benchQueryTimer);benchQueryTimer=setTimeout(applyBenchFilters,180);}
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 /* ---------- datasets ---------- */
@@ -472,8 +553,17 @@ function renderTrainControls(){
   const vs=[];Object.entries(VERSIONS).forEach(([mk,list])=>list.forEach(v=>vs.push({mk,...v})));
   vs.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
   $('#tVersion').innerHTML=vs.length?vs.map(v=>`<option value="${v.id}">${v.mk} · ${v.technique} · ${v.version}</option>`).join(''):'<option value="">— no trained versions yet —</option>';
-  fillTrainData();
+  fillTrainData();fillTestData();
+  $$('#testModeSeg button').forEach(b=>b.onclick=()=>setTestMode(b.dataset.m));
 }
+function fillTestData(){
+  const sets=(DATA.train_sets||[]).filter(t=>t.test_path&&t.n_test);
+  $('#tTestSet').innerHTML=sets.length
+    ?sets.map(t=>`<option value="${t.test_path}">${t.name} · held-out test (${t.n_test})</option>`).join('')
+    :'<option value="">— create a dataset first —</option>';
+}
+function setTestMode(m){testMode=m;$$('#testModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#tTestSetWrap').style.display=m==='set'?'':'none';$('#tBenchWrap').style.display=m==='bench'?'':'none';}
 function updateTech(){const m=MODELS.find(x=>x.key===$('#tModel').value)||{};
   $('#tTech').innerHTML=(m.techniques||['sft']).map(t=>`<option value="${t}">${TECHLABELS[t]||t}</option>`).join('');
   $('#tNote').innerHTML=(m.gated?'🔒 <b>Gated</b> — needs HF_TOKEN + license. ':'')+(m.note||'')+(m.arch==='decoder'?' Larger decoders: use <b>Max steps</b>.':'');}
@@ -494,11 +584,15 @@ async function runTrain(){
 }
 async function runTest(){
   const exp=$('#tVersion').value;if(!exp){toast('Train a model first.');return;}
-  const benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);
-  const btn=$('#testBtn');btn.disabled=true;btn.textContent='● Testing…';$('#trainBadge').textContent='testing';
-  const con=$('#trainConsole');con.innerHTML='';
+  const btn=$('#testBtn');
   const tpc=$('#tPerClass').value===''?40:Number($('#tPerClass').value);
-  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exp,benchmarks,per_class:tpc,device:$('#tDevice').value})});}
+  const body={exp,per_class:tpc,device:$('#tDevice').value};
+  if(testMode==='set'){const ts=$('#tTestSet').value;
+    if(!ts){toast('Create a dataset (with a held-out test split) first.');return;}body.test_set=ts;}
+  else{body.benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);}
+  btn.disabled=true;btn.textContent='● Testing…';$('#trainBadge').textContent='testing';
+  const con=$('#trainConsole');con.innerHTML='';
+  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
   catch(e){toast('test failed to start');btn.disabled=false;btn.textContent='🧪  Test model';return;}
   const {run_id}=await resp.json();
   streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';await loadExperiments();renderExperiments();toast('✓ Test complete — experiment recorded');});
@@ -627,11 +721,36 @@ function drawEval(){const m=SAVED.find(x=>x.id===$('#evModel').value);destroy('c
 
 /* ---------- shell ---------- */
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function switchView(v){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
-  if(location.hash.slice(1)!==v)history.replaceState(null,'','#'+v);
-  if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name);
+const VIEWS=['overview','workflow','benchmarks','datasets','train','evaluate','experiments','roc'];
+function viewUrl(v){
+  if(v==='benchmarks')return curBench?benchUrl(curBench,{page:(window._benchMeta&&window._benchMeta.page)||1,...currentBenchFilters()}):'/benchmarks';
+  return v==='overview'?'/':`/#${v}`;
+}
+function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
+  if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
   if(v==='workflow')renderWorkflow();if(v==='evaluate'){renderEvaluate();drawEval();}
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
+async function syncRouteFromLocation(){
+  const bench=parseBenchLocation();
+  if(bench){
+    if(bench.name){
+      $('#sampleSearch').value=bench.q;setLabelFilter(bench.label);
+      $('#hazardFilter').innerHTML=bench.hazard&&bench.hazard!=='all'
+        ? `<option value="all">All hazards</option><option value="${bench.hazard}" selected>${bench.hazard}</option>`
+        : '<option value="all">All hazards</option>';
+      $('#hazardFilter').value=bench.hazard||'all';
+      curBench=bench.name;switchView('benchmarks',{skipUrl:true});
+      await selectBenchmark(bench.name,{page:bench.page,preserveFilters:true,skipHistory:true,replaceHistory:true});
+      return;
+    }
+    curBench=null;switchView('benchmarks',{skipUrl:true});
+    if((CONFIG.benchmarks||[]).length)await selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
+    return;
+  }
+  const h=location.hash.slice(1);
+  switchView(VIEWS.includes(h)?h:'overview',{skipUrl:true});
+}
 function renderAll(){renderOverview();
   $('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
 async function loadResults(){RESULTS=await (await fetch('/api/results')).json();CURVES=await (await fetch('/api/curves')).json();}
@@ -644,14 +763,18 @@ async function init(){
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
   await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadSampling(),loadMatrix(),loadSaved()]);
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
-  $$('#nav a').forEach(a=>a.onclick=()=>switchView(a.dataset.view));
+  $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
   $('#wfBuildBtn').onclick=wfBuild;$('#wfTrainBtn').onclick=wfTrain;$('#wfTestBtn').onclick=wfTest;
   $('#evBtn').onclick=runEval;$('#evModel').onchange=drawEval;
   ['wfRatio','wfK','wfStrategy','wfPerClass'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=wfSummary;});
-  $('#sampleSearch').oninput=renderSamples;
-  $$('#labelSeg button').forEach(b=>b.onclick=()=>{sampleFilter=b.dataset.f;$$('#labelSeg button').forEach(x=>x.classList.toggle('on',x===b));renderSamples();});
-  const h=location.hash.slice(1);if(['overview','workflow','benchmarks','datasets','train','evaluate','experiments','roc'].includes(h))switchView(h);
+  $('#sampleSearch').oninput=scheduleBenchSearch;
+  $('#hazardFilter').onchange=applyBenchFilters;
+  $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
+  $$('#labelSeg button').forEach(b=>b.onclick=()=>{setLabelFilter(b.dataset.f);applyBenchFilters();});
+  window.addEventListener('popstate',()=>{syncRouteFromLocation();});
+  window.addEventListener('hashchange',()=>{syncRouteFromLocation();});
+  await syncRouteFromLocation();
 }
 init();
 </script>

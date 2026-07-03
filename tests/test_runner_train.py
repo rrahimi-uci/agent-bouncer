@@ -80,3 +80,35 @@ def test_evaluate_and_record_mocked(tmp_path, monkeypatch):
     exp = runner.evaluate_and_record("t1", benchmarks=["beavertails"], per_class=2)
     assert exp["kind"] == "eval" and exp["metrics_summary"]["f1"] == 1.0
     assert recorded["metrics"]["beavertails"]["f1"] == 1.0
+
+
+def test_evaluate_on_created_test_set_drops_train_leakage(tmp_path, monkeypatch):
+    from agent_bouncer.core.schema import Decision, Surface, Verdict
+
+    class FakeGuard:
+        name = "fake"
+
+        def predict(self, text, *, surface=Surface.USER_PROMPT):
+            return Verdict(decision=Decision.UNSAFE if "bad" in text else Decision.SAFE,
+                           score=0.0, surface=surface, latency_ms=1.0)
+
+    train = tmp_path / "train.jsonl"
+    train.write_text('{"text": "bad-leak", "label": "unsafe"}\n')
+    tdir = tmp_path / "set-1"
+    tdir.mkdir()
+    test = tdir / "test.jsonl"
+    test.write_text('{"text": "bad-leak", "label": "unsafe"}\n'      # leaks from train → dropped
+                    '{"text": "bad-2", "label": "unsafe"}\n'
+                    '{"text": "ok", "label": "safe"}\n')
+    train_exp = {"model_key": "qwen3-0.6b", "technique": "sft", "version": "v1",
+                 "base_hf_id": "hf", "output_dir": "/o", "params": {"arch": "decoder"},
+                 "data": {"train": str(train)}}
+    monkeypatch.setattr(runner.X, "get", lambda i: train_exp)
+    recorded = {}
+    monkeypatch.setattr(runner.X, "record", lambda e: recorded.update(e.to_dict()))
+    monkeypatch.setattr(runner, "_load_guard", lambda *a: FakeGuard())
+
+    exp = runner.evaluate_and_record("t1", test_set=str(test))
+    assert exp["data"]["test_set"] == str(test)
+    assert recorded["data"]["leakage"]["set-1"]["dropped_leaked"] == 1   # bad-leak removed
+    assert recorded["metrics"]["set-1"]["f1"] == 1.0                     # clean rows scored perfectly

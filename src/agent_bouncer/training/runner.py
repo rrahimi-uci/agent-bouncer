@@ -170,10 +170,10 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
 
 
 def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = None,
-                        per_class: int = 40, device: str = "cpu", merge_scoreboard: bool = False) -> dict:
-    """Load a trained version and score it on benchmarks with leakage guards."""
-    from agent_bouncer.evaluation.benchmarks import BENCHMARKS, load_benchmark
-
+                        test_set: str | None = None, per_class: int = 40,
+                        device: str = "cpu", merge_scoreboard: bool = False) -> dict:
+    """Load a trained version and score it — on a **created test set** (``test_set`` JSONL)
+    or on benchmarks — with train→test leakage guards (overlapping prompts are dropped)."""
     train_exp = X.get(train_exp_id)
     if train_exp is None:
         raise ValueError(f"unknown training experiment {train_exp_id!r}")
@@ -183,19 +183,30 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
     train_recs = read_jsonl(train_exp["data"]["train"]) if os.path.exists(train_exp["data"]["train"]) else []
 
     guard = _load_guard(model_key, arch, out_dir, train_exp.get("technique", "sft"), device)
-    benchmarks = benchmarks or list(BENCHMARKS)
     stamp, created = X.now()
-    metrics, leakage = score_guard(
-        guard, benchmarks, per_class=per_class, train_recs=train_recs,
-        loader=lambda b: load_benchmark(b, balanced=True, per_class=per_class),
-    )
+    if test_set:
+        # test on a created dataset's held-out split (train on train-1 → test on test-1)
+        name = os.path.basename(os.path.dirname(test_set)) or "test-set"
+        test_recs = read_jsonl(test_set) if os.path.exists(test_set) else []
+        benchmarks = [name]
+        metrics, leakage = score_guard(guard, benchmarks, train_recs=train_recs,
+                                       loader=lambda b: test_recs)
+    else:
+        from agent_bouncer.evaluation.benchmarks import BENCHMARKS, load_benchmark
+        benchmarks = benchmarks or list(BENCHMARKS)
+        metrics, leakage = score_guard(
+            guard, benchmarks, per_class=per_class, train_recs=train_recs,
+            loader=lambda b: load_benchmark(b, balanced=True, per_class=per_class),
+        )
     macro = macro_average(metrics)
     exp = X.Experiment(
         id=X.make_id(model_key, "eval", stamp), kind="eval", model_key=model_key,
         base_hf_id=train_exp.get("base_hf_id", ""), technique=train_exp.get("technique", ""),
         version=train_exp.get("version", ""), created=created,
-        params={"train_exp": train_exp_id, "per_class": per_class, "device": device},
-        data={"benchmarks": benchmarks, "leakage": leakage, "leakage_checked": True},
+        params={"train_exp": train_exp_id, "per_class": per_class, "device": device,
+                "test_set": test_set},
+        data={"benchmarks": benchmarks, "test_set": test_set,
+              "leakage": leakage, "leakage_checked": True},
         output_dir=out_dir, hardware=hardware_info(), git_commit=X.git_commit(),
         metrics=metrics, metrics_summary=macro,
     )

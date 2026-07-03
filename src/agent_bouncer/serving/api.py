@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import uuid
+from collections import Counter
 from pathlib import Path
 
 from agent_bouncer.core.guard import KeywordGuard
@@ -84,6 +85,18 @@ def health() -> dict[str, str]:
 @app.get("/")
 def dashboard() -> FileResponse:
     return FileResponse(str(HERE / "dashboard.html"))
+
+
+@app.get("/benchmarks")
+def benchmark_browser() -> FileResponse:
+    return dashboard()
+
+
+@app.get("/benchmarks/{name}")
+def benchmark_page(name: str) -> FileResponse:
+    if name not in BENCHMARKS:
+        raise HTTPException(404, "unknown benchmark")
+    return dashboard()
 
 
 #: Guard catalog surfaced to the UI: technique + params + how to run it.
@@ -246,27 +259,107 @@ def save_model(cfg: SaveModelConfig) -> dict:
 
 
 # ------------------------------------------------------- benchmark viewer + datasets
+def _benchmark_path(name: str) -> tuple[Path, bool]:
+    full = ROOT / "data" / "benchmarks" / "full" / f"{name}.jsonl"
+    subset = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
+    return (full, True) if full.exists() else (subset, False)
+
+
+def _hazard_value(raw: str | None) -> str:
+    return str(raw or "none").strip().lower()
+
+
 @app.get("/api/benchmark/{name}")
-def benchmark_detail(name: str, limit: int = 500, offset: int = 0) -> dict:
-    """Benchmark metadata + its contents. Serves the **full** dataset when it has been
-    downloaded (``data/benchmarks/full``), otherwise the balanced subset. ``limit``/``offset``
-    page through the rows (``limit<=0`` returns everything)."""
+def benchmark_detail(
+    name: str,
+    limit: int = 100,
+    offset: int = 0,
+    q: str = "",
+    label: str = "all",
+    hazard: str = "all",
+) -> dict:
+    """Benchmark metadata + one filtered page of contents.
+
+    The explorer always serves the **full** dataset when downloaded
+    (``data/benchmarks/full``), otherwise the balanced cached subset. Browsing is
+    intentionally capped at ``100`` rows/page so the UI stays responsive even on the
+    larger benchmark files.
+    """
     if name not in BENCHMARKS:
         raise HTTPException(404, "unknown benchmark")
     b = BENCHMARKS[name]
-    full = ROOT / "data" / "benchmarks" / "full" / f"{name}.jsonl"
-    subset = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
-    path = full if full.exists() else subset
+    path, is_full = _benchmark_path(name)
     recs = read_jsonl(str(path)) if path.exists() else []
     n_unsafe = sum(r.get("label") == "unsafe" for r in recs)
-    window = recs[offset:] if limit <= 0 else recs[offset:offset + limit]
+    n_safe = len(recs) - n_unsafe
+
+    query = q.strip().lower()
+    label = (label or "all").strip().lower()
+    label = label if label in {"all", "safe", "unsafe"} else "all"
+    hazard = _hazard_value(hazard)
+    hazard = "all" if hazard == "" else hazard
+
+    search_filtered = recs
+    if query:
+        search_filtered = [r for r in recs if query in str(r.get("text", "")).lower()]
+
+    label_counts = {
+        "all": len(search_filtered),
+        "safe": sum(r.get("label") == "safe" for r in search_filtered),
+        "unsafe": sum(r.get("label") == "unsafe" for r in search_filtered),
+    }
+
+    label_filtered = search_filtered
+    if label != "all":
+        label_filtered = [r for r in search_filtered if r.get("label") == label]
+
+    hazard_counter = Counter(_hazard_value(r.get("hazard")) for r in label_filtered)
+    hazards = [{"value": "all", "count": len(label_filtered)}]
+    if "none" in hazard_counter:
+        hazards.append({"value": "none", "count": hazard_counter["none"]})
+    hazards.extend(
+        {"value": hz, "count": hazard_counter[hz]}
+        for hz in sorted(k for k in hazard_counter if k != "none")
+    )
+
+    filtered = label_filtered
+    if hazard != "all":
+        filtered = [r for r in label_filtered if _hazard_value(r.get("hazard")) == hazard]
+
+    page_size = 100 if limit <= 0 else min(max(limit, 1), 100)
+    filtered_total = len(filtered)
+    if filtered_total and offset >= filtered_total:
+        offset = ((filtered_total - 1) // page_size) * page_size
+    offset = max(offset, 0)
+    page = 1 if not filtered_total else (offset // page_size) + 1
+    pages = max(1, (filtered_total + page_size - 1) // page_size)
+    window = filtered[offset:offset + page_size]
+    filtered_unsafe = sum(r.get("label") == "unsafe" for r in filtered)
     return {
         "name": name, "axis": b.axis, "description": b.description, "hf_id": b.hf_id,
-        "cached": path.exists(), "is_full": full.exists(), "total": len(recs),
-        "n_safe": len(recs) - n_unsafe, "n_unsafe": n_unsafe,
-        "shown": len(window), "offset": offset,
-        "samples": [{"text": r.get("text", ""), "label": r.get("label"), "hazard": r.get("hazard")}
-                    for r in window],
+        "cached": path.exists(), "is_full": is_full, "total": len(recs),
+        "n_safe": n_safe, "n_unsafe": n_unsafe,
+        "filtered_total": filtered_total,
+        "filtered_safe": filtered_total - filtered_unsafe,
+        "filtered_unsafe": filtered_unsafe,
+        "shown": len(window), "offset": offset, "limit": page_size,
+        "page": page, "pages": pages,
+        "page_start": offset + 1 if filtered_total else 0,
+        "page_end": offset + len(window),
+        "has_prev": page > 1,
+        "has_next": offset + len(window) < filtered_total,
+        "filters": {"q": q, "label": label, "hazard": hazard},
+        "label_counts": label_counts,
+        "hazards": hazards,
+        "samples": [
+            {
+                "text": r.get("text", ""),
+                "label": r.get("label"),
+                "hazard": _hazard_value(r.get("hazard")),
+                "source": r.get("source", name),
+            }
+            for r in window
+        ],
     }
 
 
@@ -404,6 +497,7 @@ class TrainConfig(BaseModel):
 class TestConfig(BaseModel):
     exp: str                       # training-experiment id to evaluate
     benchmarks: list[str] = []
+    test_set: str | None = None    # path to a created test split (JSONL) — overrides benchmarks
     per_class: int = 40
     device: str = "cpu"
 
@@ -429,7 +523,9 @@ async def start_train(cfg: TrainConfig) -> dict:
 async def start_test(cfg: TestConfig) -> dict:
     cmd = [sys.executable, "scripts/eval/run_testing.py", "--exp", cfg.exp,
            "--per-class", str(cfg.per_class), "--device", cfg.device]
-    if cfg.benchmarks:
+    if cfg.test_set:                       # test on a created dataset's held-out split
+        cmd += ["--test-set", cfg.test_set]
+    elif cfg.benchmarks:
         cmd += ["--benchmarks", *cfg.benchmarks]
     return {"run_id": _launch([cmd]), "steps": 1}
 

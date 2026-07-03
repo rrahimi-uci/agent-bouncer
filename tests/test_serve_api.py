@@ -18,6 +18,13 @@ def test_dashboard_route_serves_html():
     assert r.status_code == 200 and b"Agent Bouncer" in r.content
 
 
+def test_benchmark_pages_serve_html_and_404_unknown():
+    assert client.get("/benchmarks").status_code == 200
+    r = client.get("/benchmarks/xstest")
+    assert r.status_code == 200 and b"Agent Bouncer" in r.content
+    assert client.get("/benchmarks/does-not-exist").status_code == 404
+
+
 def test_run_events_unknown_run_404():
     assert client.get("/api/run/does-not-exist/events").status_code == 404
 
@@ -66,6 +73,16 @@ def test_build_commands_decoder_chains_isolated_eval(monkeypatch):
 def test_benchmark_detail_endpoint():
     d = client.get("/api/benchmark/xstest").json()
     assert d["axis"] == "over_refusal" and "samples" in d
+    assert d["shown"] == min(100, d["filtered_total"])
+    assert d["limit"] == 100 and d["page"] == 1 and d["pages"] >= 1
+
+    f = client.get("/api/benchmark/xstest?limit=250&label=unsafe&hazard=non_violent_crimes&q=wife").json()
+    assert f["limit"] == 100
+    assert f["filters"] == {"q": "wife", "label": "unsafe", "hazard": "non_violent_crimes"}
+    assert f["filtered_total"] <= f["total"]
+    assert all(s["label"] == "unsafe" for s in f["samples"])
+    assert all(s["hazard"] == "non_violent_crimes" for s in f["samples"])
+    assert all("wife" in s["text"].lower() for s in f["samples"])
     assert client.get("/api/benchmark/does-not-exist").status_code == 404
 
 
@@ -153,6 +170,19 @@ def test_saved_models_crud(monkeypatch, tmp_path):
     assert client.get("/api/saved_models/nope").status_code == 404
     assert client.delete(f"/api/saved_models/{mid}").json()["deleted"] == mid
     assert client.delete(f"/api/saved_models/{mid}").status_code == 404
+
+
+def test_test_endpoint_uses_created_test_set(monkeypatch):
+    launched = {}
+
+    def fake_launch(cmds):
+        launched["c"] = cmds
+        return "r"
+
+    monkeypatch.setattr(api, "_launch", fake_launch)
+    client.post("/api/test", json={"exp": "e1", "test_set": "data/train_sets/set-1/test.jsonl"})
+    cmd = " ".join(launched["c"][0])
+    assert "--test-set data/train_sets/set-1/test.jsonl" in cmd and "--benchmarks" not in cmd
 
 
 def test_eval_endpoint_launches_eval_only(monkeypatch):
