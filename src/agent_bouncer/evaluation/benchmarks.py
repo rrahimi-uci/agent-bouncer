@@ -20,6 +20,7 @@ Axes:
 
 from __future__ import annotations
 
+import os
 import random
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -29,6 +30,16 @@ from agent_bouncer.core.guard import Guard
 from agent_bouncer.core.schema import Surface
 from agent_bouncer.evaluation.harness import evaluate
 from agent_bouncer.evaluation.metrics import GuardMetrics
+
+#: Local cache of the **full-size** downloaded benchmarks (see
+#: ``scripts/data/download_full_benchmarks.py``). Preferred over a network fetch when present.
+FULL_CACHE_DIR = "data/benchmarks/full"
+
+
+def cached_full(name: str) -> list[dict] | None:
+    """Return the locally-cached full dataset for ``name`` if it was downloaded, else None."""
+    path = os.path.join(FULL_CACHE_DIR, f"{name}.jsonl")
+    return D.read_jsonl(path) if os.path.exists(path) else None
 
 
 @dataclass(frozen=True)
@@ -123,15 +134,18 @@ def load_benchmark(
     per_class: int | None = None,
     limit: int | None = None,
     seed: int = 42,
+    prefer_cache: bool = True,
 ) -> list[dict]:
-    """Download a registered benchmark and (optionally) subsample it.
+    """Load a registered benchmark and (optionally) subsample it.
 
-    ``balanced`` takes precedence: it returns ``per_class`` safe + ``per_class``
-    unsafe rows. Otherwise ``limit`` caps the size at the natural class ratio.
+    Source: the locally-cached **full** dataset (``data/benchmarks/full``) when present,
+    otherwise the Hugging Face loader. With neither ``balanced``+``per_class`` nor ``limit``
+    set, the **entire** benchmark is returned. ``balanced`` takes precedence (``per_class``
+    safe + ``per_class`` unsafe); otherwise ``limit`` caps at the natural class ratio.
     """
     if name not in BENCHMARKS:
         raise ValueError(f"unknown benchmark {name!r}; known: {sorted(BENCHMARKS)}")
-    records = BENCHMARKS[name].loader()
+    records = (cached_full(name) if prefer_cache else None) or BENCHMARKS[name].loader()
     if balanced and per_class:
         return balanced_subset(records, per_class, seed=seed)
     if limit is not None:

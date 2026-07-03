@@ -297,7 +297,7 @@
           <div class="form">
             <label>Trained version<select id="tVersion" aria-label="Trained version"></select></label>
             <div class="frow">
-              <label>Test size / class<input id="tPerClass" type="number" value="40"></label>
+              <label>Test size / class (0 = full)<input id="tPerClass" type="number" min="0" value="40"></label>
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
             <label>Benchmarks<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
@@ -317,7 +317,7 @@
           <div class="form">
             <label>Model<select id="evModel" aria-label="Saved model"></select></label>
             <div class="frow">
-              <label>Test size / class<input id="evPerClass" type="number" value="40"></label>
+              <label>Test size / class (0 = full)<input id="evPerClass" type="number" min="0" value="40"></label>
               <label>Device<select id="evDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
             <label>Benchmarks<select id="evBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
@@ -411,17 +411,30 @@ function buildToolbar(){
 }
 async function selectBenchmark(name){
   curBench=name;$$('#btoolbar .bchip').forEach(c=>c.classList.toggle('on',c.dataset.b===name));
-  const d=await (await fetch('/api/benchmark/'+name)).json();
+  const d=await (await fetch('/api/benchmark/'+name+'?limit=500')).json();
+  window._benchName=name;window._benchTotal=d.total;window._samples=d.samples;
+  const kind=d.is_full?'<span class="badge" style="background:#34d39922;color:#34d399">full</span>'
+                     :'<span class="badge" style="background:#f5a52422;color:#f5a524">subset</span>';
   $('#benchHead').innerHTML=`<div class="chartcard"><div class="row-between"><div>
-    <h3>${name} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
+    <h3>${name} ${kind} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
     <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · <b>${d.n_safe}</b> safe + <b>${d.n_unsafe}</b> unsafe (n=${d.total})</p></div></div></div>`;
-  $('#samplesTitle').textContent=`Contents — ${d.total} prompts`;
-  window._samples=d.samples;sampleFilter='all';$$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));$('#sampleSearch').value='';
+  sampleFilter='all';$$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));$('#sampleSearch').value='';
   renderSamples();
 }
 function renderSamples(){
-  const q=$('#sampleSearch').value.toLowerCase();const rows=(window._samples||[]).filter(s=>(sampleFilter==='all'||s.label===sampleFilter)&&(!q||s.text.toLowerCase().includes(q)));
-  $('#samples').innerHTML=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div>${s.hazard&&s.hazard!=='none'?`<span class="hz">${s.hazard}</span>`:''}</div>`).join(''):'<div class="empty">No matching prompts.</div>';
+  const q=$('#sampleSearch').value.toLowerCase();const all=window._samples||[];
+  const rows=all.filter(s=>(sampleFilter==='all'||s.label===sampleFilter)&&(!q||s.text.toLowerCase().includes(q)));
+  const total=window._benchTotal||all.length, filtered=q||sampleFilter!=='all';
+  $('#samplesTitle').textContent=`Contents — ${filtered?`${rows.length} match`:`showing ${all.length}`} of ${total}`;
+  let html=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div>${s.hazard&&s.hazard!=='none'?`<span class="hz">${s.hazard}</span>`:''}</div>`).join(''):'<div class="empty">No matching prompts.</div>';
+  if(all.length<total&&!filtered)html+=`<button type="button" class="runbtn" id="loadMore" style="margin-top:10px;width:100%">Load more — ${all.length} / ${total}</button>`;
+  $('#samples').innerHTML=html;
+  const lm=$('#loadMore');if(lm)lm.onclick=loadMoreSamples;
+}
+async function loadMoreSamples(){
+  const off=(window._samples||[]).length;
+  const d=await (await fetch(`/api/benchmark/${window._benchName}?limit=500&offset=${off}`)).json();
+  window._samples=(window._samples||[]).concat(d.samples||[]);renderSamples();
 }
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
@@ -492,7 +505,8 @@ async function runTest(){
   const benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);
   const btn=$('#testBtn');btn.disabled=true;btn.textContent='● Testing…';$('#trainBadge').textContent='testing';
   const con=$('#trainConsole');con.innerHTML='';
-  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exp,benchmarks,per_class:Number($('#tPerClass').value)||40,device:$('#tDevice').value})});}
+  const tpc=$('#tPerClass').value===''?40:Number($('#tPerClass').value);
+  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exp,benchmarks,per_class:tpc,device:$('#tDevice').value})});}
   catch(e){toast('test failed to start');btn.disabled=false;btn.textContent='🧪  Test model';return;}
   const {run_id}=await resp.json();
   streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';await loadExperiments();renderExperiments();toast('✓ Test complete — experiment recorded');});
@@ -610,7 +624,8 @@ async function runEval(){
   const model_id=$('#evModel').value;if(!model_id){toast('No saved model selected');return;}
   const benchmarks=[...$('#evBenchmarks').selectedOptions].map(o=>o.value);
   const con=$('#evConsole');con.innerHTML='';const btn=$('#evBtn');btn.disabled=true;btn.textContent='● Evaluating…';
-  let r;try{r=await fetch('/api/eval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id,benchmarks,per_class:Number($('#evPerClass').value)||40,device:$('#evDevice').value})});}catch(e){toast('eval failed');btn.disabled=false;btn.textContent='🎯 Run evaluation';return;}
+  const epc=$('#evPerClass').value===''?40:Number($('#evPerClass').value);
+  let r;try{r=await fetch('/api/eval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id,benchmarks,per_class:epc,device:$('#evDevice').value})});}catch(e){toast('eval failed');btn.disabled=false;btn.textContent='🎯 Run evaluation';return;}
   const {run_id}=await r.json();
   streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🎯 Run evaluation';await loadExperiments();await loadSaved();renderEvaluate();drawEval();toast('✓ Evaluation complete');});
 }

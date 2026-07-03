@@ -23,7 +23,10 @@ flowchart LR
 ## 1 · Benchmark selection
 
 Choose one or more of the [7 standard benchmarks](benchmarks.md) (guardrail · red-team ·
-over-refusal). `GET /api/config` lists them; the Workflow tab shows them as chips.
+over-refusal). `GET /api/config` lists them; the Workflow tab shows them as chips. The
+**Benchmarks** tab serves the **full** dataset when it's been downloaded
+(`scripts/data/download_full_benchmarks.py` → `data/benchmarks/full/`), with search, safe/unsafe
+filter, and *Load more* paging — so you can explore every prompt, not just a sample.
 
 ## 2 · Sampling & split
 

@@ -102,11 +102,23 @@ def _merge_persist(per_class: int, meta: dict, results: dict) -> None:
 
 
 def get_benchmark_records(name: str, per_class: int, refresh: bool) -> list[dict]:
-    """Download (once) a balanced subset of a benchmark and cache it to JSONL."""
-    path = f"{CACHE_DIR}/{name}.jsonl"
+    """Return a benchmark's records, cached to JSONL.
+
+    ``per_class > 0`` → a balanced subset (``data/benchmarks/<name>.jsonl``).
+    ``per_class <= 0`` → the **full** benchmark (``data/benchmarks/full/<name>.jsonl``).
+    """
+    if per_class and per_class > 0:
+        path = f"{CACHE_DIR}/{name}.jsonl"
+        if os.path.exists(path) and not refresh:
+            return read_jsonl(path)
+        records = load_benchmark(name, balanced=True, per_class=per_class)
+        write_jsonl(records, path)
+        return records
+    # full mode
+    path = f"{CACHE_DIR}/full/{name}.jsonl"
     if os.path.exists(path) and not refresh:
         return read_jsonl(path)
-    records = load_benchmark(name, balanced=True, per_class=per_class)
+    records = load_benchmark(name, prefer_cache=False)  # entire set, fetched fresh
     write_jsonl(records, path)
     return records
 
@@ -177,7 +189,9 @@ def build_guards(args) -> list[tuple[str, object, int]]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--per-class", type=int, default=75, help="balanced eval size per class per benchmark")
+    ap.add_argument("--per-class", type=int, default=75,
+                    help="balanced eval size per class per benchmark (0 or --full = entire benchmark)")
+    ap.add_argument("--full", action="store_true", help="evaluate on the FULL benchmarks (no subsampling)")
     ap.add_argument("--chat-model", default="gpt-4o-mini")
     ap.add_argument("--reasoning-model", default="gpt-5.2")
     ap.add_argument("--workers", type=int, default=8, help="concurrency for API guards")
@@ -189,9 +203,12 @@ def main() -> None:
     ap.add_argument("--refresh", action="store_true", help="re-download benchmark subsets")
     ap.add_argument("--benchmarks", nargs="*", default=list(BENCHMARKS), help="subset of benchmark names")
     args = ap.parse_args()
+    if args.full:
+        args.per_class = 0
 
     load_dotenv()
     os.makedirs(CACHE_DIR, exist_ok=True)
+    os.makedirs(f"{CACHE_DIR}/full", exist_ok=True)
     os.makedirs("outputs", exist_ok=True)
 
     # 1) Download + cache the benchmark subsets.

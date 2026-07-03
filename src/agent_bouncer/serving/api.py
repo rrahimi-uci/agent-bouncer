@@ -247,20 +247,26 @@ def save_model(cfg: SaveModelConfig) -> dict:
 
 # ------------------------------------------------------- benchmark viewer + datasets
 @app.get("/api/benchmark/{name}")
-def benchmark_detail(name: str, limit: int = 120) -> dict:
-    """Benchmark metadata + a sample of its contents (from the cached subset)."""
+def benchmark_detail(name: str, limit: int = 500, offset: int = 0) -> dict:
+    """Benchmark metadata + its contents. Serves the **full** dataset when it has been
+    downloaded (``data/benchmarks/full``), otherwise the balanced subset. ``limit``/``offset``
+    page through the rows (``limit<=0`` returns everything)."""
     if name not in BENCHMARKS:
         raise HTTPException(404, "unknown benchmark")
     b = BENCHMARKS[name]
-    cache = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
-    recs = read_jsonl(str(cache)) if cache.exists() else []
+    full = ROOT / "data" / "benchmarks" / "full" / f"{name}.jsonl"
+    subset = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
+    path = full if full.exists() else subset
+    recs = read_jsonl(str(path)) if path.exists() else []
     n_unsafe = sum(r.get("label") == "unsafe" for r in recs)
+    window = recs[offset:] if limit <= 0 else recs[offset:offset + limit]
     return {
         "name": name, "axis": b.axis, "description": b.description, "hf_id": b.hf_id,
-        "cached": cache.exists(), "total": len(recs),
+        "cached": path.exists(), "is_full": full.exists(), "total": len(recs),
         "n_safe": len(recs) - n_unsafe, "n_unsafe": n_unsafe,
+        "shown": len(window), "offset": offset,
         "samples": [{"text": r.get("text", ""), "label": r.get("label"), "hazard": r.get("hazard")}
-                    for r in recs[:limit]],
+                    for r in window],
     }
 
 
