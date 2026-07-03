@@ -59,6 +59,32 @@ def get_base_model(key: str) -> BaseModel:
     return BASE_MODELS[key]
 
 
+def valid_techniques(key: str) -> tuple[str, ...]:
+    """Techniques applicable to a model (encoders: SFT only; decoders: SFT/GRPO/DPO)."""
+    return get_base_model(key).techniques
+
+
+def is_valid_combo(key: str, technique: str) -> bool:
+    """Whether ``technique`` may be applied to base model ``key`` — the UI/API gate."""
+    return technique in get_base_model(key).techniques
+
+
+def assert_valid_combo(key: str, technique: str) -> None:
+    """Raise a clear error for an unsupported model×technique pairing."""
+    if technique not in TECHNIQUES:
+        raise ValueError(f"unknown technique {technique!r}; known: {sorted(TECHNIQUES)}")
+    if not is_valid_combo(key, technique):
+        raise ValueError(
+            f"technique {technique!r} is not supported by {key!r}; "
+            f"valid for this model: {list(valid_techniques(key))}"
+        )
+
+
+def technique_matrix() -> dict[str, list[str]]:
+    """``{model_key: [valid techniques]}`` — lets the UI grey out invalid combinations."""
+    return {key: list(m.techniques) for key, m in BASE_MODELS.items()}
+
+
 def catalog() -> list[dict]:
     """Registry as plain dicts for the API/UI."""
     return [

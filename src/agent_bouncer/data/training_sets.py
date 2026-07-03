@@ -20,30 +20,55 @@ OUT_DIR = "data/train_sets"
 
 
 #: Strategy catalog surfaced to the UI/CLI.
+#: Every strategy accepts **any number** of sources (1 → all available); the strategy only
+#: decides how the drawn data is *composed*, not how many benchmarks you may pick.
 STRATEGIES: dict[str, dict] = {
     "balanced": {
-        "label": "Balanced (single source)",
-        "desc": "½ safe / ½ unsafe from one dataset — the clean classification baseline.",
-        "min_sources": 1, "max_sources": 1,
+        "label": "Balanced",
+        "desc": "½ safe / ½ unsafe from your chosen source(s) — the clean classification baseline.",
+        "min_sources": 1, "max_sources": None,
     },
     "mixed": {
         "label": "Mixed sources (diversity)",
-        "desc": "Blend several datasets so the guard generalizes beyond one distribution.",
-        "min_sources": 2, "max_sources": 6,
+        "desc": "Blend the chosen datasets so the guard generalizes beyond one distribution.",
+        "min_sources": 1, "max_sources": None,
     },
     "over_refusal_aware": {
         "label": "Over-refusal-aware",
-        "desc": "A content-safety source + extra benign-but-scary prompts (XSTest-style) so "
-                "the guard learns not to over-block — directly targets FPR@benign.",
-        "min_sources": 1, "max_sources": 4,
+        "desc": "Your chosen source(s) + extra benign-but-scary prompts (XSTest-style) so the "
+                "guard learns not to over-block — directly targets FPR@benign.",
+        "min_sources": 1, "max_sources": None,
     },
     "red_team": {
         "label": "Red-team hardening",
         "desc": "Prompt-injection + jailbreak sources so the guard learns to catch attacks, "
                 "not just harmful content.",
-        "min_sources": 1, "max_sources": 4,
+        "min_sources": 1, "max_sources": None,
     },
 }
+
+
+def source_bounds_text(spec: dict) -> str:
+    """Human-friendly source-count note for a strategy spec."""
+    min_sources = int(spec["min_sources"])
+    max_sources = spec.get("max_sources")
+    if max_sources is None:
+        return f"{min_sources}+ sources"
+    if min_sources == max_sources:
+        return f"exactly {min_sources} source{'s' if min_sources != 1 else ''}"
+    return f"{min_sources}–{max_sources} sources"
+
+
+def validate_strategy_sources(strategy: str, sources: list[str]) -> None:
+    """Raise a clear error when a strategy gets the wrong number of sources."""
+    if strategy not in STRATEGIES:
+        raise ValueError(f"unknown strategy {strategy!r}; known: {sorted(STRATEGIES)}")
+    spec = STRATEGIES[strategy]
+    min_sources = int(spec["min_sources"])
+    max_sources = spec.get("max_sources")
+    n_sources = len(sources)
+    if n_sources < min_sources or (max_sources is not None and n_sources > max_sources):
+        raise ValueError(f"{strategy!r} needs {source_bounds_text(spec)}, got {n_sources}")
 
 
 def _balanced(records: list[dict], per_class: int, rng: random.Random) -> list[dict]:
@@ -73,13 +98,7 @@ def build_training_set(
     benchmark registry loader). Every source is split disjointly *before* pooling, so
     the returned train and test sets are guaranteed leakage-free.
     """
-    if strategy not in STRATEGIES:
-        raise ValueError(f"unknown strategy {strategy!r}; known: {sorted(STRATEGIES)}")
-    spec = STRATEGIES[strategy]
-    if not (spec["min_sources"] <= len(sources) <= spec["max_sources"]):
-        raise ValueError(
-            f"{strategy!r} needs {spec['min_sources']}–{spec['max_sources']} sources, got {len(sources)}"
-        )
+    validate_strategy_sources(strategy, sources)
 
     if loader is None:
         from agent_bouncer.evaluation.benchmarks import load_benchmark
@@ -89,20 +108,35 @@ def build_training_set(
     rng = random.Random(seed)
     train: list[dict] = []
     test: list[dict] = []
-    per_source_pc = max(1, per_class // max(1, len(sources)))
-    for src in sources:
-        recs = loader(src)
-        tr, te = train_test_split(recs, test_ratio=holdout_ratio, seed=seed)
-        train += _balanced(tr, per_source_pc, rng)
-        test += _balanced(te, max(1, per_source_pc // 2), rng)
+    # per_class <= 0  ->  PERCENTAGE mode: use ALL pooled data, split X% test / (100-X)% train
+    #                     (stratified, the typical ML train/test split).
+    # per_class  > 0  ->  COUNT mode: a balanced subset of `per_class` per class, then a holdout.
+    full_split = not per_class or per_class <= 0
+    if full_split:
+        from agent_bouncer.data.sampling import ratio_split
+        pooled: list[dict] = []
+        for src in sources:
+            pooled += loader(src)
+        train, test = ratio_split(pooled, test_ratio=holdout_ratio, stratified=True, seed=seed)
+        aug_n = max(10, len(train) // 10)
+    else:
+        per_source_pc = max(1, per_class // max(1, len(sources)))
+        for src in sources:
+            recs = loader(src)
+            tr, te = train_test_split(recs, test_ratio=holdout_ratio, seed=seed)
+            train += _balanced(tr, per_source_pc, rng)
+            test += _balanced(te, max(1, per_source_pc // 2), rng)
+        aug_n = per_source_pc
 
-    # over-refusal augmentation: add extra safe (benign) prompts to the TRAIN set only
+    # over-refusal augmentation: add extra benign prompts to TRAIN only, excluding anything
+    # already in train/test so the split stays leakage-free.
     if strategy == "over_refusal_aware":
         try:
-            extra = loader("xstest")
-            safes = [r for r in extra if r["label"] == "safe"]
-            rng.shuffle(safes)
-            train += safes[: per_source_pc]
+            from agent_bouncer.data.split import _key
+            seen = {_key(r) for r in train} | {_key(r) for r in test}
+            extra = [r for r in loader("xstest") if r["label"] == "safe" and _key(r) not in seen]
+            rng.shuffle(extra)
+            train += extra[:aug_n]
         except Exception:  # noqa: BLE001 - augmentation is best-effort
             pass
 
@@ -118,6 +152,8 @@ def build_training_set(
     meta = {
         "name": name, "strategy": strategy, "sources": sources, "seed": seed,
         "per_class": per_class, "holdout_ratio": holdout_ratio,
+        "split_mode": "percentage" if full_split else "balanced_count",
+        "test_pct": round(holdout_ratio * 100),
         "n_train": len(train), "n_test": len(test),
         "train_safe": n_safe, "train_unsafe": len(train) - n_safe,
         "train_path": os.path.join(out, "train.jsonl"),

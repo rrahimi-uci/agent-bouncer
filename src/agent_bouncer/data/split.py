@@ -16,6 +16,19 @@ def _key(rec: dict) -> str:
     return " ".join((rec.get("text") or "").lower().split())
 
 
+def dedup(records: Iterable[dict]) -> list[dict]:
+    """Drop records with a duplicate normalized text (keeps the first occurrence)."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for r in records:
+        k = _key(r)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(r)
+    return out
+
+
 def find_leakage(train: Iterable[dict], test: Iterable[dict]) -> list[str]:
     """Return the normalized texts that appear in BOTH splits (empty = clean)."""
     train_keys = {_key(r) for r in train}
@@ -46,7 +59,7 @@ def train_test_split(
     *,
     test_ratio: float = 0.2,
     seed: int = 42,
-    dedup: bool = True,
+    deduplicate: bool = True,
 ) -> tuple[list[dict], list[dict]]:
     """Deterministic, guaranteed-disjoint split.
 
@@ -56,14 +69,7 @@ def train_test_split(
     """
     if not 0.0 < test_ratio < 1.0:
         raise ValueError("test_ratio must be in (0, 1)")
-    seen: set[str] = set()
-    uniq: list[dict] = []
-    for r in records:
-        k = _key(r)
-        if dedup and k in seen:
-            continue
-        seen.add(k)
-        uniq.append(r)
+    uniq = dedup(records) if deduplicate else list(records)
     random.Random(seed).shuffle(uniq)
     n_test = int(len(uniq) * test_ratio)
     test, train = uniq[:n_test], uniq[n_test:]

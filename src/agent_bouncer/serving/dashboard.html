@@ -81,7 +81,7 @@
   /* benchmark toolbar */
   .btoolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
   .bchip{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;border:1px solid var(--border);background:var(--panel);
-    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);transition:.12s}
+    cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);transition:.12s;text-decoration:none}
   .bchip:hover{background:var(--panel2);color:var(--text)}
   .bchip.on{color:#fff;border-color:transparent}
   .bchip .axd{width:8px;height:8px;border-radius:2px}
@@ -93,6 +93,14 @@
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{background:transparent;border:none;color:var(--muted);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
   .seg button.on{background:var(--panel2);color:var(--text)}
+  .ghostbtn{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12px;font-family:inherit;cursor:pointer}
+  .ghostbtn:hover{background:var(--panel2);color:var(--text)}
+  .pager{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pager button{background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer}
+  .pager button:hover{color:var(--text)}
+  .pager button.on{background:rgba(76,141,255,.12);border-color:rgba(76,141,255,.45);color:var(--text)}
+  .pager button:disabled{opacity:.45;cursor:not-allowed}
+  .pager .dots{color:var(--faint);font-size:12px}
   .samples{max-height:520px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
   .scard{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg2)}
   .scard .lbl{flex:0 0 auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;letter-spacing:.03em;margin-top:1px}
@@ -114,7 +122,7 @@
   .b-api{background:rgba(245,165,36,.16);color:#f4c67a} .b-heur{background:rgba(148,161,189,.14);color:var(--muted)}
   .b-dpo{background:rgba(34,211,238,.16);color:#7fdbe8}
   /* strategy cards */
-  .strat{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+  .strat{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px}
   .stratcard{padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--panel);cursor:pointer;transition:.12s}
   .stratcard:hover{background:var(--panel2)}
   .stratcard.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),0 8px 22px rgba(76,141,255,.14)}
@@ -124,10 +132,28 @@
   .srcpick label{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;color:var(--muted)}
   .srcpick label.sel{background:rgba(76,141,255,.1);border-color:rgba(76,141,255,.4);color:var(--text)}
   .srcpick input{accent-color:var(--accent)}
+  .jpick{display:flex;flex-wrap:wrap;gap:8px;max-height:190px;overflow:auto}
+  .jpill{padding:7px 11px;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;color:var(--muted);background:var(--panel);font-family:inherit}
+  .jpill:hover{background:var(--panel2)}
+  .jpill.on{background:rgba(76,141,255,.12);border-color:rgba(76,141,255,.45);color:var(--text)}
+  .jpill:disabled{opacity:.4;cursor:not-allowed}.jpill:disabled:hover{background:var(--panel)}
   .console{background:#070a11;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;height:280px;overflow:auto;
     font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.65}
   .console .l{color:var(--muted);white-space:pre-wrap;word-break:break-word}
   .console .l.res{color:#bfe3c8} .console .l.step{color:#9dc0ff;font-weight:600} .console .l.err{color:#ffb4b4}
+  .console .l.load{color:#8aa0c6} .console .l.ok{color:#7fe0a6}
+  .console .l.info{color:#dbe6f7;font-weight:500;letter-spacing:.1px}
+  .console .l.info.hd{color:#fff;font-weight:700;font-size:13.5px;margin-top:2px}
+  .console .l.prog{color:#a9c7ff;font-variant-numeric:tabular-nums}
+  .runstatus .pbar{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .runstatus{position:sticky;top:-12px;margin:-12px -14px 8px;padding:9px 14px;background:linear-gradient(90deg,#0c1322,#0a0f1a);
+    border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-weight:600;color:#cdd8ef;z-index:2}
+  .runstatus .spin{color:var(--accent);font-size:14px} .runstatus.done{color:#7fe0a6} .runstatus.fail{color:#ffb4b4}
+  .runstatus .el{margin-left:auto;color:var(--faint);font-weight:500;font-variant-numeric:tabular-nums}
+  .runstatus .stp{color:var(--faint);font-weight:500}
+  .runstatus .stopbtn{margin-left:12px;padding:3px 10px;border:1px solid #7a2b2b;background:#2a1414;color:#ffb4b4;
+    border-radius:6px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .runstatus .stopbtn:hover:not(:disabled){background:#3a1a1a;border-color:#a33} .runstatus .stopbtn:disabled{opacity:.5;cursor:default}
   .empty{text-align:center;color:var(--faint);padding:60px 20px}.empty .big{font-size:38px;margin-bottom:10px;opacity:.7}
   .kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:12.5px;margin:6px 0}.kv .k{color:var(--faint)}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);z-index:50;background:var(--raise);border:1px solid var(--line);
@@ -151,21 +177,13 @@
     <div class="navlab">Studio</div>
     <nav class="nav" id="nav">
       <a data-view="overview"><span class="ic">📊</span> Overview</a>
-      <a data-view="benchmarks"><span class="ic">📚</span> Benchmarks <span class="n" id="nBench">0</span></a>
-      <a data-view="datasets"><span class="ic">🧪</span> Datasets <span class="n" id="nSets">0</span></a>
+      <a data-view="benchmarks"><span class="ic">📚</span> Explore Benchmarks <span class="n" id="nBench">0</span></a>
+      <a data-view="datasets"><span class="ic">🧪</span> Datasets Creation <span class="n" id="nSets">0</span></a>
       <a data-view="train"><span class="ic">⚙︎</span> Train &amp; Test <span class="n" id="trainBadge">idle</span></a>
+      <a data-view="evaluate"><span class="ic">🎯</span> Evaluate</a>
       <a data-view="experiments"><span class="ic">🧬</span> Experiments <span class="n" id="expBadge">0</span></a>
       <a data-view="roc"><span class="ic">📈</span> ROC &amp; AUC</a>
     </nav>
-    <div class="railcard"><h4>This machine</h4><div class="hw" id="hwRail">…</div></div>
-    <div class="railcard"><h4>At a glance</h4>
-      <div class="stat"><span>Guards scored</span><b id="sgGuards">–</b></div>
-      <div class="stat"><span>Benchmarks</span><b id="sgBench">–</b></div>
-      <div class="stat"><span>Base models</span><b id="sgModels">–</b></div>
-      <div class="stat"><span>Experiments</span><b id="sgExp">–</b></div>
-      <div class="stat"><span>Training sets</span><b id="sgSets">–</b></div>
-    </div>
-    <div class="footer-note">Local guards on CPU · decoders on MPS · OpenAI via API. Hardware is recorded per run for fair comparison.</div>
   </aside>
 
   <main>
@@ -187,85 +205,111 @@
 
     <!-- BENCHMARKS -->
     <section class="view" id="v-benchmarks">
-      <h2 class="vh">Benchmarks</h2><p class="vs">Click a benchmark to view its contents and per-model results.</p>
+      <h2 class="vh">Explore Benchmarks</h2><p class="vs">Each benchmark has a deep-linkable page. Browse 100 rows at a time, search prompts, and filter by label or hazard.</p>
       <div class="btoolbar" id="btoolbar"></div>
       <div id="benchHead"></div>
-      <div class="grid2">
-        <div class="chartcard" style="margin:0">
-          <div class="row-between" style="margin-bottom:8px"><h3 id="samplesTitle">Contents</h3>
-            <div class="vtools">
-              <input type="text" id="sampleSearch" placeholder="search prompts…" style="width:170px"/>
-              <div class="seg" id="labelSeg"><button data-f="all" class="on">All</button><button data-f="safe">Safe</button><button data-f="unsafe">Unsafe</button></div>
-            </div>
+      <div class="chartcard" style="margin:0">
+        <div class="row-between" style="margin-bottom:8px"><div>
+          <h3 id="samplesTitle">Contents</h3>
+          <p class="sub" id="sampleMeta" style="margin:4px 0 0">100 rows per page.</p>
+        </div>
+          <div class="vtools">
+            <input type="text" id="sampleSearch" placeholder="search prompts…" style="width:220px"/>
+            <div class="seg" id="labelSeg"><button data-f="all" class="on">All</button><button data-f="safe">Safe</button><button data-f="unsafe">Unsafe</button></div>
+            <select id="hazardFilter" aria-label="Hazard filter" style="min-width:190px"><option value="all">All hazards</option></select>
+            <button type="button" class="ghostbtn" id="clearBenchFilters">Clear filters</button>
           </div>
-          <div class="samples" id="samples"></div>
         </div>
-        <div class="chartcard" style="margin:0"><h3>Model results on this benchmark</h3><p class="sub" id="benchResSub">Precision / Recall / F1 per guard</p>
-          <div class="cbox"><canvas id="cBench"></canvas></div>
-          <div id="benchTable" style="margin-top:12px"></div>
-        </div>
+        <div class="row-between" style="margin-bottom:12px"><div class="mnote" id="benchPagerMeta">100 rows per page.</div><div class="pager" id="benchPager"></div></div>
+        <div class="samples" id="samples"></div>
       </div>
     </section>
 
     <!-- DATASETS -->
     <section class="view" id="v-datasets">
-      <h2 class="vh">Training sets</h2><p class="vs">Choose a <b>strategy</b> for what your guard learns from. Every set is split into disjoint train / held-out test — <b>no leakage</b>.</p>
-      <div class="grid2">
-        <div class="chartcard" style="margin:0">
-          <h3>① Strategy</h3><p class="sub">How to compose the training data</p>
-          <div class="strat" id="stratCards"></div>
-          <h3 style="margin-top:6px">② Sources</h3><p class="sub" id="srcHint">Pick datasets to draw from</p>
-          <div class="srcpick" id="srcPick"></div>
-          <div class="form" style="margin-top:14px">
-            <div class="frow">
-              <label>Set name<input id="dsName" type="text" value="my-trainset"></label>
-              <label>Examples / class<input id="dsPerClass" type="number" value="200" min="20"></label>
-            </div>
-            <div class="mnote" id="dsNote"></div>
-            <button type="button" class="runbtn" id="buildBtn">🧪  Build training set</button>
+      <h2 class="vh">Datasets Creation</h2><p class="vs">Create a training set: choose a <b>strategy</b> for what your guard learns from. Every set is split into disjoint train / held-out test — <b>no leakage</b> — and becomes selectable in Train &amp; Test.</p>
+      <div class="chartcard" style="margin:0">
+        <h3>① Strategy</h3><p class="sub">How to compose the training data</p>
+        <div class="strat" id="stratCards"></div>
+        <h3 style="margin-top:6px">② Sources</h3><p class="sub" id="srcHint">Pick datasets to draw from</p>
+        <div class="srcpick" id="srcPick"></div>
+        <div class="form" style="margin-top:16px">
+          <div class="frow">
+            <label>Set name<input id="dsName" type="text" value="my-trainset"></label>
+            <label>Test split %<input id="dsHoldout" type="number" value="30" min="5" max="90"></label>
+            <label>Examples / class (0 = use all)<input id="dsPerClass" type="number" value="0" min="0"></label>
           </div>
+          <div class="mnote" id="dsSplitNote"></div>
+          <div class="mnote" id="dsNote"></div>
+          <button type="button" class="runbtn" id="buildBtn">🧪  Build training set</button>
         </div>
-        <div class="chartcard" style="margin:0">
-          <h3>Built training sets</h3><p class="sub">Reusable in the Train &amp; Test tab</p>
-          <div id="setsList"><div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div></div>
-          <div class="console" id="buildConsole" style="height:180px;margin-top:12px;display:none"></div>
-        </div>
+      </div>
+      <div class="chartcard" style="margin-top:16px">
+        <h3>Built training sets</h3><p class="sub">Reusable in the Train &amp; Test tab</p>
+        <div id="setsList"><div class="empty"><div class="big">🗂️</div>None yet — build one above.</div></div>
+        <div class="console" id="buildConsole" style="height:180px;margin-top:12px;display:none"></div>
       </div>
     </section>
 
     <!-- TRAIN & TEST -->
     <section class="view" id="v-train">
-      <h2 class="vh">Train &amp; Test</h2><p class="vs">Fine-tune (SFT) or RL-tune (GRPO) a base model → a versioned checkpoint, then test it against benchmarks with leakage guards.</p>
+      <h2 class="vh">Train &amp; Test</h2><p class="vs">① Train a base model on a dataset's <b>train</b> split (e.g. <code>train-1</code>) → a versioned checkpoint. ② Test it on that dataset's <b>held-out test</b> split (e.g. <code>test-1</code>) or on benchmarks — any prompt found in the training data is <b>dropped &amp; reported</b>, so nothing leaks train → test.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
-          <h3>① Train a model</h3><p class="sub">Any registered SLM · same SFT / GRPO / DPO</p>
+          <h3>① Train models</h3><p class="sub">Pick any models × techniques — all train on the selected set</p>
           <div class="form">
-            <label>Base model<select id="tModel" aria-label="Base model"></select></label>
-            <label>Technique<select id="tTech" aria-label="Technique"></select></label>
-            <label>Training set<select id="tData" aria-label="Training set"></select></label>
+            <label>Training set <span class="sub">(from Datasets Creation)</span><select id="tData" aria-label="Training set"></select></label>
+            <label>Models &amp; techniques <span class="sub">(click to select — as many as you want)</span></label>
+            <div id="trainJobs" class="jpick"></div>
             <div class="frow">
               <label>Epochs<input id="tEpochs" type="number" step="0.5" value="1"></label>
               <label>Max steps<input id="tMaxSteps" type="number" placeholder="(bounded)"></label>
               <label>LoRA r<input id="tLoraR" type="number" value="16"></label>
             </div>
             <div class="mnote" id="tNote"></div>
-            <button type="button" class="runbtn" id="trainBtn">⚙︎  Train model</button>
+            <button type="button" class="runbtn" id="trainBtn">⚙︎  Train selected (0)</button>
           </div>
         </div>
         <div class="chartcard" style="margin:0">
-          <h3>② Test against the pipeline</h3><p class="sub">Leakage-guarded: any test prompt seen in training is dropped &amp; reported</p>
+          <h3>② Test</h3><p class="sub">🔒 Leakage-guarded — prompts seen in a model's training set are auto-dropped &amp; reported</p>
           <div class="form">
-            <label>Trained version<select id="tVersion" aria-label="Trained version"></select></label>
+            <label>Trained versions <span class="sub">(select one or more)</span></label>
+            <div id="tVersions" class="jpick"></div>
+            <label>Test on</label>
+            <div class="seg" id="testModeSeg"><button type="button" data-m="set" class="on">Created test set</button><button type="button" data-m="bench">Benchmarks</button></div>
+            <label id="tTestSetWrap">Test set — held-out split (from Datasets Creation)<select id="tTestSet" aria-label="Test set"></select></label>
+            <label id="tBenchWrap" style="display:none">Benchmarks to test on<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
             <div class="frow">
-              <label>Test size / class<input id="tPerClass" type="number" value="40"></label>
+              <label>Test size / class (0 = full, benchmarks only)<input id="tPerClass" type="number" min="0" value="40"></label>
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
-            <label>Benchmarks<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
-            <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test model</button>
+            <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test selected (0)</button>
           </div>
         </div>
       </div>
       <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="trainConsole"><div class="empty" style="padding:26px"><div class="big">⚙︎</div>Configure and press Train or Test.</div></div></div>
+    </section>
+
+    <!-- EVALUATE (eval-only) -->
+    <section class="view" id="v-evaluate">
+      <h2 class="vh">Evaluate a saved model</h2><p class="vs">Score an already-trained model on benchmarks — no training. Leakage-guarded; results are per-benchmark and macro-averaged.</p>
+      <div class="grid2">
+        <div class="chartcard" style="margin:0">
+          <h3>① Saved model</h3><p class="sub">From the model store (train &amp; test one in Train &amp; Test to save it)</p>
+          <div class="form">
+            <label>Model<select id="evModel" aria-label="Saved model"></select></label>
+            <div class="frow">
+              <label>Test size / class (0 = full)<input id="evPerClass" type="number" min="0" value="40"></label>
+              <label>Device<select id="evDevice"><option>cpu</option><option>mps</option></select></label>
+            </div>
+            <label>Benchmarks<select id="evBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
+            <div class="mnote" id="evNote"></div>
+            <button type="button" class="runbtn" id="evBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🎯 Run evaluation</button>
+          </div>
+        </div>
+        <div class="chartcard" style="margin:0"><h3>② Metrics</h3><p class="sub">Macro across selected benchmarks</p><div class="cbox"><canvas id="cEval"></canvas></div></div>
+      </div>
+      <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="evConsole"><div class="empty" style="padding:26px"><div class="big">🎯</div>Pick a saved model and press Run evaluation.</div></div></div>
     </section>
 
     <!-- EXPERIMENTS -->
@@ -301,8 +345,9 @@ const METRIC={precision:'#4c8dff',recall:'#34d399',f1:'#a78bfa'};
 const AXIS={guardrail:{c:'#4c8dff',t:'Guardrail'},red_team:{c:'#f87171',t:'Red-teaming'},over_refusal:{c:'#34d399',t:'Over-refusal'}};
 const ORDER=['keyword-baseline','encoder-distilbert','decoder-sft-0.6B','decoder-sft-1.7B','decoder-grpo-0.6B','openai-moderation','openai-gpt-4o-mini','openai-gpt-5.2-low'];
 const TECHLABELS_BADGE={sft:'b-sft',grpo:'b-rl',dpo:'b-dpo'};
+const BENCH_PAGE_SIZE=100;
 let CONFIG={},RESULTS={},CURVES={},MODELS=[],TECHLABELS={},EXPERIMENTS=[],VERSIONS={},DATA={strategies:[],sources:[],train_sets:[]},charts={};
-let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set();
+let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMode='set', benchQueryTimer=null, dsSources=new Set();
 
 Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
 Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
@@ -344,109 +389,293 @@ function renderOverview(){
 /* ---------- benchmarks browser ---------- */
 function buildToolbar(){
   const t=$('#btoolbar');const bs=CONFIG.benchmarks||[];
-  t.innerHTML=bs.map(b=>`<div class="bchip axis-${b.axis}" data-b="${b.name}" title="${b.description}"><span class="axd" style="background:${AXIS[b.axis].c}"></span>${b.name}<span class="eye">👁</span></div>`).join('');
-  $$('#btoolbar .bchip').forEach(c=>c.onclick=()=>selectBenchmark(c.dataset.b));
+  t.innerHTML=bs.map(b=>`<a class="bchip axis-${b.axis}" data-b="${b.name}" href="${benchUrl(b.name)}" title="${b.description}"><span class="axd" style="background:${AXIS[b.axis].c}"></span>${b.name}<span class="eye">👁</span></a>`).join('');
+  $$('#btoolbar .bchip').forEach(c=>c.onclick=e=>{e.preventDefault();selectBenchmark(c.dataset.b,{page:1,replaceHistory:false});});
 }
-async function selectBenchmark(name){
+function benchUrl(name,state={}){
+  const params=new URLSearchParams(),page=Math.max(1,Number(state.page||1)||1),q=(state.q||'').trim();
+  if(page>1)params.set('page',String(page));
+  if(q)params.set('q',q);
+  if(state.label&&state.label!=='all')params.set('label',state.label);
+  if(state.hazard&&state.hazard!=='all')params.set('hazard',state.hazard);
+  const base=name?`/benchmarks/${encodeURIComponent(name)}`:'/benchmarks';
+  return params.toString()?`${base}?${params.toString()}`:base;
+}
+function parseBenchLocation(){
+  const path=location.pathname.replace(/\/+$/,'')||'/';
+  if(path==='/benchmarks')return{name:null,page:1,q:'',label:'all',hazard:'all'};
+  const m=path.match(/^\/benchmarks\/([^/]+)$/);if(!m)return null;
+  const qp=new URLSearchParams(location.search);
+  return {
+    name:decodeURIComponent(m[1]),
+    page:Math.max(1,Number(qp.get('page')||1)||1),
+    q:qp.get('q')||'',
+    label:(qp.get('label')||'all').toLowerCase(),
+    hazard:(qp.get('hazard')||'all').toLowerCase(),
+  };
+}
+function setLabelFilter(value){
+  sampleFilter=['safe','unsafe'].includes(value)?value:'all';
+  $$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f===sampleFilter));
+}
+function syncLabelCounts(counts){
+  $$('#labelSeg button').forEach(b=>{
+    const key=b.dataset.f,base=key==='all'?'All':key[0].toUpperCase()+key.slice(1),n=counts&&counts[key]!=null?counts[key]:'–';
+    b.textContent=`${base} (${n})`;
+  });
+}
+function setHazardOptions(hazards,selected='all'){
+  const opts=(hazards&&hazards.length?hazards:[{value:'all',count:0}]).map(h=>{
+    const label=h.value==='all'?'All hazards':h.value;
+    return `<option value="${h.value}">${label} (${h.count})</option>`;
+  }).join('');
+  $('#hazardFilter').innerHTML=opts;
+  const values=[...$('#hazardFilter').options].map(o=>o.value);
+  $('#hazardFilter').value=values.includes(selected)?selected:'all';
+}
+function currentBenchFilters(){
+  return {q:$('#sampleSearch').value.trim(),label:sampleFilter||'all',hazard:$('#hazardFilter').value||'all'};
+}
+function pagerWindow(page,pages){
+  const keep=[1,pages,page-1,page,page+1].filter(n=>n>=1&&n<=pages),uniq=[...new Set(keep)].sort((a,b)=>a-b),out=[];
+  let prev=0;uniq.forEach(n=>{if(prev&&n-prev>1)out.push(null);out.push(n);prev=n;});return out;
+}
+function renderBenchPager(d){
+  $('#benchPagerMeta').textContent=d.filtered_total?`Page ${d.page} of ${d.pages} · showing ${d.page_start}-${d.page_end} of ${d.filtered_total} match${d.filtered_total===1?'':'es'} · ${d.limit}/page`:`No matches · ${d.limit}/page`;
+  const pager=$('#benchPager');
+  if(d.pages<=1){pager.innerHTML='';return;}
+  let html=`<button type="button" data-page="${d.page-1}" ${d.has_prev?'':'disabled'}>Prev</button>`;
+  pagerWindow(d.page,d.pages).forEach(p=>{html+=p==null?'<span class="dots">…</span>':`<button type="button" data-page="${p}" class="${p===d.page?'on':''}">${p}</button>`;});
+  html+=`<button type="button" data-page="${d.page+1}" ${d.has_next?'':'disabled'}>Next</button>`;
+  pager.innerHTML=html;
+  $$('#benchPager button[data-page]').forEach(b=>b.onclick=()=>selectBenchmark(curBench,{page:Number(b.dataset.page),preserveFilters:true,replaceHistory:false}));
+}
+async function selectBenchmark(name,{page=1,preserveFilters=false,skipHistory=false,replaceHistory=false}={}){
+  if(!preserveFilters){
+    $('#sampleSearch').value='';setLabelFilter('all');setHazardOptions([{value:'all',count:0}],'all');
+  }
   curBench=name;$$('#btoolbar .bchip').forEach(c=>c.classList.toggle('on',c.dataset.b===name));
-  const d=await (await fetch('/api/benchmark/'+name)).json();
+  const f=currentBenchFilters(),params=new URLSearchParams({limit:String(BENCH_PAGE_SIZE),offset:String(Math.max(0,page-1)*BENCH_PAGE_SIZE)});
+  if(f.q)params.set('q',f.q);
+  if(f.label!=='all')params.set('label',f.label);
+  if(f.hazard!=='all')params.set('hazard',f.hazard);
+  const r=await fetch('/api/benchmark/'+encodeURIComponent(name)+'?'+params.toString());
+  if(!r.ok){toast('failed to load benchmark');return;}
+  const d=await r.json();
+  window._benchName=name;window._benchMeta=d;window._samples=d.samples||[];
+  setLabelFilter(d.filters.label);syncLabelCounts(d.label_counts||{});setHazardOptions(d.hazards||[],d.filters.hazard);
+  const kind=d.is_full?'<span class="badge" style="background:#34d39922;color:#34d399">full</span>'
+                     :'<span class="badge" style="background:#f5a52422;color:#f5a524">subset</span>';
   $('#benchHead').innerHTML=`<div class="chartcard"><div class="row-between"><div>
-    <h3>${name} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
-    <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · <b>${d.n_safe}</b> safe + <b>${d.n_unsafe}</b> unsafe (n=${d.total})</p></div></div></div>`;
-  $('#samplesTitle').textContent=`Contents — ${d.total} prompts`;
-  window._samples=d.samples;sampleFilter='all';$$('#labelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));$('#sampleSearch').value='';
-  renderSamples(); drawBenchResults(name);
+    <h3>${name} ${kind} <span class="badge" style="background:${AXIS[d.axis].c}22;color:${AXIS[d.axis].c}">${AXIS[d.axis].t}</span></h3>
+    <p class="sub" style="margin:4px 0 0">${d.description} · <code>${d.hf_id}</code> · dataset <b>${d.total}</b> rows (${d.n_safe} safe / ${d.n_unsafe} unsafe) · current view <b>${d.filtered_total}</b></p></div></div></div>`;
+  $('#sampleMeta').textContent=d.filtered_total?`Showing ${d.page_start}-${d.page_end} of ${d.filtered_total} matching prompts.`:`No matching prompts for the current filters.`;
+  renderBenchPager(d);renderSamples();
+  if(!skipHistory){
+    const next=benchUrl(name,{page:d.page,q:d.filters.q,label:d.filters.label,hazard:d.filters.hazard}),cur=location.pathname+location.search+location.hash;
+    if(cur!==next)history[replaceHistory?'replaceState':'pushState'](null,'',next);
+  }
 }
 function renderSamples(){
-  const q=$('#sampleSearch').value.toLowerCase();const rows=(window._samples||[]).filter(s=>(sampleFilter==='all'||s.label===sampleFilter)&&(!q||s.text.toLowerCase().includes(q)));
-  $('#samples').innerHTML=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div>${s.hazard&&s.hazard!=='none'?`<span class="hz">${s.hazard}</span>`:''}</div>`).join(''):'<div class="empty">No matching prompts.</div>';
+  const rows=window._samples||[];
+  $('#samples').innerHTML=rows.length?rows.map(s=>`<div class="scard"><span class="lbl ${s.label}">${s.label}</span><div class="txt">${esc(s.text)}</div><span class="hz">${s.hazard&&s.hazard!=='none'?s.hazard:'none'}</span></div>`).join(''):'<div class="empty">No matching prompts on this page.</div>';
 }
+function applyBenchFilters(){if(curBench)selectBenchmark(curBench,{page:1,preserveFilters:true,replaceHistory:true});}
+function scheduleBenchSearch(){clearTimeout(benchQueryTimer);benchQueryTimer=setTimeout(applyBenchFilters,180);}
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-function drawBenchResults(b){
-  const gm=(RESULTS.results||{})[b]||{};const gs=ORDER.filter(g=>gm[g]);
-  destroy('cBench');
-  if(!gs.length){$('#benchTable').innerHTML='<div class="empty" style="padding:20px">No model results yet.</div>';return;}
-  charts.cBench=new Chart($('#cBench'),{type:'bar',data:{labels:gs.map(gLabel),datasets:['precision','recall','f1'].map(k=>({label:k[0].toUpperCase()+k.slice(1),data:gs.map(g=>gm[g][k]),backgroundColor:METRIC[k],borderRadius:5,maxBarThickness:22}))},options:barOpts(1)});
-  $('#benchTable').innerHTML=`<table><thead><tr><th>Guard</th><th>P</th><th>R</th><th>F1</th><th>AUC</th><th>FPR ↓</th><th>p90 ↓</th></tr></thead><tbody>`+
-    gs.map(g=>{const m=gm[g];return `<tr><td class="name">${gLabel(g)}</td><td class="mono">${fmt(m.precision)}</td><td class="mono">${fmt(m.recall)}</td><td class="mono">${fmt(m.f1)}</td><td class="mono">${fmt(m.roc_auc)}</td><td class="mono">${fmt(m.fpr_on_benign)}</td><td class="mono">${m.latency_p90_ms==null?'—':(m.latency_p90_ms<10?fmt(m.latency_p90_ms,1):Math.round(m.latency_p90_ms))}</td></tr>`;}).join('')+'</tbody></table>';
-}
 
 /* ---------- datasets ---------- */
+function datasetStrategySpec(){return DATA.strategies.find(x=>x.key===curStrat)||{};}
+function selectedDatasetSources(){return [...$$('#srcPick input:checked')].map(i=>i.value);}
+function syncDatasetSourceState(){
+  const chosen=selectedDatasetSources();dsSources=new Set(chosen);
+  $$('#srcPick label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+  const spec=datasetStrategySpec(),count=chosen.length,ok=count>=1;
+  $('#srcHint').textContent='Pick any benchmarks to draw from — one or more.';
+  $('#buildBtn').disabled=!curStrat||!ok;
+  // describe the train/test split that will be produced
+  const pcEl=$('#dsPerClass'),hoEl=$('#dsHoldout');
+  const ho=hoEl?(Number(hoEl.value)||30):30, pc=pcEl?pcEl.value:'0';
+  const pct=(pc===''||Number(pc)<=0);
+  if($('#dsSplitNote'))$('#dsSplitNote').textContent=pct
+    ? `Percentage split — ${100-ho}% train / ${ho}% test over ALL selected data (stratified, disjoint · no leakage).`
+    : `Balanced ${Number(pc)}/class train · ${ho}% held-out test (disjoint · no leakage).`;
+  let note=spec.desc||'';
+  note+=count?` Selected ${count} source${count===1?'':'s'}.`:' Pick at least one source.';
+  $('#dsNote').textContent=note;
+}
 function renderDatasets(){
   $('#stratCards').innerHTML=DATA.strategies.map(s=>`<div class="stratcard" data-s="${s.key}"><div class="t">${s.label}</div><div class="d">${s.desc}</div></div>`).join('');
-  $$('#stratCards .stratcard').forEach(c=>c.onclick=()=>{curStrat=c.dataset.s;$$('#stratCards .stratcard').forEach(x=>x.classList.toggle('on',x===c));updateStratNote();});
+  $$('#stratCards .stratcard').forEach(c=>c.onclick=()=>{curStrat=c.dataset.s;$$('#stratCards .stratcard').forEach(x=>x.classList.toggle('on',x===c));syncDatasetSourceState();});
   if(!curStrat&&DATA.strategies[0]){curStrat=DATA.strategies[0].key;}
   $$('#stratCards .stratcard').forEach(c=>c.classList.toggle('on',c.dataset.s===curStrat));
-  $('#srcPick').innerHTML=DATA.sources.map(s=>`<label class="sel"><input type="checkbox" value="${s.name}" checked><span class="axd" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${AXIS[s.axis].c}"></span>${s.name}</label>`).join('');
-  $$('#srcPick label').forEach(l=>l.querySelector('input').onchange=e=>l.classList.toggle('sel',e.target.checked));
-  updateStratNote();renderSetsList();
+  if(!dsSources.size&&DATA.sources[0])dsSources=new Set([DATA.sources[0].name]);
+  $('#srcPick').innerHTML=DATA.sources.map(s=>`<label class="${dsSources.has(s.name)?'sel':''}"><input type="checkbox" value="${s.name}" ${dsSources.has(s.name)?'checked':''}><span class="axd" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${AXIS[s.axis].c}"></span>${s.name}</label>`).join('');
+  $$('#srcPick label').forEach(l=>l.querySelector('input').onchange=()=>syncDatasetSourceState());
+  ['dsHoldout','dsPerClass'].forEach(id=>{const el=$('#'+id);if(el)el.oninput=syncDatasetSourceState;});
+  syncDatasetSourceState();renderSetsList();
 }
-function updateStratNote(){const s=DATA.strategies.find(x=>x.key===curStrat)||{};$('#dsNote').textContent=`${s.desc||''} (needs ${s.min_sources}–${s.max_sources} source${s.max_sources>1?'s':''}).`;}
 function renderSetsList(){
-  const ts=DATA.train_sets;$('#sgSets').textContent=ts.length;$('#nSets').textContent=ts.length;
-  $('#setsList').innerHTML=ts.length?`<table><thead><tr><th>Name</th><th>Strategy</th><th>Train</th><th>Test</th><th>Sources</th></tr></thead><tbody>`+
-    ts.map(t=>`<tr><td class="name">${t.name}</td><td>${t.strategy}</td><td class="mono">${t.n_train} <span style="color:var(--faint)">(${t.train_safe}/${t.train_unsafe})</span></td><td class="mono">${t.n_test}</td><td style="font-size:11px">${(t.sources||[]).join(', ')}</td></tr>`).join('')+'</tbody></table>'
+  const ts=DATA.train_sets;$('#nSets').textContent=ts.length;
+  $('#setsList').innerHTML=ts.length?`<table><thead><tr><th>Name</th><th>Split</th><th>Train</th><th>Test</th><th>Sources</th></tr></thead><tbody>`+
+    ts.map(t=>`<tr><td class="name">${t.name}</td><td style="font-size:11px">${t.split_mode==='percentage'?`${100-(t.test_pct||30)}/${t.test_pct||30}%`:t.strategy}</td><td class="mono">${t.n_train} <span style="color:var(--faint)">(${t.train_safe}/${t.train_unsafe})</span></td><td class="mono">${t.n_test}</td><td style="font-size:11px">${(t.sources||[]).join(', ')}</td></tr>`).join('')+'</tbody></table>'
     :'<div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div>';
 }
 async function buildDataset(){
-  const sources=[...$$('#srcPick input:checked')].map(i=>i.value);
+  const sources=selectedDatasetSources();
   const name=$('#dsName').value.trim()||'my-trainset';
   if(!curStrat||!sources.length){toast('Pick a strategy and at least one source.');return;}
+  const pc=$('#dsPerClass').value===''?0:Number($('#dsPerClass').value);   // 0 = use all (percentage split)
+  const ho=(Number($('#dsHoldout').value)||30)/100;
   const btn=$('#buildBtn');btn.disabled=true;btn.textContent='● Building…';
   const con=$('#buildConsole');con.style.display='block';con.innerHTML='';
-  let resp;try{resp=await fetch('/api/dataset/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:curStrat,name,sources,per_class:Number($('#dsPerClass').value)||200})});}
+  let resp;try{resp=await fetch('/api/dataset/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:curStrat,name,sources,per_class:pc,holdout_ratio:ho})});}
   catch(e){toast('build failed to start');btn.disabled=false;btn.textContent='🧪  Build training set';return;}
-  const {run_id}=await resp.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();toast('✓ Training set built');});
+  let payload={};try{payload=await resp.json();}catch(e){}
+  if(!resp.ok){toast(payload.detail||'build failed');btn.disabled=false;btn.textContent='🧪  Build training set';syncDatasetSourceState();return;}
+  const {run_id}=payload;
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();fillTestData();toast('✓ Dataset built — available in Train & Test');});
 }
 
 /* ---------- train & test ---------- */
 function fillTrainData(){
-  const opts=['<option value="data/demo/train.jsonl">demo · BeaverTails balanced</option>']
-    .concat(DATA.train_sets.map(t=>`<option value="${t.train_path}">${t.name} · ${t.strategy} (${t.n_train})</option>`));
-  $('#tData').innerHTML=opts.join('');
+  // your created datasets first (so one is the default), demo as a fallback
+  const created=(DATA.train_sets||[]).map(t=>`<option value="${t.train_path}">${t.name} · ${t.strategy} (${t.n_train} train)</option>`);
+  const demo='<option value="data/demo/train.jsonl">demo · BeaverTails balanced</option>';
+  $('#tData').innerHTML=(created.length?created.join('')+demo:demo);
 }
+let trainJobs=new Set(), testVersions=new Set();
 function renderTrainControls(){
-  $('#tModel').innerHTML=MODELS.map(m=>`<option value="${m.key}">${m.key} · ${m.family} ${m.params}${m.gated?' 🔒':''}</option>`).join('');
-  $('#tModel').onchange=updateTech;updateTech();
+  renderTrainJobs();
   $('#tBenchmarks').innerHTML=(CONFIG.benchmarks||[]).map(b=>`<option value="${b.name}" selected>${b.name}</option>`).join('');
+  renderTestVersions();
+  fillTrainData();fillTestData();
+  $$('#testModeSeg button').forEach(b=>b.onclick=()=>setTestMode(b.dataset.m));
+}
+function renderTrainJobs(){
+  const hf=!!CONFIG.hf_available, combos=[];
+  MODELS.forEach(m=>(m.techniques||['sft']).forEach(t=>combos.push(
+    {key:`${m.key}::${t}`,label:`${m.key} · ${t.toUpperCase()}`,gated:m.gated,locked:m.gated&&!hf})));
+  // a gated model with no HF_TOKEN can't train — drop it from the selection & disable its pill
+  combos.filter(c=>c.locked).forEach(c=>trainJobs.delete(c.key));
+  $('#trainJobs').innerHTML=combos.map(c=>`<button type="button" class="jpill ${trainJobs.has(c.key)?'on':''}" data-j="${c.key}"${c.locked?' disabled title="needs HF_TOKEN (gated model)"':''}>${c.label}${c.gated?' 🔒':''}</button>`).join('');
+  $$('#trainJobs .jpill').forEach(b=>b.onclick=()=>{if(b.disabled)return;const k=b.dataset.j;trainJobs.has(k)?trainJobs.delete(k):trainJobs.add(k);b.classList.toggle('on');updateTrainBtn();});
+  updateTrainBtn();
+}
+function updateTrainBtn(){$('#trainBtn').textContent=`⚙︎  Train selected (${trainJobs.size})`;
+  $('#tNote').textContent=trainJobs.size?`Will train ${trainJobs.size} model×technique job(s) on the selected set.`:'Click one or more model × technique pills above.';}
+function renderTestVersions(){
   const vs=[];Object.entries(VERSIONS).forEach(([mk,list])=>list.forEach(v=>vs.push({mk,...v})));
   vs.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
-  $('#tVersion').innerHTML=vs.length?vs.map(v=>`<option value="${v.id}">${v.mk} · ${v.technique} · ${v.version}</option>`).join(''):'<option value="">— no trained versions yet —</option>';
-  fillTrainData();
+  const ids=new Set(vs.map(v=>v.id));testVersions=new Set([...testVersions].filter(x=>ids.has(x)));
+  $('#tVersions').innerHTML=vs.length
+    ?vs.map(v=>`<button type="button" class="jpill ${testVersions.has(v.id)?'on':''}" data-v="${v.id}">${v.mk} · ${v.technique}${v.dataset?' · '+v.dataset:''} · ${v.version}</button>`).join('')
+    :'<span class="sub">— no trained versions yet —</span>';
+  $$('#tVersions .jpill').forEach(b=>b.onclick=()=>{const k=b.dataset.v;testVersions.has(k)?testVersions.delete(k):testVersions.add(k);b.classList.toggle('on');updateTestBtn();});
+  updateTestBtn();
 }
-function updateTech(){const m=MODELS.find(x=>x.key===$('#tModel').value)||{};
-  $('#tTech').innerHTML=(m.techniques||['sft']).map(t=>`<option value="${t}">${TECHLABELS[t]||t}</option>`).join('');
-  $('#tNote').innerHTML=(m.gated?'🔒 <b>Gated</b> — needs HF_TOKEN + license. ':'')+(m.note||'')+(m.arch==='decoder'?' Larger decoders: use <b>Max steps</b>.':'');}
-function streamRun(run_id,con,onEvt,onDone){const es=new EventSource(`/api/run/${run_id}/events`);
-  es.onmessage=ev=>{const e=JSON.parse(ev.data);if(e.type==='done'){es.close();onDone&&onDone();return;}
-    const cls=e.type==='error'?'err':(e.type==='result'||e.type==='test_result')?'res':e.type==='step'?'step':'l';
-    const d=document.createElement('div');d.className='l '+cls;d.textContent=(e.text||'').trim()||JSON.stringify(e);con.appendChild(d);con.scrollTop=con.scrollHeight;onEvt&&onEvt(e);};
-  es.onerror=()=>{es.close();onDone&&onDone();};}
+function updateTestBtn(){$('#testBtn').textContent=`🧪  Test selected (${testVersions.size})`;}
+function fillTestData(){
+  const sets=(DATA.train_sets||[]).filter(t=>t.test_path&&t.n_test);
+  $('#tTestSet').innerHTML=sets.length
+    ?sets.map(t=>`<option value="${t.test_path}">${t.name} · held-out test (${t.n_test})</option>`).join('')
+    :'<option value="">— create a dataset first —</option>';
+}
+function setTestMode(m){testMode=m;$$('#testModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#tTestSetWrap').style.display=m==='set'?'':'none';$('#tBenchWrap').style.display=m==='bench'?'':'none';}
+const SPIN=['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+const fmtElapsed=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+const barStr=p=>{const n=Math.max(0,Math.min(10,Math.round((p||0)/10)));return '['+'█'.repeat(n)+'░'.repeat(10-n)+']';};
+function fmtRunLine(e){
+  const d=document.createElement('div');d.className='l';
+  const f=(x,n=2)=>x==null?'—':Number(x).toFixed(n);
+  if(e.type==='step'){d.className='l step';const n=e.index&&e.total?`[${e.index}/${e.total}] `:'';d.textContent=`▸ ${n}`+(e.text||'').replace(/^\S*python\S*\s*/,'').trim();}
+  else if(e.type==='result'||e.type==='test_result'){d.className='l res';
+    d.textContent=`✓ ${e.benchmark} · ${e.guard} — F1 ${f(e.f1)} · P ${f(e.precision)} · R ${f(e.recall)} · FPR ${f(e.fpr_on_benign)}`;}
+  else if(e.type==='loading'){d.className='l load';d.textContent=`⋯ loading ${e.benchmark}`;}
+  else if(e.type==='progress'){d.className='l prog';
+    const bits=[`step ${e.step??'?'}${e.total?'/'+e.total:''}`];
+    if(e.loss!=null)bits.push(`loss ${(+e.loss).toFixed(3)}`);
+    if(e.rate!=null)bits.push(`${(+e.rate).toFixed(1)}/s`);
+    if(e.eta!=null)bits.push(`ETA ${fmtElapsed(e.eta)}`);
+    const tag=e.phase==='test'&&e.label?e.label+' · ':'';
+    d.textContent=`⏳ ${barStr(e.pct)} ${e.pct!=null?e.pct+'%':''} · ${tag}${bits.join(' · ')}`;}
+  else if(e.type==='experiment'){d.className='l ok';d.textContent=`✓ experiment ${e.exp_id}`;}
+  else if(e.type==='dataset'){d.className='l ok';d.textContent=`✓ dataset ${e.name}`;}
+  else if(e.type==='error'){d.className='l err';d.textContent='✗ '+(e.text||'error');}
+  else if(e.type==='info'){const t=(e.text||'').trim();if(!t)return null;
+    d.className='l info'+(/^(✅|🎯)/.test(t)?' ok':/^🚀/.test(t)?' hd':'');d.textContent=t;}
+  else{const t=(e.text||'').trim();if(!t)return null;d.textContent=t;if(/saved|done|complete|merged/i.test(t))d.className='l ok';}
+  return d;
+}
+function streamRun(run_id,con,onEvt,onDone){
+  con.innerHTML='';
+  const status=document.createElement('div');status.className='runstatus';con.appendChild(status);
+  const t0=Date.now();let si=0,steps=0,total=0,finished=false,lastProg=null,stopping=false;
+  const stopBtn=document.createElement('button');stopBtn.className='stopbtn';stopBtn.textContent='⏹ Stop';
+  stopBtn.onclick=async()=>{stopBtn.disabled=true;stopping=true;stopBtn.textContent='Stopping…';
+    try{await fetch(`/api/run/${run_id}/stop`,{method:'POST'});}catch(e){}};
+  const paint=(txt,cls)=>{const el=Math.floor((Date.now()-t0)/1000);
+    status.className='runstatus'+(cls?' '+cls:'');
+    let prog='';
+    if(lastProg&&!cls){const p=lastProg,nm=p.phase==='test'&&p.label?p.label+' ':'';
+      prog=`<span class="pbar">${barStr(p.pct)} ${p.pct!=null?p.pct+'%':''}</span>`+
+        `<span class="stp">· ${nm}${p.step??'?'}${p.total?'/'+p.total:''}${p.eta!=null?' · ETA '+fmtElapsed(p.eta):''}</span>`;}
+    const stp=(!lastProg&&steps)?`<span class="stp">· step ${steps}${total?'/'+total:''}</span>`:'';
+    status.innerHTML=(cls?'':`<span class="spin">${SPIN[si=(si+1)%SPIN.length]}</span> `)+
+      `<span>${txt}</span>`+prog+stp+`<span class="el">⏱ ${fmtElapsed(el)}</span>`;
+    if(!finished)status.appendChild(stopBtn);};   // Stop button lives past each repaint
+  paint('Starting…');
+  const tick=setInterval(()=>{if(!finished)paint(stopping?'Stopping…':lastProg?(lastProg.phase==='test'?'Testing…':'Training…'):'Running…');},130);
+  const es=new EventSource(`/api/run/${run_id}/events`);
+  const end=(txt,cls)=>{if(finished)return;finished=true;clearInterval(tick);lastProg=null;paint(txt,cls);try{es.close();}catch(e){}onDone&&onDone();};
+  es.onmessage=ev=>{const e=JSON.parse(ev.data);
+    if(e.type==='done'){const f=e.failures||0,t=e.total||steps;
+      end(e.stopped?'Stopped ⏹':f?`Done · ${t-f}/${t} ok, ${f} failed`:'Done ✓',e.stopped?'fail':f?'fail':'done');return;}
+    if(e.type==='step'){steps++;if(e.total)total=e.total;lastProg=null;}
+    if(e.type==='progress'){lastProg=e;}
+    const line=fmtRunLine(e);if(line){con.appendChild(line);con.scrollTop=con.scrollHeight;}
+    onEvt&&onEvt(e);};
+  es.onerror=()=>end('Stream closed','done');
+}
 async function runTrain(){
+  const jobs=[...trainJobs].map(k=>{const [model,technique]=k.split('::');return {model,technique};});
+  if(!jobs.length){toast('Select at least one model × technique.');return;}
   const params={};const grab=(id,k,n)=>{const v=$(id).value.trim();if(v!==''){params[k]=n?Number(v):v;}};
   grab('#tEpochs','epochs',true);grab('#tMaxSteps','max_steps',true);grab('#tLoraR','lora_r',true);
-  const btn=$('#trainBtn');btn.disabled=true;btn.textContent='● Training…';$('#trainBadge').textContent='training';
+  const btn=$('#trainBtn');btn.disabled=true;btn.textContent=`● Training ${jobs.length}…`;$('#trainBadge').textContent='training';
   const con=$('#trainConsole');con.innerHTML='';
-  let resp;try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:$('#tModel').value,technique:$('#tTech').value,train_data:$('#tData').value,params})});}
-  catch(e){toast('train failed to start');btn.disabled=false;btn.textContent='⚙︎  Train model';return;}
+  let resp;try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobs,train_data:$('#tData').value,params})});}
+  catch(e){toast('train failed to start');btn.disabled=false;updateTrainBtn();return;}
   const {run_id}=await resp.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='⚙︎  Train model';$('#trainBadge').textContent='done';await loadExperiments();renderTrainControls();renderExperiments();toast('✓ Training complete — version registered');});
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;$('#trainBadge').textContent='done';await loadExperiments();renderTrainControls();renderExperiments();toast(`✓ Trained ${jobs.length} model(s) — versions registered`);});
 }
 async function runTest(){
-  const exp=$('#tVersion').value;if(!exp){toast('Train a model first.');return;}
-  const benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);
-  const btn=$('#testBtn');btn.disabled=true;btn.textContent='● Testing…';$('#trainBadge').textContent='testing';
+  const exps=[...testVersions];if(!exps.length){toast('Select one or more trained versions.');return;}
+  const btn=$('#testBtn');
+  const tpc=$('#tPerClass').value===''?40:Number($('#tPerClass').value);
+  const body={exps,per_class:tpc,device:$('#tDevice').value};
+  if(testMode==='set'){const ts=$('#tTestSet').value;
+    if(!ts){toast('Create a dataset (with a held-out test split) first.');return;}body.test_set=ts;}
+  else{body.benchmarks=[...$('#tBenchmarks').selectedOptions].map(o=>o.value);}
+  btn.disabled=true;btn.textContent=`● Testing ${exps.length}…`;$('#trainBadge').textContent='testing';
   const con=$('#trainConsole');con.innerHTML='';
-  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exp,benchmarks,per_class:Number($('#tPerClass').value)||40,device:$('#tDevice').value})});}
-  catch(e){toast('test failed to start');btn.disabled=false;btn.textContent='🧪  Test model';return;}
+  let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+  catch(e){toast('test failed to start');btn.disabled=false;updateTestBtn();return;}
   const {run_id}=await resp.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';await loadExperiments();renderExperiments();toast('✓ Test complete — experiment recorded');});
+  const evalExps=[];   // one EVAL_EXPERIMENT_ID streams per version, in `exps` order
+  streamRun(run_id,con,e=>{if(e.type==='experiment')evalExps.push(e.exp_id);},async()=>{
+    $('#trainBadge').textContent='done';
+    // persist each tested version to the store (feeds the Evaluate tab)
+    for(let i=0;i<exps.length;i++){try{await fetch('/api/saved_models',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({train_exp:exps[i],eval_exp:evalExps[i]||null,test_set:body.test_set||null,benchmarks:body.benchmarks||[]})});}catch(e){}}
+    await loadExperiments();await loadSaved();renderTestVersions();renderExperiments();renderEvaluate();
+    btn.disabled=false;toast(`✓ Tested ${exps.length} version(s) — recorded & saved`);});
 }
 
 /* ---------- experiments ---------- */
 function renderExperiments(){
-  $('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;
+  $('#expBadge').textContent=EXPERIMENTS.length;
   if(EXPERIMENTS.length){
     $('#expTable').innerHTML=`<table><thead><tr><th></th><th>Model</th><th>Technique</th><th>Version</th><th>F1 / time</th><th>Device</th><th>When</th></tr></thead><tbody>`+
     EXPERIMENTS.map(e=>{const s=e.metrics_summary||{};const hw=e.hardware||{};const dev=hw.gpu_name||hw.gpu||'cpu';const can=e.kind==='eval'&&s.f1!=null;
@@ -489,31 +718,83 @@ function drawAUC(){const bs=Object.keys(CURVES),gset=new Set();bs.forEach(b=>Obj
   destroy('cAuc');charts.cAuc=new Chart($('#cAuc'),{type:'bar',data:{labels:bs,datasets:gs.map((g,i)=>({label:gLabel(g),data:bs.map(b=>CURVES[b][g]?.auc??null),backgroundColor:PALETTE[i%8],borderRadius:5,maxBarThickness:24}))},options:{...barOpts(1),scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{beginAtZero:true,max:1,grid:{color:'#1c2439'}}}}});}
 function curveOpts(xl,yl){return{responsive:true,maintainAspectRatio:false,parsing:false,plugins:{legend:{position:'top',align:'start',labels:{boxWidth:20,usePointStyle:false}},tooltip:{callbacks:{label:c=>` ${xl} ${c.parsed.x.toFixed(2)}, ${yl} ${c.parsed.y.toFixed(2)}`}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:xl},grid:{color:'#1c2439'}},y:{type:'linear',min:0,max:1,title:{display:true,text:yl},grid:{color:'#1c2439'}}}};}
 
+/* ---------- saved-model store (feeds the Evaluate tab) ---------- */
+let SAVED=[];
+async function loadSaved(){SAVED=(await (await fetch('/api/saved_models')).json()).models||[];}
+/* ---------- evaluate (eval-only) ---------- */
+function renderEvaluate(){
+  $('#evModel').innerHTML=SAVED.length?SAVED.map(m=>`<option value="${m.id}">${m.name||(m.base_model+' · '+m.technique)} · ${(m.created||'').slice(0,10)}</option>`).join(''):'<option value="">— no saved models yet —</option>';
+  $('#evBenchmarks').innerHTML=(DATA.sources||[]).map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+  $('#evNote').textContent=SAVED.length?`${SAVED.length} saved model(s) available.`:'Train & test a model in Train & Test first (it is saved automatically).';
+}
+async function runEval(){
+  const model_id=$('#evModel').value;if(!model_id){toast('No saved model selected');return;}
+  const benchmarks=[...$('#evBenchmarks').selectedOptions].map(o=>o.value);
+  const con=$('#evConsole');con.innerHTML='';const btn=$('#evBtn');btn.disabled=true;btn.textContent='● Evaluating…';
+  const epc=$('#evPerClass').value===''?40:Number($('#evPerClass').value);
+  let r;try{r=await fetch('/api/eval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id,benchmarks,per_class:epc,device:$('#evDevice').value})});}catch(e){toast('eval failed');btn.disabled=false;btn.textContent='🎯 Run evaluation';return;}
+  const {run_id}=await r.json();
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🎯 Run evaluation';await loadExperiments();await loadSaved();renderEvaluate();drawEval();toast('✓ Evaluation complete');});
+}
+function drawEval(){const m=SAVED.find(x=>x.id===$('#evModel').value);destroy('cEval');if(!m||!m.metrics)return;
+  const keys=['precision','recall','f1','roc_auc','fpr_on_benign'];
+  charts.cEval=new Chart($('#cEval'),{type:'bar',data:{labels:keys.map(k=>k==='roc_auc'?'AUC':k==='fpr_on_benign'?'FPR':k[0].toUpperCase()+k.slice(1)),datasets:[{data:keys.map(k=>m.metrics[k]??0),backgroundColor:PALETTE,borderRadius:5,maxBarThickness:34}]},options:barOpts(1)});}
+
 /* ---------- shell ---------- */
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function switchView(v){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
-  if(location.hash.slice(1)!==v)history.replaceState(null,'','#'+v);
-  if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name);
+const VIEWS=['overview','benchmarks','datasets','train','evaluate','experiments','roc'];
+function viewUrl(v){
+  if(v==='benchmarks')return curBench?benchUrl(curBench,{page:(window._benchMeta&&window._benchMeta.page)||1,...currentBenchFilters()}):'/benchmarks';
+  return v==='overview'?'/':`/#${v}`;
+}
+function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
+  if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
+  if(v==='evaluate'){renderEvaluate();drawEval();}
+  if(v==='train'){fillTrainData();fillTestData();}   // reflect any datasets built since load
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
+async function syncRouteFromLocation(){
+  const bench=parseBenchLocation();
+  if(bench){
+    if(bench.name){
+      $('#sampleSearch').value=bench.q;setLabelFilter(bench.label);
+      $('#hazardFilter').innerHTML=bench.hazard&&bench.hazard!=='all'
+        ? `<option value="all">All hazards</option><option value="${bench.hazard}" selected>${bench.hazard}</option>`
+        : '<option value="all">All hazards</option>';
+      $('#hazardFilter').value=bench.hazard||'all';
+      curBench=bench.name;switchView('benchmarks',{skipUrl:true});
+      await selectBenchmark(bench.name,{page:bench.page,preserveFilters:true,skipHistory:true,replaceHistory:true});
+      return;
+    }
+    curBench=null;switchView('benchmarks',{skipUrl:true});
+    if((CONFIG.benchmarks||[]).length)await selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
+    return;
+  }
+  const h=location.hash.slice(1);
+  switchView(VIEWS.includes(h)?h:'overview',{skipUrl:true});
+}
 function renderAll(){renderOverview();
-  $('#sgGuards').textContent=guardsIn().length;$('#sgBench').textContent=benchesIn().length;$('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
+  $('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
 async function loadResults(){RESULTS=await (await fetch('/api/results')).json();CURVES=await (await fetch('/api/curves')).json();}
-async function loadModels(){const m=await (await fetch('/api/models')).json();MODELS=m.models;TECHLABELS=m.techniques;$('#sgModels').textContent=MODELS.length;}
-async function loadExperiments(){const e=await (await fetch('/api/experiments')).json();EXPERIMENTS=e.experiments;VERSIONS=e.versions;$('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;}
+async function loadModels(){const m=await (await fetch('/api/models')).json();MODELS=m.models;TECHLABELS=m.techniques;}
+async function loadExperiments(){const e=await (await fetch('/api/experiments')).json();EXPERIMENTS=e.experiments;VERSIONS=e.versions;$('#expBadge').textContent=EXPERIMENTS.length;}
 async function loadDatasets(){DATA=await (await fetch('/api/datasets')).json();}
-async function loadHardware(){const h=await (await fetch('/api/hardware')).json();$('#hwLabel').textContent=h.label;const i=h.info;
-  const acc=(i.gpu==='cuda'||i.gpu==='mps')?(i.gpu_name+(i.gpu_memory_gb?` (${i.gpu_memory_gb} GB)`:'')+(i.gpu_count>1?` ×${i.gpu_count}`:'')):'CPU-only';
-  $('#hwRail').innerHTML=`<b>${acc}</b><br>${i.cpu} · ${i.cpu_count} cores<br>${i.memory_gb?i.memory_gb+' GB':'? RAM'} · ${i.system} · py${i.python}${i.torch?' · torch '+i.torch:''}`;}
+async function loadHardware(){const h=await (await fetch('/api/hardware')).json();$('#hwLabel').textContent=h.label;}
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
-  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware()]);
+  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadSaved()]);
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
-  $$('#nav a').forEach(a=>a.onclick=()=>switchView(a.dataset.view));
+  $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
-  $('#sampleSearch').oninput=renderSamples;
-  $$('#labelSeg button').forEach(b=>b.onclick=()=>{sampleFilter=b.dataset.f;$$('#labelSeg button').forEach(x=>x.classList.toggle('on',x===b));renderSamples();});
-  const h=location.hash.slice(1);if(['overview','benchmarks','datasets','train','experiments','roc'].includes(h))switchView(h);
+  $('#evBtn').onclick=runEval;$('#evModel').onchange=drawEval;
+  $('#sampleSearch').oninput=scheduleBenchSearch;
+  $('#hazardFilter').onchange=applyBenchFilters;
+  $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
+  $$('#labelSeg button').forEach(b=>b.onclick=()=>{setLabelFilter(b.dataset.f);applyBenchFilters();});
+  window.addEventListener('popstate',()=>{syncRouteFromLocation();});
+  window.addEventListener('hashchange',()=>{syncRouteFromLocation();});
+  await syncRouteFromLocation();
 }
 init();
 </script>

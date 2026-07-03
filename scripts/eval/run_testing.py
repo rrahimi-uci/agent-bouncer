@@ -33,12 +33,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--exp", required=True, help="training experiment id to evaluate")
     ap.add_argument("--benchmarks", nargs="*", default=None)
+    ap.add_argument("--test-set", default=None,
+                    help="path to a created test split (JSONL); overrides --benchmarks")
     ap.add_argument("--per-class", type=int, default=40)
     ap.add_argument("--device", default="cpu", choices=["cpu", "mps", "cuda"])
     args = ap.parse_args()
 
     load_dotenv()
-    exp = evaluate_and_record(args.exp, benchmarks=args.benchmarks,
+    exp = evaluate_and_record(args.exp, benchmarks=args.benchmarks, test_set=args.test_set,
                               per_class=args.per_class, device=args.device)
     print("EVAL_EXPERIMENT_ID=" + exp["id"])
 

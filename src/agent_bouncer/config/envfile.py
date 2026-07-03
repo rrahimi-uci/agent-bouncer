@@ -11,6 +11,19 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# huggingface_hub / transformers / datasets read the token under either name depending on
+# the library + version. Mirror them so a token set under one is visible under the other.
+_HF_ALIASES = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")
+
+
+def _mirror_hf_token() -> None:
+    """If the HF token is set under one alias but not the other, copy it across — so every
+    subprocess (training/eval) sees the token regardless of which name a library reads."""
+    val = next((os.environ[k] for k in _HF_ALIASES if os.environ.get(k)), None)
+    if val:
+        for k in _HF_ALIASES:
+            os.environ.setdefault(k, val)
+
 
 def load_env(path: str | os.PathLike | None = None) -> str | None:
     """Load the nearest ``.env`` into ``os.environ``. Returns the file used, or None.
@@ -45,5 +58,7 @@ def load_env(path: str | os.PathLike | None = None) -> str | None:
                 line = line[len("export "):]
             key, val = line.split("=", 1)
             os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+        _mirror_hf_token()
         return str(resolved)
+    _mirror_hf_token()  # mirror even with no .env, in case a real HF var is set
     return None

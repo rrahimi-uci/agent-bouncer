@@ -42,7 +42,7 @@ def build_preference_pairs(records: list[dict], *, reasoning: bool = False) -> l
     return pairs
 
 
-def run_dpo(config_path: str | Path) -> str:
+def run_dpo(config_path: str | Path) -> str:  # pragma: no cover - runs a real TRL DPOTrainer
     from datasets import Dataset
     from peft import LoraConfig
     from trl import DPOConfig, DPOTrainer
@@ -69,6 +69,7 @@ def run_dpo(config_path: str | Path) -> str:
         cfg["base_model"],
         trust_remote_code=bool(cfg.get("trust_remote_code", False)),
     )
+    from agent_bouncer.training.progress import progress_callback
     trainer = DPOTrainer(
         model=model,
         args=dpo_config,
@@ -77,6 +78,7 @@ def run_dpo(config_path: str | Path) -> str:
         peft_config=LoraConfig(
             r=int(lora.get("r", 16)), lora_alpha=int(lora.get("alpha", 32)), task_type="CAUSAL_LM"
         ),
+        callbacks=[progress_callback()],
     )
     trainer.train()
     trainer.save_model(out_dir)

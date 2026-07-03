@@ -23,6 +23,26 @@ if pkill -f 'uvicorn agent_bouncer.serving.api' 2>/dev/null; then
   stopped=1
 fi
 
+# 3) reap any orphaned training/eval/dataset subprocesses the server spawned. The server kills
+#    these itself on graceful shutdown (SIGTERM); this is a safety net for the SIGKILL path so
+#    nothing heavy keeps running in the background after ./stop.sh.
+CHILD_PATTERNS=(
+  'scripts/train/run_training.py' 'scripts/eval/run_testing.py' 'scripts/eval/run_eval_only.py'
+  'scripts/eval/run_benchmarks.py' 'scripts/eval/eval_added_guard.py'
+  'scripts/report/compute_curves.py' 'scripts/data/build_dataset.py'
+)
+killed_children=0
+for pat in "${CHILD_PATTERNS[@]}"; do
+  if pkill -f "$pat" 2>/dev/null; then killed_children=1; stopped=1; fi
+done
+if [ "$killed_children" = "1" ]; then
+  sleep 1
+  for pat in "${CHILD_PATTERNS[@]}"; do
+    pkill -9 -f "$pat" 2>/dev/null || true   # SIGKILL anything that ignored SIGTERM
+  done
+  echo "  ↳ also stopped in-flight training/eval jobs."
+fi
+
 if [ "$stopped" = "1" ]; then
   echo "✓ Benchmark Studio stopped."
 else

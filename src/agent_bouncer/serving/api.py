@@ -16,18 +16,23 @@ import asyncio
 import json
 import os
 import re
+import signal
 import sys
 import uuid
+from collections import Counter
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.core.schema import Surface, Verdict
 from agent_bouncer.data import read_jsonl
-from agent_bouncer.data.training_sets import STRATEGIES, list_training_sets
+from agent_bouncer.data.sampling import SAMPLING_STRATEGIES, SPLIT_STRATEGIES
+from agent_bouncer.data.training_sets import STRATEGIES, list_training_sets, validate_strategy_sources
 from agent_bouncer.evaluation.benchmarks import BENCHMARKS, GATED_BENCHMARKS
-from agent_bouncer.models.registry import TECHNIQUES, catalog
+from agent_bouncer.models.registry import TECHNIQUES, catalog, technique_matrix
 from agent_bouncer.tracking import experiments as X
 from agent_bouncer.tracking.hardware import hardware_info, hardware_label
+from agent_bouncer.tracking.model_store import ModelStore
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -57,7 +62,17 @@ def _load_dotenv(path: Path = ROOT / ".env") -> None:
 
 _load_dotenv()
 
-app = FastAPI(title="Agent Bouncer — Benchmark Studio", version="0.1.0")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    yield
+    # On shutdown (e.g. ./stop.sh → SIGTERM), kill every in-flight training/eval subprocess
+    # tree so nothing keeps running orphaned in the background.
+    await asyncio.gather(*(_terminate_run(r) for r in list(_RUNS.values())),
+                         return_exceptions=True)
+
+
+app = FastAPI(title="Agent Bouncer — Benchmark Studio", version="0.1.0", lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 _guard = KeywordGuard()
 
@@ -81,7 +96,21 @@ def health() -> dict[str, str]:
 # ------------------------------------------------------------------ dashboard API
 @app.get("/")
 def dashboard() -> FileResponse:
-    return FileResponse(str(HERE / "dashboard.html"))
+    # no-store so the browser always serves the latest UI (no stale cached dashboard)
+    return FileResponse(str(HERE / "dashboard.html"),
+                        headers={"Cache-Control": "no-store, must-revalidate"})
+
+
+@app.get("/benchmarks")
+def benchmark_browser() -> FileResponse:
+    return dashboard()
+
+
+@app.get("/benchmarks/{name}")
+def benchmark_page(name: str) -> FileResponse:
+    if name not in BENCHMARKS:
+        raise HTTPException(404, "unknown benchmark")
+    return dashboard()
 
 
 #: Guard catalog surfaced to the UI: technique + params + how to run it.
@@ -124,6 +153,7 @@ def config() -> dict:
         "guards": guards,
         "gated": GATED_BENCHMARKS,
         "openai_available": bool(os.environ.get("OPENAI_API_KEY")),
+        "hf_available": bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")),
     }
 
 
@@ -144,8 +174,19 @@ def curves() -> JSONResponse:
 # ------------------------------------------------------- training / experiments API
 @app.get("/api/models")
 def models() -> dict:
-    """Base-model catalog + tuning techniques for the training UI."""
-    return {"models": catalog(), "techniques": TECHNIQUES}
+    """Base-model catalog + tuning techniques + the model×technique validity matrix.
+
+    ``matrix`` lets the UI grey out invalid combinations (encoders: SFT only)."""
+    return {"models": catalog(), "techniques": TECHNIQUES, "matrix": technique_matrix()}
+
+
+@app.get("/api/sampling")
+def sampling() -> dict:
+    """Sampling + split strategies for the guided workflow (random/stratified, ratio/k-fold)."""
+    return {
+        "sampling": [{"key": k, **v} for k, v in SAMPLING_STRATEGIES.items()],
+        "split": [{"key": k, **v} for k, v in SPLIT_STRATEGIES.items()],
+    }
 
 
 @app.get("/api/hardware")
@@ -162,8 +203,8 @@ def experiments() -> dict:
     for e in idx:
         if e.get("kind") == "train":
             versions.setdefault(e["model_key"], []).append(
-                {"id": e["id"], "version": e["version"],
-                 "technique": e.get("technique"), "created": e["created"]})
+                {"id": e["id"], "version": e["version"], "technique": e.get("technique"),
+                 "dataset": (e.get("data") or {}).get("dataset"), "created": e["created"]})
     return {"experiments": idx, "versions": versions}
 
 
@@ -175,22 +216,165 @@ def experiment(exp_id: str) -> JSONResponse:
     return JSONResponse(exp)
 
 
+# ------------------------------------------------------------ saved model store
+def _store() -> ModelStore:
+    return ModelStore(root=str(ROOT / "outputs" / "model_store"))
+
+
+@app.get("/api/saved_models")
+def saved_models() -> dict:
+    """All persisted models (newest first) for the eval-only + comparison views."""
+    return {"models": [r.to_dict() for r in _store().list()]}
+
+
+@app.get("/api/saved_models/{model_id}")
+def saved_model(model_id: str) -> JSONResponse:
+    rec = _store().get(model_id)
+    if rec is None:
+        raise HTTPException(404, "unknown saved model")
+    return JSONResponse(rec.to_dict())
+
+
+@app.delete("/api/saved_models/{model_id}")
+def delete_saved_model(model_id: str) -> dict:
+    if not _store().delete(model_id):
+        raise HTTPException(404, "unknown saved model")
+    return {"deleted": model_id}
+
+
+class SaveModelConfig(BaseModel):
+    """Persist a trained version into the model store with its workflow metadata."""
+    train_exp: str
+    eval_exp: str | None = None
+    sampling: str = ""
+    split: str = ""
+    benchmarks: list[str] = []
+    test_ratio: float | None = None
+    k: int | None = None
+
+
+@app.post("/api/saved_models")
+def save_model(cfg: SaveModelConfig) -> dict:
+    from agent_bouncer.training.runner import save_trained_model
+    exp = X.get(cfg.train_exp)
+    if exp is None:
+        raise HTTPException(404, "unknown training experiment")
+    metrics, per_bench = {}, {}
+    if cfg.eval_exp:
+        ev = X.get(cfg.eval_exp)
+        if ev:
+            metrics = ev.get("metrics_summary", {})
+            per_bench = ev.get("metrics", {})
+    mid = save_trained_model(
+        exp, store=_store(), sampling=cfg.sampling, split=cfg.split,
+        benchmarks=cfg.benchmarks, test_ratio=cfg.test_ratio, k=cfg.k,
+        metrics=metrics, per_benchmark=per_bench,
+    )
+    return {"saved": mid}
+
+
 # ------------------------------------------------------- benchmark viewer + datasets
+def _benchmark_path(name: str) -> tuple[Path, bool]:
+    full = ROOT / "data" / "benchmarks" / "full" / f"{name}.jsonl"
+    subset = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
+    return (full, True) if full.exists() else (subset, False)
+
+
+def _hazard_value(raw: str | None) -> str:
+    return str(raw or "none").strip().lower()
+
+
 @app.get("/api/benchmark/{name}")
-def benchmark_detail(name: str, limit: int = 120) -> dict:
-    """Benchmark metadata + a sample of its contents (from the cached subset)."""
+def benchmark_detail(
+    name: str,
+    limit: int = 100,
+    offset: int = 0,
+    q: str = "",
+    label: str = "all",
+    hazard: str = "all",
+) -> dict:
+    """Benchmark metadata + one filtered page of contents.
+
+    The explorer always serves the **full** dataset when downloaded
+    (``data/benchmarks/full``), otherwise the balanced cached subset. Browsing is
+    intentionally capped at ``100`` rows/page so the UI stays responsive even on the
+    larger benchmark files.
+    """
     if name not in BENCHMARKS:
         raise HTTPException(404, "unknown benchmark")
     b = BENCHMARKS[name]
-    cache = ROOT / "data" / "benchmarks" / f"{name}.jsonl"
-    recs = read_jsonl(str(cache)) if cache.exists() else []
+    path, is_full = _benchmark_path(name)
+    recs = read_jsonl(str(path)) if path.exists() else []
     n_unsafe = sum(r.get("label") == "unsafe" for r in recs)
+    n_safe = len(recs) - n_unsafe
+
+    query = q.strip().lower()
+    label = (label or "all").strip().lower()
+    label = label if label in {"all", "safe", "unsafe"} else "all"
+    hazard = _hazard_value(hazard)
+    hazard = "all" if hazard == "" else hazard
+
+    search_filtered = recs
+    if query:
+        search_filtered = [r for r in recs if query in str(r.get("text", "")).lower()]
+
+    label_counts = {
+        "all": len(search_filtered),
+        "safe": sum(r.get("label") == "safe" for r in search_filtered),
+        "unsafe": sum(r.get("label") == "unsafe" for r in search_filtered),
+    }
+
+    label_filtered = search_filtered
+    if label != "all":
+        label_filtered = [r for r in search_filtered if r.get("label") == label]
+
+    hazard_counter = Counter(_hazard_value(r.get("hazard")) for r in label_filtered)
+    hazards = [{"value": "all", "count": len(label_filtered)}]
+    if "none" in hazard_counter:
+        hazards.append({"value": "none", "count": hazard_counter["none"]})
+    hazards.extend(
+        {"value": hz, "count": hazard_counter[hz]}
+        for hz in sorted(k for k in hazard_counter if k != "none")
+    )
+
+    filtered = label_filtered
+    if hazard != "all":
+        filtered = [r for r in label_filtered if _hazard_value(r.get("hazard")) == hazard]
+
+    page_size = 100 if limit <= 0 else min(max(limit, 1), 100)
+    filtered_total = len(filtered)
+    if filtered_total and offset >= filtered_total:
+        offset = ((filtered_total - 1) // page_size) * page_size
+    offset = max(offset, 0)
+    page = 1 if not filtered_total else (offset // page_size) + 1
+    pages = max(1, (filtered_total + page_size - 1) // page_size)
+    window = filtered[offset:offset + page_size]
+    filtered_unsafe = sum(r.get("label") == "unsafe" for r in filtered)
     return {
         "name": name, "axis": b.axis, "description": b.description, "hf_id": b.hf_id,
-        "cached": cache.exists(), "total": len(recs),
-        "n_safe": len(recs) - n_unsafe, "n_unsafe": n_unsafe,
-        "samples": [{"text": r.get("text", ""), "label": r.get("label"), "hazard": r.get("hazard")}
-                    for r in recs[:limit]],
+        "cached": path.exists(), "is_full": is_full, "total": len(recs),
+        "n_safe": n_safe, "n_unsafe": n_unsafe,
+        "filtered_total": filtered_total,
+        "filtered_safe": filtered_total - filtered_unsafe,
+        "filtered_unsafe": filtered_unsafe,
+        "shown": len(window), "offset": offset, "limit": page_size,
+        "page": page, "pages": pages,
+        "page_start": offset + 1 if filtered_total else 0,
+        "page_end": offset + len(window),
+        "has_prev": page > 1,
+        "has_next": offset + len(window) < filtered_total,
+        "filters": {"q": q, "label": label, "hazard": hazard},
+        "label_counts": label_counts,
+        "hazards": hazards,
+        "samples": [
+            {
+                "text": r.get("text", ""),
+                "label": r.get("label"),
+                "hazard": _hazard_value(r.get("hazard")),
+                "source": r.get("source", name),
+            }
+            for r in window
+        ],
     }
 
 
@@ -215,6 +399,41 @@ class RunConfig(BaseModel):
 
 
 _RUNS: dict[str, dict] = {}
+
+
+def _signal_group(proc, sig: int) -> None:
+    """Send ``sig`` to the subprocess's whole process group — so dataloader workers and any
+    other grandchildren die with it — falling back to the single process if the group can't
+    be resolved (or on platforms without process groups)."""
+    if proc is None or proc.pid is None:
+        return
+    try:
+        os.killpg(os.getpgid(proc.pid), sig)   # subprocess is a session leader (see _run)
+    except (ProcessLookupError, PermissionError, OSError, AttributeError):
+        try:
+            proc.send_signal(sig)
+        except (ProcessLookupError, OSError):
+            pass
+
+
+async def _terminate_run(run: dict, *, grace: float = 4.0) -> bool:
+    """Stop a run's subprocess tree: SIGTERM, then SIGKILL if it hasn't exited within ``grace``
+    seconds. Marks the run user-stopped. Returns True if a live process was signalled."""
+    run["stopped"] = True
+    proc = run.get("proc")
+    if proc is None or proc.returncode is not None:
+        return False
+    _signal_group(proc, signal.SIGTERM)
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=grace)
+    except asyncio.TimeoutError:
+        _signal_group(proc, signal.SIGKILL)
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=2.0)
+        except asyncio.TimeoutError:
+            pass
+    return True
+
 
 _RESULT_RE = re.compile(
     r"\[([a-z_]+)\]\s+([\w.\-]+):\s+P=([\d.]+)\s+R=([\d.]+)\s+F1=([\d.]+)\s+FPR=([\d.]+)\s+p50=([\d.]+)ms"
@@ -248,7 +467,35 @@ def _parse_line(text: str) -> dict:
     m = _LOADING_RE.search(text)
     if m:
         return {"type": "loading", "benchmark": m.group(1), "text": text}
+    if text.lstrip().startswith("PROGRESS "):  # live step/%/loss/ETA from train + eval loops
+        return _parse_progress(text)
+    if text.lstrip().startswith(_INFO_PREFIXES):  # beautiful training/eval banner lines
+        return {"type": "info", "text": text}
     return {"type": "log", "text": text}
+
+
+def _parse_progress(text: str) -> dict:
+    """Parse a ``PROGRESS key=value ...`` marker into a progress event (numbers coerced)."""
+    kv = dict(re.findall(r"(\w+)=(\S+)", text))
+
+    def num(key, cast):
+        try:
+            return cast(kv[key])
+        except (KeyError, ValueError):
+            return None
+
+    step, total, pct = num("step", int), num("total", int), num("pct", int)
+    if pct is None and step is not None and total:
+        pct = int(100 * step / total)
+    return {"type": "progress", "phase": kv.get("phase", "train"), "label": kv.get("label"),
+            "step": step, "total": total, "pct": pct, "loss": num("loss", float),
+            "rate": num("rate", float), "eta": num("eta", int), "epoch": num("epoch", float),
+            "text": text}
+
+
+# Leading glyphs of the rich console banners emitted by the runner (train/eval headers,
+# config, device, ETA, save name, done) — surfaced as highlighted "info" lines in the UI.
+_INFO_PREFIXES = ("🚀", "📚", "🎛", "🖥", "⏱", "🏷", "✅", "🎯", "🧠", "🔧", "⚙", "📈", "⚖", "⚠", "⏹")
 
 
 def _build_commands(cfg: RunConfig) -> list[list[str]]:
@@ -258,7 +505,7 @@ def _build_commands(cfg: RunConfig) -> list[list[str]]:
     need_openai = any(g.startswith("openai-") for g in guards)
     fast = [g for g in guards if not g.startswith("decoder-")]
 
-    main = [py, "scripts/run_benchmarks.py", "--per-class", str(cfg.per_class),
+    main = [py, "scripts/eval/run_benchmarks.py", "--per-class", str(cfg.per_class),
             "--skip-decoder", "--benchmarks", *benches, "--guards", *fast]
     if not need_openai:
         main.append("--no-openai")
@@ -271,37 +518,62 @@ def _build_commands(cfg: RunConfig) -> list[list[str]]:
     }
     for name, (path, mode) in decoders.items():
         if name in guards and (ROOT / path).is_dir():
-            cmds.append([py, "scripts/eval_added_guard.py", "--path", path, "--arch",
+            cmds.append([py, "scripts/eval/eval_added_guard.py", "--path", path, "--arch",
                          "decoder", "--mode", mode, "--name", name, "--params", "0.6B"])
-    cmds.append([py, "scripts/compute_curves.py"])
+    cmds.append([py, "scripts/report/compute_curves.py"])
     return cmds
 
 
-async def _run(run_id: str, commands: list[list[str]]) -> None:
+async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = False) -> None:
+    """Run each command in sequence. By default a failed step (e.g. a gated model, an OOM, or
+    a killed process) is reported but the remaining steps STILL run — so selecting many
+    model×technique jobs trains every one that can, instead of aborting the whole batch on the
+    first failure. Set ``stop_on_error`` for dependent pipelines."""
     run = _RUNS[run_id]
     q: asyncio.Queue = run["queue"]
-    env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1"}
+    env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1",
+           "PYTHONIOENCODING": "utf-8"}  # so the emoji banner lines pipe through cleanly
+    total, failures = len(commands), 0
     try:
-        for cmd in commands:
-            await q.put({"type": "step", "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
-            proc = await asyncio.create_subprocess_exec(
-                *cmd, cwd=str(ROOT), env=env,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            )
-            run["proc"] = proc
-            assert proc.stdout is not None
-            async for raw in proc.stdout:
-                line = raw.decode(errors="replace").rstrip()
-                if line and "\r" not in line:  # skip tqdm progress-bar carriage lines
-                    await q.put(_parse_line(line))
-            await proc.wait()
-            if proc.returncode != 0:
-                await q.put({"type": "error", "text": f"step exited with code {proc.returncode}"})
+        for i, cmd in enumerate(commands, 1):
+            if run.get("stopped"):        # user pressed Stop between jobs — run no more
                 break
-    except Exception as exc:  # noqa: BLE001 - surface any launch failure to the UI
+            await q.put({"type": "step", "index": i, "total": total,
+                         "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
+            rc, err = -1, None
+            try:
+                # start_new_session=True → the child leads its own process group, so a single
+                # killpg tears down the whole tree (dataloader workers, tokenizers, …) on stop.
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd, cwd=str(ROOT), env=env, start_new_session=True,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+                )
+                run["proc"] = proc
+                if run.get("stopped"):    # Stop arrived before the process was recorded
+                    _signal_group(proc, signal.SIGKILL)
+                assert proc.stdout is not None
+                async for raw in proc.stdout:
+                    line = raw.decode(errors="replace").rstrip()
+                    if line and "\r" not in line:  # skip tqdm progress-bar carriage lines
+                        await q.put(_parse_line(line))
+                await proc.wait()
+                rc = proc.returncode
+            except Exception as exc:  # noqa: BLE001 - a launch failure shouldn't kill the batch
+                err = f"{type(exc).__name__}: {exc}"
+            if run.get("stopped"):        # killed by the user — report it and stop the batch
+                await q.put({"type": "info", "text": "⏹️ Stopped by user — training/testing killed."})
+                break
+            if rc != 0:
+                failures += 1
+                msg = f"step {i}/{total} failed" + (f": {err}" if err else f" (exit {rc})")
+                await q.put({"type": "error", "text": msg + ("" if stop_on_error else " — continuing")})
+                if stop_on_error:
+                    break
+    except Exception as exc:  # noqa: BLE001 - surface any unexpected failure to the UI
         await q.put({"type": "error", "text": f"{type(exc).__name__}: {exc}"})
     finally:
-        await q.put({"type": "done"})
+        await q.put({"type": "done", "failures": failures, "total": total,
+                     "stopped": bool(run.get("stopped"))})
         run["done"] = True
 
 
@@ -319,15 +591,18 @@ async def start_run(cfg: RunConfig) -> dict:
 
 
 class TrainConfig(BaseModel):
-    model: str
+    model: str | None = None       # single model (back-compat)
     technique: str = "sft"
+    jobs: list[dict] = []          # [{model, technique}, …] — train many at once
     train_data: str = "data/demo/train.jsonl"
     params: dict = {}
 
 
 class TestConfig(BaseModel):
-    exp: str                       # training-experiment id to evaluate
+    exp: str | None = None         # single training-experiment id (back-compat)
+    exps: list[str] = []           # multiple trained versions to test at once
     benchmarks: list[str] = []
+    test_set: str | None = None    # path to a created test split (JSONL) — overrides benchmarks
     per_class: int = 40
     device: str = "cpu"
 
@@ -337,25 +612,46 @@ _PARAM_FLAGS = {"epochs": "--epochs", "lr": "--lr", "batch_size": "--batch",
                 "max_seq_len": "--max-seq-len"}
 
 
+def _param_flags(params: dict) -> list[str]:
+    flags = []
+    for key, flag in _PARAM_FLAGS.items():
+        if params.get(key) is not None:
+            flags += [flag, str(params[key])]
+    if params.get("bf16"):
+        flags.append("--bf16")
+    return flags
+
+
 @app.post("/api/train")
 async def start_train(cfg: TrainConfig) -> dict:
-    cmd = [sys.executable, "scripts/run_training.py", "--model", cfg.model,
-           "--technique", cfg.technique, "--train-data", cfg.train_data]
-    for key, flag in _PARAM_FLAGS.items():
-        if cfg.params.get(key) is not None:
-            cmd += [flag, str(cfg.params[key])]
-    if cfg.params.get("bf16"):
-        cmd.append("--bf16")
-    return {"run_id": _launch([cmd]), "steps": 1}
+    """Train one or many (model × technique) jobs — each on the same training set — as a
+    sequential multi-step run."""
+    jobs = cfg.jobs or ([{"model": cfg.model, "technique": cfg.technique}] if cfg.model else [])
+    if not jobs:
+        raise HTTPException(400, "no models selected to train")
+    flags = _param_flags(cfg.params)
+    cmds = [[sys.executable, "scripts/train/run_training.py", "--model", j["model"],
+             "--technique", j.get("technique", "sft"), "--train-data", cfg.train_data, *flags]
+            for j in jobs]
+    return {"run_id": _launch(cmds), "steps": len(cmds)}
 
 
 @app.post("/api/test")
 async def start_test(cfg: TestConfig) -> dict:
-    cmd = [sys.executable, "scripts/run_testing.py", "--exp", cfg.exp,
-           "--per-class", str(cfg.per_class), "--device", cfg.device]
-    if cfg.benchmarks:
-        cmd += ["--benchmarks", *cfg.benchmarks]
-    return {"run_id": _launch([cmd]), "steps": 1}
+    """Test one or many trained versions — each on the same test set / benchmarks."""
+    exps = cfg.exps or ([cfg.exp] if cfg.exp else [])
+    if not exps:
+        raise HTTPException(400, "no trained versions selected to test")
+    cmds = []
+    for e in exps:
+        cmd = [sys.executable, "scripts/eval/run_testing.py", "--exp", e,
+               "--per-class", str(cfg.per_class), "--device", cfg.device]
+        if cfg.test_set:                   # test on a created dataset's held-out split
+            cmd += ["--test-set", cfg.test_set]
+        elif cfg.benchmarks:
+            cmd += ["--benchmarks", *cfg.benchmarks]
+        cmds.append(cmd)
+    return {"run_id": _launch(cmds), "steps": len(cmds)}
 
 
 class BuildConfig(BaseModel):
@@ -363,13 +659,48 @@ class BuildConfig(BaseModel):
     name: str
     sources: list[str]
     per_class: int = 200
+    holdout_ratio: float | None = None   # train/test split fraction (e.g. 0.2 = 80/20)
+
+
+class EvalConfig(BaseModel):
+    """Evaluation-only run: score a saved model on benchmarks, no training."""
+    model_id: str
+    benchmarks: list[str] = []
+    per_class: int = 40
+    device: str = "cpu"
+
+
+@app.post("/api/eval")
+async def start_eval(cfg: EvalConfig) -> dict:
+    cmd = [sys.executable, "scripts/eval/run_eval_only.py", "--model-id", cfg.model_id,
+           "--per-class", str(cfg.per_class), "--device", cfg.device]
+    if cfg.benchmarks:
+        cmd += ["--benchmarks", *cfg.benchmarks]
+    return {"run_id": _launch([cmd]), "steps": 1}
 
 
 @app.post("/api/dataset/build")
 async def start_build(cfg: BuildConfig) -> dict:
-    cmd = [sys.executable, "scripts/build_dataset.py", "--strategy", cfg.strategy,
+    try:
+        validate_strategy_sources(cfg.strategy, cfg.sources)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    cmd = [sys.executable, "scripts/data/build_dataset.py", "--strategy", cfg.strategy,
            "--name", cfg.name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
+    if cfg.holdout_ratio is not None:
+        cmd += ["--holdout", str(cfg.holdout_ratio)]
     return {"run_id": _launch([cmd]), "steps": 1}
+
+
+@app.post("/api/run/{run_id}/stop")
+async def stop_run(run_id: str) -> dict:
+    """Stop a run: kill its current training/testing subprocess tree and skip any remaining
+    jobs. Idempotent — stopping an already-finished run is a no-op."""
+    run = _RUNS.get(run_id)
+    if run is None:
+        raise HTTPException(404, "unknown run")
+    killed = await _terminate_run(run)
+    return {"run_id": run_id, "stopped": True, "killed_process": killed}
 
 
 @app.get("/api/run/{run_id}/events")

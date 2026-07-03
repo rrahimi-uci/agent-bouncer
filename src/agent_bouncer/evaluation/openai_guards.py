@@ -164,3 +164,42 @@ class OpenAIChatGuard:
                 surface=surface, latency_ms=latency, model=self.name,
             )
         return verdict
+
+
+#: Reasoning-effort tiers exposed for the reasoning judge (GPT-5.2).
+REASONING_EFFORTS = ("low", "medium", "high")
+
+
+def openai_guard_specs(
+    *,
+    chat_model: str = "gpt-4o-mini",
+    reasoning_model: str = "gpt-5.2",
+    efforts: tuple[str, ...] = REASONING_EFFORTS,
+) -> list[dict]:
+    """Single source of truth for the reference OpenAI guards: Moderation, a standard
+    chat judge, and the reasoning judge at each effort tier (low/medium/high).
+
+    Each spec is ``{name, kind, ...}`` — ``build_openai_guard(spec)`` turns it into a guard.
+    """
+    specs: list[dict] = [
+        {"name": "openai-moderation", "kind": "moderation"},
+        {"name": f"openai-{chat_model}", "kind": "chat", "model": chat_model},
+    ]
+    for eff in efforts:
+        specs.append({
+            "name": f"openai-{reasoning_model}-{eff}", "kind": "reasoning",
+            "model": reasoning_model, "reasoning_effort": eff,
+        })
+    return specs
+
+
+def build_openai_guard(spec: dict):
+    """Instantiate a guard from an :func:`openai_guard_specs` entry."""
+    kind = spec.get("kind")
+    if kind == "moderation":
+        return OpenAIModerationGuard()
+    if kind == "chat":
+        return OpenAIChatGuard(spec["model"])
+    if kind == "reasoning":
+        return OpenAIChatGuard(spec["model"], reasoning_effort=spec["reasoning_effort"])
+    raise ValueError(f"unknown openai guard kind {kind!r}")

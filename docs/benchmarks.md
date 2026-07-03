@@ -17,8 +17,14 @@ numbers are directly comparable. Metrics: **precision / recall / F1** (positive 
 ## The standard benchmark suite
 
 We download and run **7 ungated standard benchmarks** across three axes. Each is
-normalized to the unified taxonomy in [`data/loaders.py`](../src/agent_bouncer/data/loaders.py) and
-scored on a **class-balanced subset (≤100/class)** so precision/recall are meaningful.
+normalized to the unified taxonomy in [`data/loaders.py`](../src/agent_bouncer/data/loaders.py).
+
+By default the headline scoreboard uses a **class-balanced subset (≤100/class)** so
+precision/recall are comparable across benchmarks of very different sizes. You can also run
+on the **full** benchmarks — `run_benchmarks.py --full` (or `--per-class 0`), and the Studio's
+*Benchmarks* tab / test controls (**size 0 = full**) — using the sets fetched by
+[`download_full_benchmarks.py`](../scripts/data/download_full_benchmarks.py) (e.g. BeaverTails
+**3021**, ToxicChat **5083**, OpenAI-Moderation **1680**, XSTest **450**).
 
 | Axis | Benchmark | HF dataset | Measures |
 |------|-----------|------------|----------|

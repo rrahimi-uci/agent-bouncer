@@ -1,10 +1,21 @@
+import subprocess
+
 from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.deploy import (
     build_gguf_command,
     build_llama_quantize_command,
     build_mlx_convert_command,
     measure_latency,
+    run_command,
 )
+
+
+def test_run_command(monkeypatch):
+    class R:
+        returncode = 0
+
+    monkeypatch.setattr(subprocess, "run", lambda cmd, check: R())
+    assert run_command(["echo", "hi"]) == 0
 
 
 def test_gguf_command_uses_precision_outtype():

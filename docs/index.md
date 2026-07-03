@@ -28,10 +28,24 @@ outputs *before* they reach your model. SLM guardrails, trained with **fine-tuni
 The **66M encoder ties OpenAI Moderation on macro-F1 at ~22× lower latency**; **GPT-5.2 (low)**
 leads on quality *and* over-blocking but is ~140× slower — not a per-call gate.
 
-## Docs
+## Learn (course-style, with diagrams)
+
+A self-contained mini-course on the models and methods behind SLM guardrails — written as
+student training material:
+
+- **[SLM Architectures — a visual guide](slm-architectures.md)** — encoder vs decoder, the modern
+  decoder block (RMSNorm · RoPE · GQA · SwiGLU), and a deep dive into each model
+  (DistilBERT, Qwen3-0.6B/1.7B, DeepSeek-R1-Distill-1.5B, SmolLM2-1.7B).
+- **[Fine-tuning techniques](fine-tuning.md)** — SFT · LoRA · GRPO (RLVR) · DPO explained with
+  diagrams, and which technique applies to which model.
+- **[The guided workflow](workflow.md)** — benchmark → sampling/split → model+technique → train →
+  test → save → evaluate, end to end.
+
+## Reference docs
 
 - [Architecture](architecture.md) — how it all fits together (with mermaid diagrams)
 - [Benchmarks & results](benchmarks.md) — the full scoreboard + analysis
+- [Ensembles](ensembles.md) — can combining SLMs match GPT-5.2 Low?
 - [Datasets](datasets.md) · [Taxonomy](taxonomy.md) · [Roadmap](roadmap.md)
 - [Auto-generated scoreboard](../outputs/BENCHMARKS.md)
 

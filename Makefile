@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup install data data-demo demo report train-sft train-grpo train-dpo build-dataset train-model test-model eval bench benchmarks benchmarks-full curves baselines incumbents serve studio test lint format clean
+.PHONY: help setup install data data-demo demo report train-sft train-grpo train-dpo build-dataset train-model test-model eval bench benchmarks benchmarks-full curves baselines incumbents serve studio test lint format clean clean-runs
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -77,3 +77,12 @@ format:  ## Auto-format with ruff
 
 clean:  ## Remove caches and build artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ dist build *.egg-info
+
+clean-runs:  ## Remove ALL trained models + Studio results/experiments (keeps datasets + benchmark caches)
+	rm -rf outputs/models outputs/model_store outputs/experiments outputs/predictions
+	rm -rf outputs/demo-encoder outputs/demo-decoder-sft outputs/demo-grpo outputs/grpo-qwen3-0.6b \
+	       outputs/decoder-sft-Qwen3-1.7B outputs/smoke-grpo outputs/smoke-sft
+	rm -f  outputs/benchmark_results.json outputs/curves.json outputs/ensemble_results.json \
+	       outputs/demo_results.json outputs/BENCHMARKS.md outputs/MODEL_CARD.md outputs/RESULTS.md
+	@echo "✓ cleaned trained models + experiments + Studio diagrams"
+	@echo "  kept: data/train_sets (datasets), data/benchmarks (caches), outputs/logs"

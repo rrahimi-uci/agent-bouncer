@@ -1,10 +1,16 @@
 import pytest
 
-from agent_bouncer.data.split import assert_no_leakage, find_leakage, train_test_split
+from agent_bouncer.data.split import assert_no_leakage, dedup, find_leakage, train_test_split
 
 
 def _recs(texts, label="safe"):
     return [{"text": t, "label": label} for t in texts]
+
+
+def test_dedup_keeps_first_normalized_occurrence():
+    recs = _recs(["Hi there", "hi   THERE", "bye"])
+    out = dedup(recs)
+    assert [r["text"] for r in out] == ["Hi there", "bye"]
 
 
 def test_find_leakage_normalizes_whitespace_and_case():

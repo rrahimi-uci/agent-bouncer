@@ -17,7 +17,7 @@ from typing import Any
 import yaml
 
 from agent_bouncer.data import read_jsonl
-from agent_bouncer.training.runtime import load_decoder_training_assets
+from agent_bouncer.training.runtime import load_decoder_training_assets, training_device
 
 BINARY_LABEL2ID = {"safe": 0, "unsafe": 1}
 BINARY_ID2LABEL = {0: "safe", 1: "unsafe"}
@@ -52,7 +52,7 @@ def _binary_metrics(eval_pred):
     }
 
 
-def train_encoder(cfg: dict[str, Any]) -> str:
+def train_encoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real HF Trainer
     """Fine-tune a binary (safe/unsafe) sequence classifier. Returns output dir."""
     from datasets import Dataset
     from transformers import (
@@ -101,7 +101,10 @@ def train_encoder(cfg: dict[str, Any]) -> str:
         logging_steps=20,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
+        # pin_memory only helps on CUDA; enabling it on MPS/CPU just prints a noisy warning
+        dataloader_pin_memory=training_device() == "cuda",
     )
+    from agent_bouncer.training.progress import progress_callback
     trainer = Trainer(
         model=model,
         args=args,
@@ -109,6 +112,7 @@ def train_encoder(cfg: dict[str, Any]) -> str:
         eval_dataset=val_ds,
         data_collator=DataCollatorWithPadding(tokenizer),
         compute_metrics=_binary_metrics,
+        callbacks=[progress_callback()],
     )
     trainer.train()
     metrics = trainer.evaluate()
@@ -118,7 +122,7 @@ def train_encoder(cfg: dict[str, Any]) -> str:
     return out_dir
 
 
-def train_decoder(cfg: dict[str, Any]) -> str:
+def train_decoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real TRL SFTTrainer
     """LoRA fine-tune a small decoder to emit the canonical JSON verdict."""
     from datasets import Dataset
     from peft import LoraConfig
@@ -163,15 +167,18 @@ def train_decoder(cfg: dict[str, Any]) -> str:
         bf16=bf16,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
+        dataloader_pin_memory=device == "cuda",  # avoid the noisy MPS/CPU pin_memory warning
     )
     # Load the model ourselves so TRL does not default to `device_map="auto"`
     # and create meta/offloaded parameters on single-device runs.
+    from agent_bouncer.training.progress import progress_callback
     trainer = SFTTrainer(
         model=model,
         train_dataset=to_text(read_jsonl(cfg["data"]["train"])),
         processing_class=tokenizer,
         args=sft_config,
         peft_config=peft_config,
+        callbacks=[progress_callback()],
     )
     trainer.train()
     # Merge the LoRA adapter into the base weights so the guard loads as a
