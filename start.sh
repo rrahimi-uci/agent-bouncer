@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start Agent Bouncer — Benchmark Studio (dashboard + /screen API).
+# Start Agent Bouncer Workbench (dashboard + /screen API).
 #
 #   ./start.sh                 # http://127.0.0.1:8000, opens your browser
 #   ./start.sh 8080            # custom port
@@ -29,7 +29,7 @@ fi
 
 # --- already running? -------------------------------------------------------
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-  echo "✓ Benchmark Studio already running (PID $(cat "$PIDFILE")) → ${URL}"
+  echo "✓ Agent Bouncer Workbench already running (PID $(cat "$PIDFILE")) → ${URL}"
   exit 0
 fi
 rm -f "$PIDFILE"
@@ -45,7 +45,7 @@ if ! "$PY" -c "import torch, transformers, datasets" >/dev/null 2>&1; then
 fi
 
 # --- launch -----------------------------------------------------------------
-echo "• Starting Benchmark Studio on ${URL} …"
+echo "• Starting Agent Bouncer Workbench on ${URL} …"
 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 \
   "$PY" -m uvicorn agent_bouncer.serving.api:app --host "$HOST" --port "$PORT" \
   > "$LOG" 2>&1 &

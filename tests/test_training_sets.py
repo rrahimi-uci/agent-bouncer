@@ -79,6 +79,19 @@ def test_build_accepts_any_source_count_but_needs_one(monkeypatch, tmp_path):
         TS.build_training_set("nope", ["a"], name="x", loader=_fake_loader())
 
 
+def test_build_rejects_unsafe_training_set_names(monkeypatch, tmp_path):
+    monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
+    bad_names = ["", "   ", "../escape", "/tmp/escape", "nested/name", r"nested\name", "two words"]
+    for name in bad_names:
+        with pytest.raises(ValueError):
+            TS.build_training_set("balanced", ["a"], name=name, per_class=20, loader=_fake_loader())
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_validate_training_set_name_strips_safe_slug():
+    assert TS.validate_training_set_name(" safe-1.2_ok ") == "safe-1.2_ok"
+
+
 def test_list_training_sets(tmp_path, monkeypatch):
     monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
     TS.build_training_set("balanced", ["a"], name="ls1", per_class=20, loader=_fake_loader())

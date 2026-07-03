@@ -4,7 +4,7 @@ Guards are expensive to run but cheap to combine: once each guard's per-sample
 predictions are dumped (``outputs/predictions/<guard>.json`` from the benchmark
 run), any ensemble of them can be scored instantly with no model inference. This
 module is the single source of truth for that combine-and-score logic — used by
-both the ``eval_ensembles.py`` CLI and the Studio ``/api/ensemble`` endpoint.
+both the ``eval_ensembles.py`` CLI and the Workbench ``/api/ensemble`` endpoint.
 
 Prediction file format (from ``dump_predictions`` / the benchmark run)::
 

@@ -3,15 +3,15 @@ title: "Agent Bouncer — a tiny, fast LLM safety guardrail (SLM)"
 description: "Open-source small language model (SLM) guardrail for LLMs and AI agents: detects prompt injection, jailbreaks, and unsafe content on the request path. Fine-tuned + RL-tuned (GRPO), benchmarked vs GPT-4o-mini, GPT-5.2, and OpenAI Moderation."
 ---
 
-![Agent Bouncer — Benchmark Studio](media/agent-bouncer.png)
+![Agent Bouncer Workbench](media/agent-bouncer.png)
 
 # Agent Bouncer
 
 **A tiny, fast safety bouncer for LLMs and agents** — screens prompts, tool calls, and
 outputs *before* they reach your model. SLM guardrails, trained with **fine-tuning + RL**,
-**benchmarked** on a standard suite, and shipped with an honest scoreboard and a web studio.
+**benchmarked** on a standard suite, and shipped with an honest scoreboard and a web Workbench.
 
-![Benchmark Studio](media/benchmark-studio.png)
+![Agent Bouncer Workbench](media/benchmark-studio.png)
 
 ## Highlights
 
@@ -21,14 +21,14 @@ outputs *before* they reach your model. SLM guardrails, trained with **fine-tuni
 - **Full training lifecycle**: model registry (Qwen3, DeepSeek-R1-1.5B, SmolLM2-1.7B, Gemma-1B),
   configurable SFT/GRPO/DPO, **versioning**, **experiment tracking**, **hardware capture**, and
   **train/test leakage guards**.
-- **Benchmark Studio** — configure, train, test, and compare from a polished web UI, with a
+- **Agent Bouncer Workbench** — configure, train, test, and compare from a polished web UI, with a
   **Leaderboard** (results table + ROC/PR/AUC curves), a **PDF report** export, and an
   **interactive ensemble builder**.
 
 ## Headline result (7 benchmarks, one harness)
 
 > **Illustrative figures from a reference run** — the repo ships with an empty results directory.
-> Run `make bench` (or use the Studio) to generate your own; numbers vary with hardware, sampling,
+> Run `make bench` (or use the Workbench) to generate your own; numbers vary with hardware, sampling,
 > and model versions.
 
 | Guard | Params | macro-F1 | macro-FPR@benign ↓ | p50 ms ↓ |
@@ -66,7 +66,7 @@ student training material:
 
 ```bash
 git clone <your-repo-url> agent-bouncer && cd agent-bouncer
-make setup && ./start.sh          # → http://127.0.0.1:8000  (Benchmark Studio)
+make setup && ./start.sh          # → http://127.0.0.1:8000  (Agent Bouncer Workbench)
 ```
 
 Or drive everything from the CLI / `make` targets — see the [README](https://github.com/rrahimi-uci/agent-bouncer#readme).

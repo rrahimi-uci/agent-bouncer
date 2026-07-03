@@ -5,8 +5,8 @@ title: The guided training workflow
 # The guided training & evaluation workflow
 
 An end-to-end, guided path from **benchmark → sampling → model + technique → train → test →
-save → compare**. Every step is available in the **Benchmark Studio** (`./start.sh`) and via the
-API/CLI. The Studio's tabs mirror the flow: **Overview** (scoreboard), **Explore Benchmarks**,
+save → compare**. Every step is available in the **Agent Bouncer Workbench** (`./start.sh`) and via the
+API/CLI. The Workbench tabs mirror the flow: **Overview** (scoreboard), **Explore Benchmarks**,
 **Datasets Creation**, **Train & Test**, **Experiments**, and **Leaderboard** (macro-average
 results table, ROC/PR/AUC curves, a **Generate PDF report** button, and an **interactive ensemble
 builder**). Invalid choices are prevented, and train/test separation is guaranteed.

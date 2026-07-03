@@ -74,10 +74,10 @@ model family — rather than another copy of the same recipe.
 and lower latency/cost — but don't claim F1 parity with GPT-5.2 Low. The chosen `ensemble-*` columns are
 merged into the scoreboard (`outputs/benchmark_results.json`) and appear on the **Leaderboard**.
 
-## Build ensembles interactively in the Studio
+## Build ensembles interactively in the Workbench
 
 You don't need the CLI to explore ensembles. Every benchmark run dumps each guard's per-sample
-predictions to `outputs/predictions/<guard>.json`, and the **Benchmark Studio → Leaderboard** tab has
+predictions to `outputs/predictions/<guard>.json`, and the **Agent Bouncer Workbench → Leaderboard** tab has
 an **Ensemble builder**:
 
 1. Pick two or more member guards (any guard that has dumped predictions — trained models, GPT

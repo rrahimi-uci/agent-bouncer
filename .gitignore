@@ -36,5 +36,5 @@ wandb/
 .idea/
 .vscode/
 
-# Benchmark Studio runtime
+# Agent Bouncer Workbench runtime
 .studio.pid

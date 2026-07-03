@@ -12,11 +12,13 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import tempfile
 
 from agent_bouncer.data.split import assert_no_leakage, train_test_split
 
 OUT_DIR = "data/train_sets"
+_TRAINING_SET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 #: Strategy catalog surfaced to the UI/CLI.
@@ -71,6 +73,22 @@ def validate_strategy_sources(strategy: str, sources: list[str]) -> None:
         raise ValueError(f"{strategy!r} needs {source_bounds_text(spec)}, got {n_sources}")
 
 
+def validate_training_set_name(name: str) -> str:
+    """Return a safe training-set directory name or raise ``ValueError``.
+
+    Names become subdirectories under ``data/train_sets``. Keep them as plain slugs so
+    API/CLI callers cannot traverse outside that root or create ambiguous hidden paths.
+    """
+    cleaned = (name or "").strip()
+    if not cleaned:
+        raise ValueError("training set name is required")
+    if os.path.isabs(cleaned) or "/" in cleaned or "\\" in cleaned or cleaned in {".", ".."}:
+        raise ValueError("training set name must be a plain directory name")
+    if not _TRAINING_SET_NAME_RE.fullmatch(cleaned):
+        raise ValueError("training set name may contain only letters, numbers, '.', '_' and '-'")
+    return cleaned
+
+
 def _balanced(records: list[dict], per_class: int, rng: random.Random) -> list[dict]:
     safe = [r for r in records if r["label"] == "safe"]
     unsafe = [r for r in records if r["label"] == "unsafe"]
@@ -99,6 +117,7 @@ def build_training_set(
     the returned train and test sets are guaranteed leakage-free.
     """
     validate_strategy_sources(strategy, sources)
+    name = validate_training_set_name(name)
 
     if loader is None:
         from agent_bouncer.evaluation.benchmarks import load_benchmark

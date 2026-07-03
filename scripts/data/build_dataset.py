@@ -37,7 +37,7 @@ def main() -> None:
     print(f"[build] train={meta['n_train']} ({meta['train_safe']} safe / {meta['train_unsafe']} unsafe) "
           f"· held-out test={meta['n_test']} · leakage_checked={meta['leakage_checked']}", flush=True)
     print(f"[build] wrote {meta['train_path']}", flush=True)
-    print("DATASET_BUILT=" + args.name)
+    print("DATASET_BUILT=" + meta["name"])
 
 
 if __name__ == "__main__":

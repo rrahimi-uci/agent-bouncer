@@ -1,4 +1,4 @@
-"""Render the Studio leaderboard as a self-contained HTML report and convert it to
+"""Render the Workbench leaderboard as a self-contained HTML report and convert it to
 PDF with headless Chrome (no extra Python deps).
 
 The leaderboard is the macro-average (across benchmarks) of every guard scored in

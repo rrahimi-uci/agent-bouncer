@@ -227,17 +227,22 @@ def train_and_record(model_key: str, technique: str, *, train_data: str,
     tmp.close()
 
     t0 = time.perf_counter()
-    if technique == "sft":
-        from agent_bouncer.training.sft import run_sft
-        run_sft(tmp.name)
-    elif technique == "grpo":
-        from agent_bouncer.training.grpo import run_grpo
-        run_grpo(tmp.name)
-    else:
-        from agent_bouncer.training.dpo import run_dpo
-        run_dpo(tmp.name)
+    try:
+        if technique == "sft":
+            from agent_bouncer.training.sft import run_sft
+            run_sft(tmp.name)
+        elif technique == "grpo":
+            from agent_bouncer.training.grpo import run_grpo
+            run_grpo(tmp.name)
+        else:
+            from agent_bouncer.training.dpo import run_dpo
+            run_dpo(tmp.name)
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except FileNotFoundError:
+            pass
     elapsed = round(time.perf_counter() - t0, 1)
-    os.unlink(tmp.name)
 
     exp = X.Experiment(
         id=f"{name}-{stamp}", kind="train", model_key=model_key,
@@ -318,10 +323,17 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
     for bench in benchmarks:
         print(f"loading benchmark {bench}", flush=True)
         recs = loader(bench)
+        if not recs:
+            raise ValueError(f"benchmark/test set {bench!r} is empty")
         leaked = set(find_leakage(train_recs, recs)) if train_recs else set()
         clean = [r for r in recs if _norm(r.get("text")) not in leaked]
         leakage[bench] = {"n": len(recs), "dropped_leaked": len(recs) - len(clean)}
         n = len(clean)
+        if not clean:
+            raise ValueError(
+                f"no clean samples left for {bench!r} after leakage filtering "
+                f"({leakage[bench]['dropped_leaked']}/{len(recs)} dropped)"
+            )
         verdicts = []
         worker_count = max(1, min(int(workers or 1), n or 1))
         throttle, t0 = Throttle(2.0), time.perf_counter()
@@ -367,7 +379,7 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
         m = compute_metrics(gold, [v.decision for v in verdicts], lat).to_dict()
         m["roc_auc"] = (m["recall"] + 1.0 - m["fpr_on_benign"]) / 2.0  # single-operating-point AUC
         metrics[bench] = m
-        # format kept in sync with the Studio's live test-result parser (_TEST_RE)
+        # format kept in sync with the Workbench's live test-result parser (_TEST_RE)
         print(f"  [{bench}] {getattr(guard, 'name', '?')}: F1={m['f1']:.3f} P={m['precision']:.3f} "
               f"R={m['recall']:.3f} FPR={m['fpr_on_benign']:.3f} p90={m['latency_p90_ms']:.0f}ms "
               f"thr={m['throughput_per_s']:.1f}/s (dropped {leakage[bench]['dropped_leaked']} leaked)",
@@ -388,6 +400,15 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
     arch = train_exp.get("params", {}).get("arch", "decoder")
     out_dir = train_exp["output_dir"]
     train_recs = read_jsonl(train_exp["data"]["train"]) if os.path.exists(train_exp["data"]["train"]) else []
+    test_recs: list[dict] | None = None
+    test_name: str | None = None
+    if test_set:
+        if not os.path.exists(test_set):
+            raise ValueError(f"test set not found: {test_set}")
+        test_name = os.path.basename(os.path.dirname(test_set)) or "test-set"
+        test_recs = read_jsonl(test_set)
+        if not test_recs:
+            raise ValueError(f"test set is empty: {test_set}")
 
     print(f"🔧 Loading guard {model_key} ({arch}) from {out_dir} on {device}", flush=True)
     guard = _load_guard(model_key, arch, out_dir, train_exp.get("technique", "sft"), device)
@@ -400,11 +421,9 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
     stamp, created = X.now()
     if test_set:
         # test on a created dataset's held-out split (train on train-1 → test on test-1)
-        name = os.path.basename(os.path.dirname(test_set)) or "test-set"
-        test_recs = read_jsonl(test_set) if os.path.exists(test_set) else []
-        benchmarks = [name]
+        benchmarks = [test_name or "test-set"]
         metrics, leakage = score_guard(guard, benchmarks, train_recs=train_recs,
-                                       loader=lambda b: test_recs, workers=worker_count)
+                                       loader=lambda b: test_recs or [], workers=worker_count)
     else:
         from agent_bouncer.evaluation.benchmarks import BENCHMARKS, load_benchmark
         benchmarks = benchmarks or list(BENCHMARKS)

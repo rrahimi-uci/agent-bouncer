@@ -135,8 +135,8 @@ flowchart TD
         HW["tracking/hardware.py — cross-OS hardware snapshot"]
     end
     subgraph SV["serving/"]
-        API["serving/api.py — FastAPI /screen + Studio"]
-        DASH["serving/dashboard.html — Benchmark Studio UI"]
+        API["serving/api.py — FastAPI /screen + Workbench"]
+        DASH["serving/dashboard.html — Agent Bouncer Workbench UI"]
     end
 
     SCH --> GRD --> MET
@@ -174,7 +174,7 @@ flowchart TD
 | `evaluation/*`         | `metrics`, `harness`, benchmark registry, OpenAI + incumbent guards, ROC/AUC, reports       |
 | `tracking/experiments` | experiment store + model versioning (JSON, no server)                                           |
 | `tracking/hardware`    | CPU/GPU/memory/runtime snapshot per run (cross-OS)                                              |
-| `serving`              | FastAPI`/screen` API **and** the Benchmark Studio dashboard (train/test/experiments)    |
+| `serving`              | FastAPI`/screen` API **and** the Agent Bouncer Workbench dashboard (train/test/experiments)    |
 
 ---
 
@@ -301,7 +301,7 @@ flowchart LR
   at test time, any benchmark prompt found in the model's *training* data is **dropped and
   reported**, so a model is never scored on what it trained on.
 - **Orchestration** (`training/runner.py`) — `train_and_record` / `evaluate_and_record`, driven
-  by `scripts/train/run_training.py`, `scripts/eval/run_testing.py`, and the Studio's `/api/train` `/api/test`.
+  by `scripts/train/run_training.py`, `scripts/eval/run_testing.py`, and the Workbench's `/api/train` `/api/test`.
 
 ## 7 · Evaluation harness & the benchmark suite
 
@@ -317,7 +317,7 @@ flowchart LR
     RUN --> J["outputs/benchmark_results.json<br/>(merge-on-write)"]
     RUN --> CU["compute_curves → outputs/curves.json"]
     J --> RPT["report.render_benchmark_report → BENCHMARKS.md"]
-    J --> UI["Benchmark Studio"]
+    J --> UI["Agent Bouncer Workbench"]
     CU --> UI
 ```
 
@@ -346,9 +346,9 @@ production — and it's the number incumbents underreport. It is also baked into
 
 ---
 
-## 9 · Serving & the Benchmark Studio
+## 9 · Serving & the Agent Bouncer Workbench
 
-`serving/api.py` exposes the guard as `POST /screen` **and** serves the Benchmark Studio — a
+`serving/api.py` exposes the guard as `POST /screen` **and** serves the Agent Bouncer Workbench — a
 web UI to **browse benchmark contents**, **build training sets** (by strategy), **train /
 test** SLM guards (streamed live), and **compare experiments** with hardware + P90 graphs.
 Tabs: Overview · Benchmarks · Datasets · Train & Test · Experiments · ROC & AUC.
@@ -389,11 +389,11 @@ flowchart LR
     s2 --> s3["make bench<br/>(download + score all guards)"]
     s3 --> s4["compute_curves → curves.json"]
     s4 --> s5["render → BENCHMARKS.md"]
-    s5 --> s6["make serve / ./start.sh<br/>→ Benchmark Studio"]
+    s5 --> s6["make serve / ./start.sh<br/>→ Agent Bouncer Workbench"]
 ```
 
 Everything is seeded and deterministic; benchmark subsets are cached; API guards are skipped
-(never faked) when a key is absent. The CLI, the `make` targets, and the Benchmark Studio all
+(never faked) when a key is absent. The CLI, the `make` targets, and the Workbench all
 drive the same path.
 
 ---

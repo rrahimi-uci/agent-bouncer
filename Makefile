@@ -63,7 +63,7 @@ test-model:  ## Test a trained version against benchmarks (exp=<experiment-id> [
 
 serve: studio  ## Alias for `studio`
 
-studio:  ## Launch the Benchmark Studio dashboard + /screen API (http://127.0.0.1:8000)
+studio:  ## Launch the Agent Bouncer Workbench dashboard + /screen API (http://127.0.0.1:8000)
 	uvicorn agent_bouncer.serving.api:app --host 127.0.0.1 --port 8000
 
 test:  ## Run tests
@@ -78,11 +78,11 @@ format:  ## Auto-format with ruff
 clean:  ## Remove caches and build artifacts
 	rm -rf .pytest_cache .ruff_cache **/__pycache__ dist build *.egg-info
 
-clean-runs:  ## Remove ALL trained models + Studio results/experiments (keeps datasets + benchmark caches)
+clean-runs:  ## Remove ALL trained models + Workbench results/experiments (keeps datasets + benchmark caches)
 	rm -rf outputs/models outputs/model_store outputs/experiments outputs/predictions
 	rm -rf outputs/demo-encoder outputs/demo-decoder-sft outputs/demo-grpo outputs/grpo-qwen3-0.6b \
 	       outputs/decoder-sft-Qwen3-1.7B outputs/smoke-grpo outputs/smoke-sft
 	rm -f  outputs/benchmark_results.json outputs/curves.json outputs/ensemble_results.json \
 	       outputs/demo_results.json outputs/BENCHMARKS.md outputs/MODEL_CARD.md outputs/RESULTS.md
-	@echo "✓ cleaned trained models + experiments + Studio diagrams"
+	@echo "✓ cleaned trained models + experiments + Workbench diagrams"
 	@echo "  kept: data/train_sets (datasets), data/benchmarks (caches), outputs/logs"

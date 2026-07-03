@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="agent-bouncer.png" alt="Agent Bouncer — Benchmark Studio" width="360">
+<img src="agent-bouncer.png" alt="Agent Bouncer Workbench" width="360">
 
-# Agent Bouncer — Benchmark Studio
+# Agent Bouncer Workbench
 
 **Train, benchmark &amp; compare small-model safety guardrails for LLMs &amp; agents.**
 
@@ -12,11 +12,11 @@ Screens prompts, tool calls, and outputs *before* they reach your model — and 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10–3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](pyproject.toml)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-7%20standard-4c8dff.svg)](docs/benchmarks.md)
-[![Studio](https://img.shields.io/badge/UI-Benchmark%20Studio-8b6dff.svg)](#benchmark-studio-the-ui)
+[![Workbench](https://img.shields.io/badge/UI-Agent%20Bouncer%20Workbench-8b6dff.svg)](#workbench-ui)
 
 *SLM guardrails · fine-tuning &amp; RL · a standard benchmark suite · vs GPT-4o-mini &amp; GPT-5.2*
 
-![Benchmark Studio](docs/media/benchmark-studio.png)
+![Agent Bouncer Workbench](docs/media/benchmark-studio.png)
 
 </div>
 
@@ -24,7 +24,7 @@ Screens prompts, tool calls, and outputs *before* they reach your model — and 
 
 ## Contents
 
-[Why](#why) · [How it works](#how-it-works) · [Quickstart — 2 ways](#quickstart--two-ways-to-use-it) · [Benchmark Studio](#benchmark-studio-the-ui) · [Results](#results) · [The benchmark suite](#the-benchmark-suite) · [The three regimes](#the-three-regimes-fine-tuning--rl) · [Project layout](#project-layout) · [Reproduce](#reproduce) · [Architecture](docs/architecture.md)
+[Why](#why) · [How it works](#how-it-works) · [Quickstart — 2 ways](#quickstart--two-ways-to-use-it) · [Workbench](#workbench-ui) · [Results](#results) · [The benchmark suite](#the-benchmark-suite) · [The three regimes](#the-three-regimes-fine-tuning--rl) · [Project layout](#project-layout) · [Reproduce](#reproduce) · [Architecture](docs/architecture.md)
 
 ## Why
 
@@ -55,7 +55,7 @@ flowchart LR
     G --> B
     API["Frontier judges<br/>GPT-4o-mini · GPT-5.2 · Moderation"] --> B
     B --> M["Metrics<br/>P / R / F1 · FPR@benign · ROC-AUC · latency"]
-    M --> R["Report + Benchmark Studio UI"]
+    M --> R["Report + Workbench UI"]
 ```
 
 1. **Data** — pure, tested normalizers map every dataset onto one hazard taxonomy.
@@ -94,11 +94,11 @@ make test                        # green
   "surface": "user_prompt", "latency_ms": 0.05, "model": "keyword-baseline" }
 ```
 
-**2 · Studio (web UI)** — see below.
+**2 · Workbench (web UI)** — see below.
 
-## Benchmark Studio (the UI)
+## Workbench UI
 
-A professional **AI-engineering studio** to browse benchmark contents, build training sets,
+A professional **AI-engineering workbench** to browse benchmark contents, build training sets,
 fine-tune / RL-tune SLM guards, test them (leakage-guarded), and compare experiments — all
 with **Precision / Recall / F1 / ROC-AUC / latency / P90 / throughput** charts.
 
@@ -117,7 +117,7 @@ with **Precision / Recall / F1 / ROC-AUC / latency / P90 / throughput** charts.
 | **Experiments** | full history with **hardware**, model **comparison**, and **P90 graphs** |
 | **Leaderboard** | macro-average **results table** (P/R/F1/AUC/p50/p90, grouped into small models · GPT baselines · ensembles), ROC/PR curves + per-benchmark AUC, a **Generate PDF report** button, and an **interactive ensemble builder** (pick members + a strategy → scored onto the leaderboard) |
 
-Chart.js is vendored (offline); the studio opens pre-populated from `outputs/`. Screenshots:
+Chart.js is vendored (offline); the Workbench opens pre-populated from `outputs/`. Screenshots:
 [Benchmarks](docs/media/benchmark-studio-benchmarks.png) ·
 [Datasets](docs/media/benchmark-studio-datasets.png) ·
 [Experiments](docs/media/benchmark-studio-experiments.png) ·
@@ -139,7 +139,7 @@ every set is split into disjoint train / held-out test) then train on it:
 ```bash
 # 1) build a training set (strategy = balanced | mixed | over_refusal_aware | red_team)
 python scripts/data/build_dataset.py --strategy over_refusal_aware --name low-fpr --sources beavertails
-# 2) train a registered SLM on it   3) test it (leakage-guarded) — or do it all in the Studio
+# 2) train a registered SLM on it   3) test it (leakage-guarded) — or do it all in the Workbench
 python scripts/train/run_training.py --model smollm2-1.7b --technique sft --train-data data/train_sets/low-fpr/train.jsonl --max-steps 40
 python scripts/eval/run_testing.py  --exp <experiment-id> --per-class 40 --device mps
 ```
@@ -147,7 +147,7 @@ python scripts/eval/run_testing.py  --exp <experiment-id> --per-class 40 --devic
 ## Results
 
 > **Illustrative figures from a reference run** — the repo ships with an empty `outputs/`. Generate
-> your own with `make bench` (or the Studio), then open the **Leaderboard** tab / export a PDF.
+> your own with `make bench` (or the Workbench), then open the **Leaderboard** tab / export a PDF.
 > Numbers vary with hardware, sampling, and model versions.
 
 7-benchmark run, `per_class=100`, one harness. The reasoning judge is scored at **three effort
@@ -171,7 +171,7 @@ tiers** (`openai-gpt-5.2-low` / `-medium` / `-high`); the row below is the `low`
   (lowest FPR of any capable guard) — but at ~130× the encoder's latency, not a per-call gate.
 - **Red-teaming (prompt-injection) is the hard axis** for every guard.
 - *Latency is device-dependent (captured per run):* encoder/keyword on **CPU**, decoders on
-  **Apple MPS**, OpenAI over the **API** — which is exactly why the Studio records hardware.
+  **Apple MPS**, OpenAI over the **API** — which is exactly why the Workbench records hardware.
 
 **Can an ensemble catch GPT-5.2 Low?** Partly. Combining the SLMs (`combine()` over cached
 per-sample scores) beats *every* single SLM — `ensemble-union2` reaches **macro-F1 0.692** (vs 0.673
@@ -223,7 +223,7 @@ src/agent_bouncer/
 ├── training/     # SFT · GRPO · DPO · verifiable rewards · runtime · train→version→record runner
 ├── evaluation/   # harness · benchmark registry · metrics · ROC/AUC curves · OpenAI guards · report
 ├── tracking/     # experiment store + versioning · cross-OS hardware snapshot
-├── serving/      # FastAPI /screen API + Benchmark Studio dashboard
+├── serving/      # FastAPI /screen API + Workbench dashboard
 ├── cli.py        # `agent-bouncer` CLI          └── deploy.py   # deployment helper
 └── __init__.py   # re-exports Verdict/Decision/Hazard; auto-loads .env
 
@@ -245,7 +245,7 @@ Verdict, Guard`), while internal modules import each other explicitly — so imp
 | `make demo` | fine-tune the encoder, confirm it beats the baseline |
 | `make bench` | download + run the 7-benchmark suite → `outputs/BENCHMARKS.md` |
 | `make curves` | ROC / PR / AUC → `outputs/curves.json` |
-| `./start.sh` | launch the Benchmark Studio dashboard |
+| `./start.sh` | launch the Agent Bouncer Workbench dashboard |
 | `make train-model model=smollm2-1.7b technique=sft max_steps=40` | train a registered model → versioned + tracked |
 | `make test-model exp=<id> device=mps` | test a trained version (leakage-guarded) → experiment |
 | `make train-sft` · `train-grpo` · `train-dpo` | config-driven fine-tune / RL / preference-tune |
@@ -257,7 +257,7 @@ skipped (never faked) when a key is absent. MLflow logging is optional.
 ## Status
 
 All roadmap phases are implemented and tested; the spine, training (SFT + GRPO/RL + DPO), the
-eval harness, the 7-benchmark suite, and the Studio all run live. Follow-ups need external
+eval harness, the 7-benchmark suite, and the Workbench all run live. Follow-ups need external
 access — gated incumbents/benchmarks (`HF_TOKEN`) and a GPU-scale GRPO run. See
 [`docs/roadmap.md`](docs/roadmap.md).
 

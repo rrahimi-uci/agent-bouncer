@@ -61,7 +61,7 @@ flowchart LR
     note["only A,B train · r≈8–32 · merge at the end"]
 ```
 
-Knobs you'll see in the Studio / configs: `lora_r` (rank), `lora_alpha` (scaling), `dropout`.
+Knobs you'll see in the Workbench / configs: `lora_r` (rank), `lora_alpha` (scaling), `dropout`.
 Higher `r` = more capacity + more compute. → [`training/runner.py::build_config`](../src/agent_bouncer/training/runner.py)
 
 ---

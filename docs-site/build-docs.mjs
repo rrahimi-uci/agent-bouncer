@@ -1,5 +1,5 @@
 /**
- * CALIBER documentation site generator.
+ * Agent Bouncer documentation site generator.
  *
  * Reads the architecture series of markdown files under `docs/` and renders each
  * into a polished, self-navigating HTML page under `docs-site/`, reusing the
@@ -53,7 +53,7 @@ function writeTextAtomic(dest, contents) {
 
 const GROUPS = [
   { id: "learn", title: "Learn" },
-  { id: "studio", title: "Studio & workflow" },
+  { id: "workbench", title: "Workbench & workflow" },
   { id: "benchmarks", title: "Benchmarks & results" },
   { id: "architecture", title: "Architecture" },
   { id: "strategy", title: "Roadmap" },
@@ -63,12 +63,12 @@ const MODULES = [
   { md: "slm-architectures.md", out: "m-slm-architectures.html", group: "learn", label: "SLM architectures", blurb: "Encoder vs decoder guardrails, the modern decoder block (RMSNorm · RoPE · GQA · SwiGLU), and a deep dive into each base model — DistilBERT, ModernBERT, Qwen3-0.6B/1.7B, DeepSeek-R1-Distill, SmolLM2." },
   { md: "fine-tuning.md", out: "m-fine-tuning.html", group: "learn", label: "Fine-tuning techniques", blurb: "SFT · LoRA · GRPO (RLVR) · DPO explained with diagrams — what each technique optimizes, when to reach for it, and which technique applies to which base model." },
   { md: "taxonomy.md", out: "m-taxonomy.html", group: "learn", label: "Safety taxonomy", blurb: "The hazard taxonomy the guards label against — the safe/unsafe decision, hazard categories, and how benchmark labels map onto them (positive class = unsafe)." },
-  { md: "workflow.md", out: "m-workflow.html", group: "studio", label: "Guided workflow", blurb: "The end-to-end loop in the Benchmark Studio: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate & compare on the leaderboard." },
-  { md: "datasets.md", out: "m-datasets.html", group: "studio", label: "Datasets", blurb: "How training sets are composed from benchmark sources, the balancing strategies, and the disjoint train/test split with an enforced no-leakage guarantee." },
+  { md: "workflow.md", out: "m-workflow.html", group: "workbench", label: "Guided workflow", blurb: "The end-to-end loop in the Agent Bouncer Workbench: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate & compare on the leaderboard." },
+  { md: "datasets.md", out: "m-datasets.html", group: "workbench", label: "Datasets", blurb: "How training sets are composed from benchmark sources, the balancing strategies, and the disjoint no-leakage split." },
   { md: "benchmarks.md", out: "m-benchmarks.html", group: "benchmarks", label: "Benchmark suite", blurb: "The seven-benchmark standard suite across guardrail, red-teaming, and over-refusal axes; every guard scored through one harness; over-blocking (FPR@benign) as the headline usability metric." },
-  { md: "ensembles.md", out: "m-ensembles.html", group: "benchmarks", label: "Ensembles", blurb: "Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Studio." },
-  { md: "architecture.md", out: "m-architecture.html", group: "architecture", label: "System architecture", blurb: "How Agent Bouncer fits together: the guard interface, the FastAPI Benchmark Studio, the evaluation harness, training + versioning, experiment tracking, and the model store." },
-  { md: "roadmap.md", out: "m-roadmap.html", group: "strategy", label: "Roadmap", blurb: "Where Agent Bouncer is headed — planned guards, benchmarks, training techniques, and Studio features." },
+  { md: "ensembles.md", out: "m-ensembles.html", group: "benchmarks", label: "Ensembles", blurb: "Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Workbench." },
+  { md: "architecture.md", out: "m-architecture.html", group: "architecture", label: "System architecture", blurb: "How Agent Bouncer fits together: the guard interface, the FastAPI Agent Bouncer Workbench, the evaluation harness, training + versioning, experiment tracking, and the model store." },
+  { md: "roadmap.md", out: "m-roadmap.html", group: "strategy", label: "Roadmap", blurb: "Where Agent Bouncer is headed — planned guards, benchmarks, training techniques, and Workbench features." },
 ];
 
 // Fast lookup: normalized "<dir>/<file>.md" (relative to docs/) -> output html.

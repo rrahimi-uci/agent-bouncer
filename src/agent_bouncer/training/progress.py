@@ -1,4 +1,4 @@
-"""Streaming progress for the Studio live console.
+"""Streaming progress for the Workbench live console.
 
 Long train/eval runs are otherwise silent — transformers' tqdm bar is carriage-return based
 (dropped by the server's line reader) and the eval loop just runs. So both the training

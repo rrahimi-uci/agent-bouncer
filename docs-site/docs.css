@@ -65,7 +65,7 @@
 /* Dark theme — overrides the shared variables plus the handful of
    selectors that hardcode light surfaces. Light mode is untouched. */
 :root[data-theme="dark"] {
-  /* CALIBER app dark theme — blue-tinted slate surfaces (matches the SPA: html.dark #0b0f1a,
+  /* Agent Bouncer app dark theme — blue-tinted slate surfaces (matches the SPA: html.dark #0b0f1a,
      cards #111827, surface-200 #1f2937, slate borders), shared violet accent. */
   --bg: #0b0f1a;
   --bg-card: #111827;
@@ -771,7 +771,7 @@ body[data-doc-page="landing"] .content > section {
   letter-spacing: -.03em;
 }
 
-/* Highlight the CALIBER acronym initials inside the expanded title. */
+/* Highlight acronym initials inside expanded titles. */
 .cal-acro {
   color: var(--accent);
   font-weight: 800;

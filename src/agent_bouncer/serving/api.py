@@ -1,4 +1,4 @@
-"""FastAPI app: the guard `/screen` endpoint **and** the Benchmark Studio dashboard.
+"""FastAPI app: the guard `/screen` endpoint **and** the Agent Bouncer Workbench dashboard.
 
 The dashboard (served at ``/``) lets you pick benchmarks, models + tuning
 techniques, and a test-set size, then launches the real pipeline as a subprocess
@@ -28,7 +28,12 @@ from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.core.schema import Surface, Verdict
 from agent_bouncer.data import read_jsonl
 from agent_bouncer.data.sampling import SAMPLING_STRATEGIES, SPLIT_STRATEGIES
-from agent_bouncer.data.training_sets import STRATEGIES, list_training_sets, validate_strategy_sources
+from agent_bouncer.data.training_sets import (
+    STRATEGIES,
+    list_training_sets,
+    validate_strategy_sources,
+    validate_training_set_name,
+)
 from agent_bouncer.evaluation.benchmarks import BENCHMARKS, GATED_BENCHMARKS
 from agent_bouncer.models.registry import TECHNIQUES, catalog, technique_matrix
 from agent_bouncer.tracking import experiments as X
@@ -73,7 +78,7 @@ async def _lifespan(app: FastAPI):
                          return_exceptions=True)
 
 
-app = FastAPI(title="Agent Bouncer — Benchmark Studio", version="0.1.0", lifespan=_lifespan)
+app = FastAPI(title="Agent Bouncer Workbench", version="0.1.0", lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 _guard = KeywordGuard()
 
@@ -196,7 +201,8 @@ def report(sort: str = "f1") -> FileResponse:
     try:
         render_pdf(html_str, out)
     except RuntimeError as exc:
-        os.remove(out)
+        if os.path.exists(out):
+            os.remove(out)
         raise HTTPException(501, str(exc)) from exc
     return FileResponse(out, media_type="application/pdf",
                         filename="agent-bouncer-leaderboard.pdf",
@@ -805,11 +811,12 @@ async def start_eval(cfg: EvalConfig) -> dict:
 @app.post("/api/dataset/build")
 async def start_build(cfg: BuildConfig) -> dict:
     try:
+        name = validate_training_set_name(cfg.name)
         validate_strategy_sources(cfg.strategy, cfg.sources)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     cmd = [sys.executable, "scripts/data/build_dataset.py", "--strategy", cfg.strategy,
-           "--name", cfg.name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
+           "--name", name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
     if cfg.holdout_ratio is not None:
         cmd += ["--holdout", str(cfg.holdout_ratio)]
     return {"run_id": _launch([cmd], kind="dataset"), "steps": 1}

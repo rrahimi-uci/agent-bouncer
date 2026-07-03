@@ -15,7 +15,8 @@ def test_health():
 
 def test_dashboard_route_serves_html():
     r = client.get("/")
-    assert r.status_code == 200 and b"Agent Bouncer" in r.content
+    assert r.status_code == 200 and b"Agent Bouncer Workbench" in r.content
+    assert b"Benchmark Studio" not in r.content
 
 
 def test_benchmark_pages_serve_html_and_404_unknown():
@@ -106,6 +107,21 @@ def test_build_endpoint_builds_command(monkeypatch):
     assert r.json()["run_id"] == "rid2"
     cmd = " ".join(captured["c"][0])
     assert "build_dataset.py" in cmd and "--strategy mixed" in cmd and "beavertails xstest" in cmd
+
+
+def test_build_endpoint_rejects_unsafe_dataset_name(monkeypatch):
+    called = False
+
+    def fake_launch(cmds, **kw):
+        nonlocal called
+        called = True
+        return "rid"
+
+    monkeypatch.setattr(api, "_launch", fake_launch)
+    r = client.post("/api/dataset/build", json={"strategy": "mixed", "name": "../escape",
+                                                "sources": ["beavertails"], "per_class": 50})
+    assert r.status_code == 400
+    assert called is False
 
 
 def test_parse_line_dataset_marker():
@@ -397,3 +413,30 @@ def test_report_returns_pdf(monkeypatch, tmp_path):
     r = client.get("/api/report")
     assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
+
+
+def test_report_runtime_error_stays_501_when_renderer_removes_temp(monkeypatch, tmp_path):
+    import json
+    import os
+
+    results = {"per_class": 10, "meta": {}, "results": {
+        "b1": {"keyword-baseline": {"precision": .6, "recall": .5, "f1": .55,
+                                    "roc_auc": .6, "fpr_on_benign": .3,
+                                    "latency_p50_ms": 1, "latency_p90_ms": 2,
+                                    "throughput_per_s": 1000}}
+    }}
+    rj = tmp_path / "results.json"
+    rj.write_text(json.dumps(results))
+    monkeypatch.setattr(api, "RESULTS_JSON", rj)
+
+    from agent_bouncer.serving import leaderboard_report
+
+    def fail_after_remove(html, out, **kw):
+        if os.path.exists(out):
+            os.remove(out)
+        raise RuntimeError("chrome unavailable")
+
+    monkeypatch.setattr(leaderboard_report, "render_pdf", fail_after_remove)
+    r = client.get("/api/report")
+    assert r.status_code == 501
+    assert "chrome unavailable" in r.json()["detail"]

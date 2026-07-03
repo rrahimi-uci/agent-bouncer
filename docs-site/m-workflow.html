@@ -74,14 +74,14 @@
     <main class="main" id="docsContent">
       <article class="content doc-body">
         <nav class="doc-breadcrumb" aria-label="Breadcrumb">
-          <span>Studio &amp; workflow</span>
+          <span>Workbench &amp; workflow</span>
           <span aria-hidden="true">/</span>
           <span class="current">Guided workflow</span>
         </nav>
         <header class="doc-header">
-          <div class="doc-eyebrow">Studio &amp; workflow</div>
+          <div class="doc-eyebrow">Workbench &amp; workflow</div>
           <h1 id="top">Guided workflow</h1>
-          <p class="doc-summary">The end-to-end loop in the Benchmark Studio: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate &amp; compare on the leaderboard.</p>
+          <p class="doc-summary">The end-to-end loop in the Agent Bouncer Workbench: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate &amp; compare on the leaderboard.</p>
           <div class="doc-actions">
             <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
               Copy page
@@ -90,7 +90,7 @@
         </header>
 <p>--- title: The guided training workflow ---</p>
 <h1 id="the-guided-training-evaluation-workflow">The guided training &amp; evaluation workflow<a class="anchor" href="#the-guided-training-evaluation-workflow" aria-hidden="true" tabindex="-1">#</a></h1>
-<p>An end-to-end, guided path from <strong>benchmark → sampling → model + technique → train → test → save → compare</strong>. Every step is available in the <strong>Benchmark Studio</strong> (<code>./start.sh</code>) and via the API/CLI. The Studio's tabs mirror the flow: <strong>Overview</strong> (scoreboard), <strong>Explore Benchmarks</strong>, <strong>Datasets Creation</strong>, <strong>Train &amp; Test</strong>, <strong>Experiments</strong>, and <strong>Leaderboard</strong> (macro-average results table, ROC/PR/AUC curves, a <strong>Generate PDF report</strong> button, and an <strong>interactive ensemble builder</strong>). Invalid choices are prevented, and train/test separation is guaranteed.</p>
+<p>An end-to-end, guided path from <strong>benchmark → sampling → model + technique → train → test → save → compare</strong>. Every step is available in the <strong>Agent Bouncer Workbench</strong> (<code>./start.sh</code>) and via the API/CLI. The Workbench tabs mirror the flow: <strong>Overview</strong> (scoreboard), <strong>Explore Benchmarks</strong>, <strong>Datasets Creation</strong>, <strong>Train &amp; Test</strong>, <strong>Experiments</strong>, and <strong>Leaderboard</strong> (macro-average results table, ROC/PR/AUC curves, a <strong>Generate PDF report</strong> button, and an <strong>interactive ensemble builder</strong>). Invalid choices are prevented, and train/test separation is guaranteed.</p>
 <div class="diagram"><pre class="mermaid">flowchart LR
     A["① Benchmarks&lt;br/&gt;pick sources"] --&gt; B["② Sampling &amp; split&lt;br/&gt;random/stratified · ratio/k-fold"]
     B --&gt; C["③ Model + technique&lt;br/&gt;valid combos only"]

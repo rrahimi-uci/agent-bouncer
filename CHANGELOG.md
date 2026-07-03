@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **Leaderboard** tab in the Benchmark Studio: a macro-average results table (Precision /
+- **Leaderboard** tab in the Agent Bouncer Workbench: a macro-average results table (Precision /
   Recall / F1 / ROC-AUC / p50 / p90) grouped into small models · GPT baselines · ensembles,
   with best-in-column highlighting and sortable columns, above the ROC/PR/AUC curves.
 - **Generate PDF report** button (`GET /api/report`) — renders the leaderboard to a styled PDF
@@ -26,13 +26,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- Renamed the web UI to **Agent Bouncer — Benchmark Studio**.
+- Renamed the web UI to **Agent Bouncer Workbench**.
 - Adopted `agent-bouncer.png` as the project logo across the app, docs site, and README.
 
 ### Removed
 
 - The Jupyter notebook workflow (`notebooks/`) and the `notebook` install extra — the CLI,
-  `make` targets, and the Benchmark Studio cover the same paths.
+  `make` targets, and the Workbench cover the same paths.
 
 ### Fixed
 
@@ -76,7 +76,7 @@ All notable changes to this project are documented here. The format follows
 - **Real GRPO (RLVR) from the SFT checkpoint** (`configs/model/grpo_from_sft.yaml`):
   completions stay short/terminal (0% clipped), live verifiable reward, KL stable; the
   RL model merges + loads as a standalone guard and is scored in the suite.
-- **Benchmark Studio dashboard** (`serve/api.py` + `serve/dashboard.html`): a FastAPI web
+- **Agent Bouncer Workbench dashboard** (`serve/api.py` + `serve/dashboard.html`): a FastAPI web
   UI to pick benchmarks / models + tuning technique / test-set size, launch the pipeline
   as a subprocess, and **stream each step over Server-Sent Events** — with live
   Precision / Recall / F1, over-blocking (FPR), latency, and **ROC / AUC** charts
@@ -99,7 +99,7 @@ All notable changes to this project are documented here. The format follows
   `scripts/train/run_training.py`, `scripts/eval/run_testing.py`) that records params, data, hardware,
   git, and metrics for every run. Leakage-checked testing drops+reports train∩test overlap.
 - **Metrics:** added **P90 latency** and **throughput** to `GuardMetrics`.
-- **Benchmark Studio lifecycle UI:** new **Train & Test** and **Experiments** tabs — model +
+- **Workbench lifecycle UI:** new **Train & Test** and **Experiments** tabs — model +
   version + param selection, live streamed training/testing, **P90 & throughput graphs**,
   a **hardware panel**, model comparison, and experiment history. New API endpoints
   (`/api/models`, `/api/experiments`, `/api/train`, `/api/test`, `/api/hardware`).

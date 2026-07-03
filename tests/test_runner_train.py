@@ -2,6 +2,9 @@
 with the heavy training/model bits mocked out (no torch, no downloads)."""
 
 import json
+import os
+
+import pytest
 
 from agent_bouncer.training import runner
 
@@ -57,6 +60,35 @@ def test_train_and_record(tmp_path, monkeypatch, capsys):
     assert "✅ Trained distilbert" in out
 
 
+def test_train_and_record_cleans_temp_config_when_trainer_fails(tmp_path, monkeypatch):
+    import agent_bouncer.training.sft as sft
+
+    seen = {}
+
+    def fail(cfg_path):
+        seen["cfg"] = cfg_path
+        assert os.path.exists(cfg_path)
+        raise RuntimeError("trainer exploded")
+
+    monkeypatch.setattr(sft, "run_sft", fail)
+    real_unlink = os.unlink
+    unlinked = []
+
+    def tracking_unlink(path):
+        unlinked.append(path)
+        real_unlink(path)
+
+    monkeypatch.setattr(runner.os, "unlink", tracking_unlink)
+    tr = tmp_path / "train.jsonl"
+    tr.write_text('{"text": "a", "label": "safe"}\n')
+
+    with pytest.raises(RuntimeError, match="trainer exploded"):
+        runner.train_and_record("distilbert", "sft", train_data=str(tr), params={"epochs": 1})
+
+    assert unlinked == [seen["cfg"]]
+    assert not os.path.exists(seen["cfg"])
+
+
 def test_training_console_helpers():
     assert runner.fmt_duration(45) == "45s"
     assert runner.fmt_duration(344) == "5m 44s"
@@ -84,7 +116,6 @@ def test_naming_helpers():
 
 
 def test_train_and_record_rejects_bad_technique():
-    import pytest
     with pytest.raises(ValueError, match="supports"):
         runner.train_and_record("distilbert", "grpo", train_data="x")  # encoder can't GRPO
 
@@ -146,3 +177,29 @@ def test_evaluate_on_created_test_set_drops_train_leakage(tmp_path, monkeypatch)
     assert exp["data"]["test_set"] == str(test)
     assert recorded["data"]["leakage"]["set-1"]["dropped_leaked"] == 1   # bad-leak removed
     assert recorded["metrics"]["set-1"]["f1"] == 1.0                     # clean rows scored perfectly
+
+
+def test_evaluate_created_test_set_missing_path_raises(tmp_path, monkeypatch):
+    train_exp = {"model_key": "qwen3-0.6b", "technique": "sft", "version": "v1",
+                 "base_hf_id": "hf", "output_dir": "/o", "params": {"arch": "decoder"},
+                 "data": {"train": str(tmp_path / "train.jsonl")}}
+    monkeypatch.setattr(runner.X, "get", lambda i: train_exp)
+    loaded = False
+
+    def load_guard(*a):
+        nonlocal loaded
+        loaded = True
+        return object()
+
+    monkeypatch.setattr(runner, "_load_guard", load_guard)
+
+    with pytest.raises(ValueError, match="test set not found"):
+        runner.evaluate_and_record("t1", test_set=str(tmp_path / "missing.jsonl"))
+    assert loaded is False
+
+
+def test_score_guard_raises_when_all_rows_leaked():
+    recs = [{"text": "same prompt", "label": "unsafe"}]
+
+    with pytest.raises(ValueError, match="no clean samples left"):
+        runner.score_guard(object(), ["b1"], loader=lambda b: recs, train_recs=recs)

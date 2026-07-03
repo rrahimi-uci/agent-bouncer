@@ -22,7 +22,7 @@ normalized to the unified taxonomy in [`data/loaders.py`](../src/agent_bouncer/d
 By default the headline scoreboard uses a **class-balanced subset (≤100/class)** so
 precision/recall are comparable across benchmarks of very different sizes. You can also run
 on the **full** benchmarks — `run_benchmarks.py --full` (or `--per-class 0`), and the Benchmark
-Studio's *Explore Benchmarks* tab / test controls (**size 0 = full**) — using the sets fetched by
+Workbench's *Explore Benchmarks* tab / test controls (**size 0 = full**) — using the sets fetched by
 [`download_full_benchmarks.py`](../scripts/data/download_full_benchmarks.py) (e.g. BeaverTails
 **3021**, ToxicChat **5083**, OpenAI-Moderation **1680**, XSTest **450**).
 
@@ -117,7 +117,7 @@ Latency is **device-dependent** (captured per run): encoder/keyword on **CPU**, 
   ROC is `(0,0)→(FPR,TPR)→(1,1)` and **AUC = (recall + 1 − FPR) / 2** — derived exactly from the
   stored recall/FPR (no re-running). By this measure GPT-5.2 leads (macro AUC ≈0.81), then
   GPT-4o-mini (≈0.79); the encoder's swept AUC (≈0.70) beats OpenAI Moderation (≈0.68) and the
-  decoders (≈0.67). The Benchmark Studio's **Leaderboard** tab plots all of these (ROC / PR curves
+  decoders (≈0.67). The Agent Bouncer Workbench's **Leaderboard** tab plots all of these (ROC / PR curves
   and ROC-AUC by benchmark) above the macro-average results table.
 
 ### Model size: Qwen3-0.6B vs 1.7B (SFT)

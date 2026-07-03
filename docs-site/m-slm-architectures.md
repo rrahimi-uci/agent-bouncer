@@ -195,7 +195,7 @@ flowchart LR
 - **Larger decoders (1.5–1.7B):** more capacity, more latency → **async / higher-value checks**.
 
 The [benchmark scoreboard](benchmarks.md) quantifies exactly this trade-off (macro-F1 vs
-`fpr_on_benign` vs p50/p90 latency), and the [Studio](index.md) lets you **train each of these
+`fpr_on_benign` vs p50/p90 latency), and the [Workbench](index.md) lets you **train each of these
 models yourself** and compare them on identical data.
 
 **Next:** [Fine-tuning techniques →](fine-tuning.md) · [The guided workflow →](workflow.md)

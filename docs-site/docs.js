@@ -15,7 +15,7 @@
   // Mermaid honours custom themeVariables only under the "base" theme; the
   // built-in "default"/"dark" themes ignore most of them, which is why diagrams
   // used to render in an off-brand lavender. We pin "base" and hand it the
-  // CALIBER violet-on-white (light) / violet-on-slate (dark) palette so every
+  // Agent Bouncer violet-on-white (light) / violet-on-slate (dark) palette so every
   // diagram matches the rest of the design system.
   var MERMAID_FONT =
     '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';

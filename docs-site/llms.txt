@@ -10,20 +10,20 @@ The pages below are the documentation, one per topic. Each link is the raw Markd
 - [Fine-tuning techniques](m-fine-tuning.md): SFT · LoRA · GRPO (RLVR) · DPO explained with diagrams — what each technique optimizes, when to reach for it, and which technique applies to which base model.
 - [Safety taxonomy](m-taxonomy.md): The hazard taxonomy the guards label against — the safe/unsafe decision, hazard categories, and how benchmark labels map onto them (positive class = unsafe).
 
-## Studio & workflow
+## Workbench & workflow
 
-- [Guided workflow](m-workflow.md): The end-to-end loop in the Benchmark Studio: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate & compare on the leaderboard.
-- [Datasets](m-datasets.md): How training sets are composed from benchmark sources, the balancing strategies, and the disjoint train/test split with an enforced no-leakage guarantee.
+- [Guided workflow](m-workflow.md): The end-to-end loop in the Agent Bouncer Workbench: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate & compare on the leaderboard.
+- [Datasets](m-datasets.md): How training sets are composed from benchmark sources, the balancing strategies, and the disjoint no-leakage split.
 
 ## Benchmarks & results
 
 - [Benchmark suite](m-benchmarks.md): The seven-benchmark standard suite across guardrail, red-teaming, and over-refusal axes; every guard scored through one harness; over-blocking (FPR@benign) as the headline usability metric.
-- [Ensembles](m-ensembles.md): Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Studio.
+- [Ensembles](m-ensembles.md): Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Workbench.
 
 ## Architecture
 
-- [System architecture](m-architecture.md): How Agent Bouncer fits together: the guard interface, the FastAPI Benchmark Studio, the evaluation harness, training + versioning, experiment tracking, and the model store.
+- [System architecture](m-architecture.md): How Agent Bouncer fits together: the guard interface, the FastAPI Agent Bouncer Workbench, the evaluation harness, training + versioning, experiment tracking, and the model store.
 
 ## Roadmap
 
-- [Roadmap](m-roadmap.md): Where Agent Bouncer is headed — planned guards, benchmarks, training techniques, and Studio features.
+- [Roadmap](m-roadmap.md): Where Agent Bouncer is headed — planned guards, benchmarks, training techniques, and Workbench features.

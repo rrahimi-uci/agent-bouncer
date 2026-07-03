@@ -172,7 +172,7 @@
     end
     FLOPs &amp; MEM &amp; LAT --&gt; GATE{"usable as a&lt;br/&gt;per-call gate?"}</pre></div>
 <ul><li><strong>Encoder (DistilBERT):</strong> one pass, no KV-cache, tiny → <strong>yes, per-call gate</strong>.</li><li><strong>Small decoder (Qwen3-0.6B):</strong> short JSON output + GQA → <strong>borderline</strong>, great on MPS/GPU.</li><li><strong>Larger decoders (1.5–1.7B):</strong> more capacity, more latency → <strong>async / higher-value checks</strong>.</li></ul>
-<p>The <a href="m-benchmarks.html">benchmark scoreboard</a> quantifies exactly this trade-off (macro-F1 vs <code>fpr_on_benign</code> vs p50/p90 latency), and the Studio lets you <strong>train each of these models yourself</strong> and compare them on identical data.</p>
+<p>The <a href="m-benchmarks.html">benchmark scoreboard</a> quantifies exactly this trade-off (macro-F1 vs <code>fpr_on_benign</code> vs p50/p90 latency), and the Workbench lets you <strong>train each of these models yourself</strong> and compare them on identical data.</p>
 <p><strong>Next:</strong> <a href="m-fine-tuning.html">Fine-tuning techniques →</a> · <a href="m-workflow.html">The guided workflow →</a></p>
         <footer>
           <p>

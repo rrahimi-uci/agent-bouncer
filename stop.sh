@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop the Agent Bouncer — Benchmark Studio server started by ./start.sh.
+# Stop the Agent Bouncer Workbench server started by ./start.sh.
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -44,7 +44,7 @@ if [ "$killed_children" = "1" ]; then
 fi
 
 if [ "$stopped" = "1" ]; then
-  echo "✓ Benchmark Studio stopped."
+  echo "✓ Agent Bouncer Workbench stopped."
 else
-  echo "• Benchmark Studio was not running."
+  echo "• Agent Bouncer Workbench was not running."
 fi

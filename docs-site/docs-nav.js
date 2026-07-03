@@ -27,7 +27,7 @@ window.DOCS_NAV = [
     ]
   },
   {
-    "section": "Studio & workflow",
+    "section": "Workbench & workflow",
     "links": [
       {
         "href": "m-workflow.html",

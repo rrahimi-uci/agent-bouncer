@@ -115,7 +115,7 @@
     X --&gt; W
     Y --&gt; O["output"]
     note["only A,B train · r≈8–32 · merge at the end"]</pre></div>
-<p>Knobs you'll see in the Studio / configs: <code>lora_r</code> (rank), <code>lora_alpha</code> (scaling), <code>dropout</code>. Higher <code>r</code> = more capacity + more compute. → <code>training/runner.py::build_config</code></p>
+<p>Knobs you'll see in the Workbench / configs: <code>lora_r</code> (rank), <code>lora_alpha</code> (scaling), <code>dropout</code>. Higher <code>r</code> = more capacity + more compute. → <code>training/runner.py::build_config</code></p>
 <p>---</p>
 <h2 id="grpo-rl-from-a-verifiable-reward">GRPO — RL from a <em>verifiable</em> reward<a class="anchor" href="#grpo-rl-from-a-verifiable-reward" aria-hidden="true" tabindex="-1">#</a></h2>
 <p><strong>Idea.</strong> After SFT, improve the guard with reinforcement learning — but instead of training a separate (expensive, gameable) reward model, we use a *<em>verifiable reward: the ground-truth label </em>is<em> the reward.<strong> This is RLVR (RL from Verifiable Rewards). </strong>GRPO (Group Relative Policy Optimization)</em>* samples several completions per prompt, scores each, and pushes the policy toward the ones that beat the group average — no value network needed.</p>
