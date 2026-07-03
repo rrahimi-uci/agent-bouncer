@@ -1,3 +1,8 @@
+---
+title: "Agent Bouncer — a tiny, fast LLM safety guardrail (SLM)"
+description: "Open-source small language model (SLM) guardrail for LLMs and AI agents: detects prompt injection, jailbreaks, and unsafe content on the request path. Fine-tuned + RL-tuned (GRPO), benchmarked vs GPT-4o-mini, GPT-5.2, and OpenAI Moderation."
+---
+
 # 🕶️ Agent Bouncer
 
 **A tiny, fast safety bouncer for LLMs and agents** — screens prompts, tool calls, and
