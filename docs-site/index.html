@@ -7,8 +7,7 @@
   <title>Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents</title>
   <meta name="description"
     content="Agent Bouncer is an open-source small language model (SLM) safety guardrail for LLMs and AI agents: it screens prompts, tool calls, and outputs for prompt injection, jailbreaks, and unsafe content. Fine-tuned + RL-tuned (GRPO), benchmarked against GPT-4o-mini, GPT-5.2, and OpenAI Moderation through one honest harness, with a web Benchmark Studio.">
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <link rel="icon" type="image/png" href="agent-bouncer.png">
   <script>
     // Resolve theme before first paint to avoid a flash of the wrong mode.
     (function () {
@@ -40,7 +39,7 @@
   <header class="topbar">
     <div class="topbar-row">
       <a class="topbar-brand" href="index.html" style="text-decoration:none;color:inherit">
-        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <img src="agent-bouncer.png" alt="Agent Bouncer logo">
         <strong>Agent Bouncer</strong>
       </a>
       <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
@@ -66,7 +65,7 @@
   <div class="layout">
     <aside class="sidebar" id="docsSidebar">
       <a class="sidebar-brand" href="index.html" style="text-decoration:none;color:inherit">
-        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <img src="agent-bouncer.png" alt="Agent Bouncer logo">
         <div class="sidebar-brand-title">Agent Bouncer</div>
       </a>
       <div class="sidebar-search">
@@ -78,8 +77,9 @@
     <main class="main" id="docsContent">
       <article class="content">
         <section class="hero" id="overview">
+          <img class="hero-logo" src="agent-bouncer.png" alt="Agent Bouncer — Benchmark Studio" style="width:min(340px,80%);height:auto">
           <div class="hero-eyebrow">Open-source · SLM safety guardrail · request-path</div>
-          <h1>🕶️ Agent Bouncer</h1>
+          <h1>Agent Bouncer</h1>
           <p class="lede">
             A tiny, fast safety <strong>bouncer for LLMs and agents</strong> — it screens prompts, tool calls,
             and outputs <em>before</em> they reach your model. Small-language-model guardrails trained with

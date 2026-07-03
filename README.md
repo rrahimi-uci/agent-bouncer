@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🕶️ Agent Bouncer
+<img src="agent-bouncer.png" alt="Agent Bouncer — Benchmark Studio" width="360">
+
+# Agent Bouncer
 
 **A tiny, fast safety bouncer for LLMs and agents.**
 Screens prompts, tool calls, and outputs *before* they reach your model — and doesn't hassle the regulars.

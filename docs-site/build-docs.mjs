@@ -523,7 +523,7 @@ function topbar() {
   return `<header class="topbar">
     <div class="topbar-row">
       <a class="topbar-brand" href="index.html" aria-label="${escapeAttr(DOCS_HOME_LABEL)}" title="${escapeAttr(DOCS_HOME_LABEL)}" style="text-decoration:none;color:inherit">
-        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <img src="agent-bouncer.png" alt="${escapeAttr(BRAND_SHORT)} logo">
         <strong>${escapeHtml(BRAND_SHORT)}</strong>
       </a>
       <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
@@ -552,7 +552,7 @@ function pageHtml({ title, groupTitle, label, bodyHtml }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)} | ${escapeHtml(BRAND_SHORT)}</title>
   <meta name="description" content="${escapeAttr(`${title} — part of the ${BRAND_SHORT} documentation.`)}">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <link rel="icon" type="image/png" href="agent-bouncer.png">
   ${THEME_BOOT}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -576,7 +576,7 @@ function pageHtml({ title, groupTitle, label, bodyHtml }) {
   <div class="layout">
     <aside class="sidebar" id="docsSidebar">
       <a class="sidebar-brand" href="index.html" aria-label="${escapeAttr(DOCS_HOME_LABEL)}" title="${escapeAttr(DOCS_HOME_LABEL)}" style="text-decoration:none;color:inherit">
-        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <img src="agent-bouncer.png" alt="${escapeAttr(BRAND_SHORT)} logo">
         <div class="sidebar-brand-title">${escapeHtml(BRAND_SHORT)}</div>
       </a>
       <div class="sidebar-search">
