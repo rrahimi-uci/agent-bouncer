@@ -1,6 +1,10 @@
-"""Cover the async run/stream internals (_run, _launch, run_events) with a fake subprocess."""
+"""Cover the async run/stream internals (_run, _launch, run_events, history replay, stop/kill)
+with a fake subprocess — no torch, no network."""
 
 import asyncio
+import os
+import signal
+import sys
 
 import pytest
 
@@ -32,6 +36,15 @@ class _FakeProc:
         return self.returncode
 
 
+def _mk_run(**kw):
+    """A run record in the current shape (history + subscribers), overridable per test."""
+    run = {"history": [], "subscribers": set(), "done": False, "proc": None, "stopped": False,
+           "kind": "run", "created": 0.0}
+    run.update(kw)
+    return run
+
+
+# ------------------------------------------------------------------- _run streaming
 def test_run_streams_parsed_events(monkeypatch):
     async def fake_exec(*a, **k):
         return _FakeProc([b"  [xstest] encoder-distilbert: P=0.5 R=0.5 F1=0.5 FPR=0.1 p50=5ms\n"])
@@ -40,17 +53,14 @@ def test_run_streams_parsed_events(monkeypatch):
 
     async def drive():
         rid = "rtest"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        api._RUNS[rid] = _mk_run()
         await api._run(rid, [["echo", "hi"]])
-        q = api._RUNS[rid]["queue"]
-        out = []
-        while not q.empty():
-            out.append(q.get_nowait())
-        return out
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     types = [e["type"] for e in events]
     assert "step" in types and "result" in types and types[-1] == "done"
+    assert all("_seq" in e for e in events)          # every event carries a sequence number
 
 
 def test_run_reports_nonzero_exit(monkeypatch):
@@ -61,10 +71,9 @@ def test_run_reports_nonzero_exit(monkeypatch):
 
     async def drive():
         rid = "rerr"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        api._RUNS[rid] = _mk_run()
         await api._run(rid, [["x"]])
-        q = api._RUNS[rid]["queue"]
-        return [q.get_nowait() for _ in range(q.qsize())]
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     assert any(e["type"] == "error" for e in events)
@@ -81,10 +90,9 @@ def test_run_continues_past_a_failed_step(monkeypatch):
 
     async def drive():
         rid = "rmulti"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        api._RUNS[rid] = _mk_run()
         await api._run(rid, [["j1"], ["j2"], ["j3"]])
-        q = api._RUNS[rid]["queue"]
-        return [q.get_nowait() for _ in range(q.qsize())]
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     steps = [e for e in events if e["type"] == "step"]
@@ -105,35 +113,69 @@ def test_run_stop_on_error_aborts(monkeypatch):
 
     async def drive():
         rid = "rstop"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        api._RUNS[rid] = _mk_run()
         await api._run(rid, [["j1"], ["j2"]], stop_on_error=True)
-        q = api._RUNS[rid]["queue"]
-        return [q.get_nowait() for _ in range(q.qsize())]
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     assert len([e for e in events if e["type"] == "step"]) == 1  # aborted after the first
 
 
-def test_run_events_streams_sse():
+# --------------------------------------------------------- history replay / reconnect
+def test_run_events_replays_history_then_closes_when_done():
     async def drive():
         rid = "rsse"
-        q = asyncio.Queue()
-        await q.put({"type": "log", "text": "hello"})
-        await q.put({"type": "done"})
-        api._RUNS[rid] = {"queue": q, "done": True, "proc": None}
+        api._RUNS[rid] = _mk_run(done=True, history=[
+            {"type": "log", "text": "hello", "_seq": 0}, {"type": "done", "_seq": 1}])
         resp = await api.run_events(rid)
         return [chunk async for chunk in resp.body_iterator]
 
-    chunks = asyncio.run(drive())
-    assert any("hello" in c for c in chunks) and any("done" in c for c in chunks)
+    joined = "".join(asyncio.run(drive()))
+    assert "hello" in joined and "done" in joined
+    assert "_seq" not in joined          # internal sequence stripped from the wire
+
+
+def test_run_events_replays_then_streams_live_without_dupes():
+    # a reconnecting client replays existing history, then follows new events with no gaps/dupes
+    async def drive():
+        rid = "rlive"
+        run = _mk_run(history=[{"type": "step", "index": 1, "total": 1, "_seq": 0}])
+        api._RUNS[rid] = run
+        it = (await api.run_events(rid)).body_iterator
+        first = await it.__anext__()                 # replayed from history
+        api._emit(run, {"type": "log", "text": "live-line"})
+        api._emit(run, {"type": "done", "failures": 0, "total": 1})
+        rest = "".join([chunk async for chunk in it])
+        return first, rest
+
+    first, rest = asyncio.run(drive())
+    assert "step" in first and "live-line" in rest and "done" in rest
+
+
+def test_run_events_unknown_run_404():
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException):
+        asyncio.run(api.run_events("does-not-exist"))
+
+
+def test_list_runs_endpoint():
+    api._RUNS["lr1"] = _mk_run(kind="train", done=True, created=123.0,
+                               history=[{"type": "step", "_seq": 0}])
+    r = next(x for x in api.list_runs()["runs"] if x["run_id"] == "lr1")
+    assert r["kind"] == "train" and r["done"] is True and r["events"] == 1
+
+
+def test_prune_runs_drops_oldest_finished(monkeypatch):
+    monkeypatch.setattr(api, "_RUNS", {})
+    monkeypatch.setattr(api, "_MAX_RUNS", 2)
+    api._RUNS["a"] = _mk_run(done=True, created=1.0)
+    api._RUNS["b"] = _mk_run(done=True, created=2.0)
+    api._RUNS["c"] = _mk_run(done=False, created=3.0)   # still running — must be kept
+    api._prune_runs()
+    assert "a" not in api._RUNS and "b" in api._RUNS and "c" in api._RUNS
 
 
 # ----------------------------------------------------------------- stop / kill
-import os  # noqa: E402
-import signal  # noqa: E402
-import sys  # noqa: E402
-
-
 def test_terminate_run_kills_a_real_subprocess():
     """End-to-end: a real child spawned in its own session is actually dead afterwards."""
     async def drive():
@@ -202,10 +244,9 @@ def test_terminate_run_noop_when_already_finished():
 def test_run_stopped_before_start_emits_stopped_done():
     async def drive():
         rid = "rstop_pre"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None, "stopped": True}
+        api._RUNS[rid] = _mk_run(stopped=True)
         await api._run(rid, [["j1"], ["j2"]])
-        q = api._RUNS[rid]["queue"]
-        return [q.get_nowait() for _ in range(q.qsize())]
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     done = next(e for e in events if e["type"] == "done")
@@ -221,10 +262,9 @@ def test_run_stopped_during_reports_and_halts_batch(monkeypatch):
 
     async def drive():
         rid = "rstop_mid"
-        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        api._RUNS[rid] = _mk_run()
         await api._run(rid, [["j1"], ["j2"]])
-        q = api._RUNS[rid]["queue"]
-        return [q.get_nowait() for _ in range(q.qsize())]
+        return api._RUNS[rid]["history"]
 
     events = asyncio.run(drive())
     done = next(e for e in events if e["type"] == "done")
@@ -236,7 +276,7 @@ def test_run_stopped_during_reports_and_halts_batch(monkeypatch):
 def test_stop_run_endpoint(monkeypatch):
     monkeypatch.setattr(api.os, "getpgid", lambda pid: pid)
     monkeypatch.setattr(api.os, "killpg", lambda pgid, sig: None)
-    api._RUNS["known_stop"] = {"queue": asyncio.Queue(), "done": False, "proc": _KillableProc(1)}
+    api._RUNS["known_stop"] = _mk_run(proc=_KillableProc(1))
     res = asyncio.run(api.stop_run("known_stop"))
     assert res["stopped"] is True and res["killed_process"] is True
     from fastapi import HTTPException

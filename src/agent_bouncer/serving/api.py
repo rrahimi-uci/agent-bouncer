@@ -18,6 +18,7 @@ import os
 import re
 import signal
 import sys
+import time
 import uuid
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -398,7 +399,31 @@ class RunConfig(BaseModel):
     per_class: int = 40
 
 
+#: In-memory record of each run. Every event is appended to ``history`` (so a client that
+#: reconnects — e.g. after a page refresh — can replay the whole console) and fanned out to any
+#: live ``subscribers`` (open SSE streams). ``_MAX_RUNS`` finished runs are kept, then pruned.
 _RUNS: dict[str, dict] = {}
+_MAX_RUNS = 24
+
+
+def _emit(run: dict, evt: dict) -> None:
+    """Record an event in the run's history and fan it out to every open SSE subscriber.
+    Each event carries a monotonic ``_seq`` so a reconnecting client can de-dup the overlap
+    between the history it replays and the live stream it then follows."""
+    evt = {**evt, "_seq": len(run["history"])}
+    run["history"].append(evt)
+    for q in list(run["subscribers"]):
+        q.put_nowait(evt)
+
+
+def _prune_runs() -> None:
+    """Drop the oldest finished runs so history doesn't grow without bound."""
+    if len(_RUNS) <= _MAX_RUNS:
+        return
+    finished = sorted((rid for rid, r in _RUNS.items() if r.get("done")),
+                      key=lambda rid: _RUNS[rid].get("created", 0.0))
+    for rid in finished[: len(_RUNS) - _MAX_RUNS]:
+        _RUNS.pop(rid, None)
 
 
 def _signal_group(proc, sig: int) -> None:
@@ -530,7 +555,6 @@ async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = Fal
     model×technique jobs trains every one that can, instead of aborting the whole batch on the
     first failure. Set ``stop_on_error`` for dependent pipelines."""
     run = _RUNS[run_id]
-    q: asyncio.Queue = run["queue"]
     env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1",
            "PYTHONIOENCODING": "utf-8"}  # so the emoji banner lines pipe through cleanly
     total, failures = len(commands), 0
@@ -538,8 +562,8 @@ async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = Fal
         for i, cmd in enumerate(commands, 1):
             if run.get("stopped"):        # user pressed Stop between jobs — run no more
                 break
-            await q.put({"type": "step", "index": i, "total": total,
-                         "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
+            _emit(run, {"type": "step", "index": i, "total": total,
+                        "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
             rc, err = -1, None
             try:
                 # start_new_session=True → the child leads its own process group, so a single
@@ -555,31 +579,33 @@ async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = Fal
                 async for raw in proc.stdout:
                     line = raw.decode(errors="replace").rstrip()
                     if line and "\r" not in line:  # skip tqdm progress-bar carriage lines
-                        await q.put(_parse_line(line))
+                        _emit(run, _parse_line(line))
                 await proc.wait()
                 rc = proc.returncode
             except Exception as exc:  # noqa: BLE001 - a launch failure shouldn't kill the batch
                 err = f"{type(exc).__name__}: {exc}"
             if run.get("stopped"):        # killed by the user — report it and stop the batch
-                await q.put({"type": "info", "text": "⏹️ Stopped by user — training/testing killed."})
+                _emit(run, {"type": "info", "text": "⏹️ Stopped by user — training/testing killed."})
                 break
             if rc != 0:
                 failures += 1
                 msg = f"step {i}/{total} failed" + (f": {err}" if err else f" (exit {rc})")
-                await q.put({"type": "error", "text": msg + ("" if stop_on_error else " — continuing")})
+                _emit(run, {"type": "error", "text": msg + ("" if stop_on_error else " — continuing")})
                 if stop_on_error:
                     break
     except Exception as exc:  # noqa: BLE001 - surface any unexpected failure to the UI
-        await q.put({"type": "error", "text": f"{type(exc).__name__}: {exc}"})
+        _emit(run, {"type": "error", "text": f"{type(exc).__name__}: {exc}"})
     finally:
-        await q.put({"type": "done", "failures": failures, "total": total,
-                     "stopped": bool(run.get("stopped"))})
+        _emit(run, {"type": "done", "failures": failures, "total": total,
+                    "stopped": bool(run.get("stopped"))})
         run["done"] = True
 
 
-def _launch(commands: list[list[str]]) -> str:
+def _launch(commands: list[list[str]], *, kind: str = "run") -> str:
+    _prune_runs()
     run_id = uuid.uuid4().hex[:8]
-    _RUNS[run_id] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+    _RUNS[run_id] = {"history": [], "subscribers": set(), "done": False, "proc": None,
+                     "stopped": False, "kind": kind, "created": time.time()}
     asyncio.create_task(_run(run_id, commands))
     return run_id
 
@@ -587,7 +613,7 @@ def _launch(commands: list[list[str]]) -> str:
 @app.post("/api/run")
 async def start_run(cfg: RunConfig) -> dict:
     commands = _build_commands(cfg)
-    return {"run_id": _launch(commands), "steps": len(commands)}
+    return {"run_id": _launch(commands, kind="benchmark"), "steps": len(commands)}
 
 
 class TrainConfig(BaseModel):
@@ -633,7 +659,7 @@ async def start_train(cfg: TrainConfig) -> dict:
     cmds = [[sys.executable, "scripts/train/run_training.py", "--model", j["model"],
              "--technique", j.get("technique", "sft"), "--train-data", cfg.train_data, *flags]
             for j in jobs]
-    return {"run_id": _launch(cmds), "steps": len(cmds)}
+    return {"run_id": _launch(cmds, kind="train"), "steps": len(cmds)}
 
 
 @app.post("/api/test")
@@ -651,7 +677,7 @@ async def start_test(cfg: TestConfig) -> dict:
         elif cfg.benchmarks:
             cmd += ["--benchmarks", *cfg.benchmarks]
         cmds.append(cmd)
-    return {"run_id": _launch(cmds), "steps": len(cmds)}
+    return {"run_id": _launch(cmds, kind="test"), "steps": len(cmds)}
 
 
 class BuildConfig(BaseModel):
@@ -676,7 +702,7 @@ async def start_eval(cfg: EvalConfig) -> dict:
            "--per-class", str(cfg.per_class), "--device", cfg.device]
     if cfg.benchmarks:
         cmd += ["--benchmarks", *cfg.benchmarks]
-    return {"run_id": _launch([cmd]), "steps": 1}
+    return {"run_id": _launch([cmd], kind="eval"), "steps": 1}
 
 
 @app.post("/api/dataset/build")
@@ -689,7 +715,7 @@ async def start_build(cfg: BuildConfig) -> dict:
            "--name", cfg.name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
     if cfg.holdout_ratio is not None:
         cmd += ["--holdout", str(cfg.holdout_ratio)]
-    return {"run_id": _launch([cmd]), "steps": 1}
+    return {"run_id": _launch([cmd], kind="dataset"), "steps": 1}
 
 
 @app.post("/api/run/{run_id}/stop")
@@ -703,6 +729,21 @@ async def stop_run(run_id: str) -> dict:
     return {"run_id": run_id, "stopped": True, "killed_process": killed}
 
 
+@app.get("/api/runs")
+def list_runs() -> dict:
+    """Active + recent runs (newest first) so the UI can reconnect its console after a refresh."""
+    runs = sorted(_RUNS.items(), key=lambda kv: kv[1].get("created", 0.0), reverse=True)
+    return {"runs": [
+        {"run_id": rid, "kind": r.get("kind"), "done": r.get("done"),
+         "stopped": r.get("stopped"), "created": r.get("created"),
+         "events": len(r.get("history", []))}
+        for rid, r in runs]}
+
+
+def _sse(evt: dict) -> str:
+    return f"data: {json.dumps({k: v for k, v in evt.items() if k != '_seq'})}\n\n"
+
+
 @app.get("/api/run/{run_id}/events")
 async def run_events(run_id: str) -> StreamingResponse:
     run = _RUNS.get(run_id)
@@ -710,12 +751,26 @@ async def run_events(run_id: str) -> StreamingResponse:
         raise HTTPException(404, "unknown run")
 
     async def gen():
-        q: asyncio.Queue = run["queue"]
-        while True:
-            evt = await q.get()
-            yield f"data: {json.dumps(evt)}\n\n"
-            if evt.get("type") == "done":
-                break
+        # Subscribe first, then snapshot history, so nothing emitted in between is lost. Replay
+        # the snapshot, then follow live — skipping any queued event already in the snapshot.
+        q: asyncio.Queue = asyncio.Queue()
+        run["subscribers"].add(q)
+        try:
+            snapshot = list(run["history"])
+            for evt in snapshot:
+                yield _sse(evt)
+            if any(e.get("type") == "done" for e in snapshot):
+                return                        # run already finished — history had it all
+            n = len(snapshot)
+            while True:
+                evt = await q.get()
+                if evt["_seq"] < n:           # already replayed from the snapshot
+                    continue
+                yield _sse(evt)
+                if evt.get("type") == "done":
+                    break
+        finally:
+            run["subscribers"].discard(q)
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

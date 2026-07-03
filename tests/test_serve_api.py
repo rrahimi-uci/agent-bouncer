@@ -96,7 +96,7 @@ def test_datasets_endpoint_lists_strategies_and_sources():
 def test_build_endpoint_builds_command(monkeypatch):
     captured = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         captured["c"] = cmds
         return "rid2"
 
@@ -193,7 +193,7 @@ def test_saved_models_crud(monkeypatch, tmp_path):
 def test_test_endpoint_uses_created_test_set(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["c"] = cmds
         return "r"
 
@@ -206,7 +206,7 @@ def test_test_endpoint_uses_created_test_set(monkeypatch):
 def test_train_endpoint_trains_many_model_technique_jobs(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["c"] = cmds
         return "r"
 
@@ -231,7 +231,7 @@ def test_train_endpoint_requires_a_model():
 def test_test_endpoint_tests_many_versions(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["c"] = cmds
         return "r"
 
@@ -251,7 +251,7 @@ def test_test_endpoint_requires_an_exp():
 def test_eval_endpoint_launches_eval_only(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["c"] = cmds
         return "er"
 
@@ -286,7 +286,7 @@ def test_save_model_endpoint(monkeypatch, tmp_path):
 def test_build_endpoint_passes_holdout(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["c"] = cmds
         return "r"
 
@@ -297,7 +297,7 @@ def test_build_endpoint_passes_holdout(monkeypatch):
 
 
 def test_build_endpoint_accepts_any_source_count_but_needs_one(monkeypatch):
-    monkeypatch.setattr(api, "_launch", lambda cmds: "rid")
+    monkeypatch.setattr(api, "_launch", lambda cmds, **kw: "rid")
     # any number of sources is allowed now (no per-strategy cap)
     r = client.post("/api/dataset/build", json={"strategy": "balanced", "name": "multi",
                                                 "sources": ["beavertails", "xstest"]})
@@ -310,7 +310,7 @@ def test_build_endpoint_accepts_any_source_count_but_needs_one(monkeypatch):
 def test_train_and_test_build_valid_launch(monkeypatch):
     launched = {}
 
-    def fake_launch(cmds):
+    def fake_launch(cmds, **kw):
         launched["cmds"] = cmds
         return "rid"
 

@@ -608,10 +608,33 @@ function fmtRunLine(e){
   else{const t=(e.text||'').trim();if(!t)return null;d.textContent=t;if(/saved|done|complete|merged/i.test(t))d.className='l ok';}
   return d;
 }
-function streamRun(run_id,con,onEvt,onDone){
+// --- run persistence: survive a page refresh by reconnecting to the run and replaying history
+const ACTIVE_RUN_KEY='ab_active_run';
+const CONSOLE_VIEW={trainConsole:'train',evConsole:'evaluate',buildConsole:'datasets'};
+function saveActiveRun(run_id,consoleId){try{localStorage.setItem(ACTIVE_RUN_KEY,JSON.stringify({run_id,consoleId}));}catch(e){}}
+function clearActiveRun(){try{localStorage.removeItem(ACTIVE_RUN_KEY);}catch(e){}}
+function getActiveRun(){try{return JSON.parse(localStorage.getItem(ACTIVE_RUN_KEY)||'null');}catch(e){return null;}}
+function refreshForKind(kind){                          // pull fresh data once a reattached run ends
+  if(kind==='train'){loadExperiments().then(()=>{renderTrainControls();renderExperiments();});}
+  else if(kind==='test'){loadExperiments().then(()=>renderExperiments());}
+  else if(kind==='eval'){loadExperiments().then(loadSaved).then(()=>{renderEvaluate();drawEval();});}
+  else if(kind==='dataset'){loadDatasets().then(()=>{renderDatasets();fillTrainData();fillTestData();});}
+}
+async function reattachActiveRun(){
+  const saved=getActiveRun();if(!saved||!saved.run_id)return;
+  let info=null;
+  try{const r=await fetch('/api/runs');if(r.ok)info=((await r.json()).runs||[]).find(x=>x.run_id===saved.run_id);}catch(e){}
+  if(!info){clearActiveRun();return;}                   // run gone (server restarted or pruned)
+  const con=document.getElementById(saved.consoleId);if(!con)return;
+  con.style.display='block';
+  if(!info.done&&CONSOLE_VIEW[saved.consoleId])switchView(CONSOLE_VIEW[saved.consoleId],{skipUrl:true});
+  streamRun(saved.run_id,con,null,()=>refreshForKind(info.kind),info.created?info.created*1000:0);
+}
+function streamRun(run_id,con,onEvt,onDone,startedAt){
   con.innerHTML='';
+  saveActiveRun(run_id,con.id);                         // remember it so a refresh can reconnect
   const status=document.createElement('div');status.className='runstatus';con.appendChild(status);
-  const t0=Date.now();let si=0,steps=0,total=0,finished=false,lastProg=null,stopping=false;
+  const t0=startedAt||Date.now();let si=0,steps=0,total=0,finished=false,lastProg=null,stopping=false;
   const stopBtn=document.createElement('button');stopBtn.className='stopbtn';stopBtn.textContent='⏹ Stop';
   stopBtn.onclick=async()=>{stopBtn.disabled=true;stopping=true;stopBtn.textContent='Stopping…';
     try{await fetch(`/api/run/${run_id}/stop`,{method:'POST'});}catch(e){}};
@@ -795,6 +818,7 @@ async function init(){
   window.addEventListener('popstate',()=>{syncRouteFromLocation();});
   window.addEventListener('hashchange',()=>{syncRouteFromLocation();});
   await syncRouteFromLocation();
+  await reattachActiveRun();   // if a run is still live (or just finished), replay its console
 }
 init();
 </script>
