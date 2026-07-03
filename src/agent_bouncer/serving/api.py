@@ -196,6 +196,67 @@ def report(sort: str = "f1") -> FileResponse:
                         headers={"Cache-Control": "no-store"})
 
 
+# ---------------------------------------------------------------- ensemble builder
+PRED_DIR = ROOT / "outputs" / "predictions"
+
+
+def _merge_scoreboard(name: str, per_bench: dict) -> None:
+    """Graft an ensemble's per-benchmark metrics into the scoreboard, atomically."""
+    import tempfile
+
+    blob = {"per_class": None, "meta": {}, "results": {}}
+    if RESULTS_JSON.exists():
+        try:
+            blob = json.loads(RESULTS_JSON.read_text())
+        except ValueError:
+            pass
+    for bench, metrics in per_bench.items():
+        blob.setdefault("results", {}).setdefault(bench, {})[name] = metrics
+    fd, tmp = tempfile.mkstemp(dir=str(RESULTS_JSON.parent), suffix=".tmp")
+    with os.fdopen(fd, "w") as fh:
+        json.dump(blob, fh, indent=2)
+    os.replace(tmp, RESULTS_JSON)
+
+
+@app.get("/api/ensemble/members")
+def ensemble_members() -> dict:
+    """Guards with dumped predictions (candidate members) + the available strategies."""
+    from agent_bouncer.evaluation.ensembles import available_members
+    from agent_bouncer.models.ensemble import STRATEGIES
+
+    return {"members": available_members(str(PRED_DIR)), "strategies": list(STRATEGIES)}
+
+
+class EnsembleConfig(BaseModel):
+    """Build + score an ensemble from dumped per-sample predictions."""
+    members: list[str]
+    strategy: str = "majority"
+    threshold: float = 0.5
+    weights: list[float] | None = None
+    name: str | None = None
+
+
+@app.post("/api/ensemble")
+def build_ensemble(cfg: EnsembleConfig) -> dict:
+    """Combine the selected members offline, merge the result into the scoreboard, return metrics."""
+    from agent_bouncer.evaluation.ensembles import evaluate_ensemble, load_predictions, macro_average
+
+    preds = load_predictions(str(PRED_DIR))
+    try:
+        per_bench = evaluate_ensemble(preds, cfg.members, cfg.strategy,
+                                      weights=cfg.weights, threshold=cfg.threshold)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    name = (cfg.name or "").strip() or ("ensemble-" + cfg.strategy + "-" + str(len(cfg.members)))
+    name = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-") or "ensemble"
+    if not name.startswith("ensemble-"):  # keep leaderboard categorization intact
+        name = "ensemble-" + name
+    _merge_scoreboard(name, per_bench)
+    return {"name": name, "members": cfg.members, "strategy": cfg.strategy,
+            "macro": macro_average(per_bench), "per_benchmark": per_bench}
+
+
 # ------------------------------------------------------- training / experiments API
 @app.get("/api/models")
 def models() -> dict:

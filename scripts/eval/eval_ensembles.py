@@ -19,6 +19,7 @@ import tempfile
 
 from agent_bouncer.core.schema import Decision
 from agent_bouncer.evaluation.curves import roc_auc
+from agent_bouncer.evaluation.ensembles import evaluate_ensemble, load_predictions, macro_average
 from agent_bouncer.evaluation.metrics import compute_metrics
 from agent_bouncer.models.ensemble import combine
 
@@ -46,42 +47,19 @@ ENSEMBLES = {
 
 
 def load_preds() -> dict[str, dict]:
-    preds = {}
-    if os.path.isdir(PRED):
-        for f in os.listdir(PRED):
-            if f.endswith(".json"):
-                preds[f[:-5]] = json.load(open(f"{PRED}/{f}"))
-    return preds
+    return load_predictions(PRED)
 
 
 def macro(metrics: dict) -> dict:
-    keys = ("precision", "recall", "f1", "roc_auc", "fpr_on_benign",
-            "latency_p50_ms", "latency_p90_ms", "throughput_per_s")
-    return {k: round(sum(metrics[b][k] for b in metrics) / len(metrics), 4) for k in keys} if metrics else {}
+    return macro_average(metrics)
 
 
 def eval_ensemble(members, strategy, kwargs, preds) -> dict | None:
-    if any(m not in preds for m in members):
+    """Thin wrapper over the shared evaluator: returns None (skip) on any bad-input error."""
+    try:
+        return evaluate_ensemble(preds, members, strategy, **kwargs)
+    except ValueError:
         return None
-    benches = set.intersection(*[set(preds[m]) for m in members])
-    out = {}
-    for b in sorted(benches):
-        rows = [preds[m][b] for m in members]
-        n = len(rows[0])
-        if any(len(r) != n for r in rows):
-            continue
-        gold, pred, lat, scores = [], [], [], []
-        for i in range(n):
-            gold.append(Decision.UNSAFE if rows[0][i][0] == 1 else Decision.SAFE)
-            unsafe, sc = combine([(bool(r[i][1]), r[i][2]) for r in rows], strategy, **kwargs)
-            pred.append(Decision.UNSAFE if unsafe else Decision.SAFE)
-            scores.append(sc)
-            lat.append(sum(r[i][3] for r in rows))  # members run sequentially
-        m = compute_metrics(gold, pred, lat).to_dict()
-        auc = roc_auc([1 if g == Decision.UNSAFE else 0 for g in gold], scores)
-        m["roc_auc"] = auc if auc is not None else (m["recall"] + 1 - m["fpr_on_benign"]) / 2
-        out[b] = m
-    return out
 
 
 def eval_tuned(members, preds, *, weights=None, seed=42, fpr_cap=0.20) -> tuple[dict, float]:

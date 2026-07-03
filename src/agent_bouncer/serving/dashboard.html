@@ -323,6 +323,17 @@
         <div id="lbTable"><div class="empty"><div class="big">🏆</div>Run the benchmark suite to populate the leaderboard.</div></div>
         <p class="footer-note" id="lbNote"></p>
       </div>
+      <div class="chartcard" style="margin-bottom:16px">
+        <div class="row-between" style="margin-bottom:10px"><div><h3>Ensemble builder</h3><p class="sub">Combine trained models &amp; guards into one — scored instantly from their benchmark predictions, then added to the leaderboard</p></div></div>
+        <div id="ensMembers" class="jpick" style="margin-bottom:12px"></div>
+        <div class="frow" style="align-items:flex-end;gap:12px;flex-wrap:wrap">
+          <label style="flex:0 0 auto;font-size:12px;color:var(--muted)">Strategy<br><select id="ensStrategy" style="margin-top:5px"></select></label>
+          <label id="ensThreshWrap" style="flex:0 0 auto;font-size:12px;color:var(--muted)">Threshold<br><input id="ensThresh" type="number" step="0.05" min="0" max="1" value="0.5" style="margin-top:5px;width:90px"></label>
+          <label style="flex:1;min-width:160px;font-size:12px;color:var(--muted)">Name (optional)<br><input id="ensName" type="text" placeholder="ensemble-my-mix" style="margin-top:5px;width:100%"></label>
+          <button type="button" class="runbtn" id="ensBuild" style="flex:0 0 auto;width:auto;padding:11px 18px;margin-top:0">⚗️ Build &amp; score</button>
+        </div>
+        <p class="footer-note" id="ensNote"></p>
+      </div>
       <div class="grid2">
         <div class="chartcard" style="margin:0"><div class="row-between" style="margin-bottom:10px"><h3>ROC curves</h3><select id="rocPick" aria-label="benchmark"></select></div><div class="cbox tall"><canvas id="cRoc"></canvas></div></div>
         <div class="chartcard" style="margin:0"><h3>Precision–Recall</h3><p class="sub">Same threshold sweep</p><div class="cbox tall"><canvas id="cPr"></canvas></div></div>
@@ -770,6 +781,38 @@ async function generateReport(){
   finally{btn.disabled=false;btn.textContent=orig;}
 }
 
+/* ---------- ensemble builder ---------- */
+let ENS_MEMBERS=[], ENS_STRATS=[], ensPick=new Set();
+async function loadEnsembleMembers(){try{const d=await (await fetch('/api/ensemble/members')).json();ENS_MEMBERS=d.members||[];ENS_STRATS=d.strategies||[];}catch(e){ENS_MEMBERS=[];ENS_STRATS=[];}}
+function updateEnsBtn(){const n=ensPick.size;$('#ensBuild').disabled=n<2;$('#ensBuild').textContent=`⚗️ Build & score${n?` (${n})`:''}`;}
+function syncEnsThresh(){const s=$('#ensStrategy').value;$('#ensThreshWrap').style.display=(s==='mean'||s==='weighted')?'':'none';}
+function renderEnsembleBuilder(){
+  const box=$('#ensMembers');
+  if(!ENS_MEMBERS.length){box.innerHTML='<span class="sub">No member predictions yet — run the benchmark suite (Overview → run) to dump per-guard predictions, then build ensembles here.</span>';}
+  else{
+    ensPick=new Set([...ensPick].filter(m=>ENS_MEMBERS.includes(m)));
+    box.innerHTML=ENS_MEMBERS.map(m=>`<button type="button" class="jpill ${ensPick.has(m)?'on':''}" data-m="${m}">${lbLabel(m)}</button>`).join('');
+    $$('#ensMembers .jpill').forEach(b=>b.onclick=()=>{const k=b.dataset.m;ensPick.has(k)?ensPick.delete(k):ensPick.add(k);b.classList.toggle('on');updateEnsBtn();});
+  }
+  if($('#ensStrategy').options.length!==ENS_STRATS.length)$('#ensStrategy').innerHTML=ENS_STRATS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  syncEnsThresh();updateEnsBtn();
+}
+async function buildEnsemble(){
+  const members=[...ensPick];if(members.length<2){toast('Pick at least two members');return;}
+  const strategy=$('#ensStrategy').value,threshold=Number($('#ensThresh').value)||0.5,name=$('#ensName').value.trim();
+  const btn=$('#ensBuild'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Scoring…';
+  try{
+    const r=await fetch('/api/ensemble',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({members,strategy,threshold,name:name||null})});
+    let d={};try{d=await r.json();}catch(e){}
+    if(!r.ok){toast(d.detail||'ensemble failed');return;}
+    await loadResults();renderLeaderboard();renderROC();
+    const M=d.macro||{};
+    $('#ensNote').innerHTML=`✓ <b>${d.name}</b> — F1 ${fmt(M.f1)} · AUC ${fmt(M.roc_auc)} · FPR ${fmt(M.fpr_on_benign)} · p50 ${M.latency_p50_ms!=null?Math.round(M.latency_p50_ms)+'ms':'—'}. Added to the leaderboard above.`;
+    toast('✓ Ensemble scored & added');
+  }catch(e){toast('ensemble failed');}
+  finally{btn.disabled=false;btn.textContent=orig;updateEnsBtn();}
+}
+
 /* ---------- roc ---------- */
 function renderROC(){const bs=Object.keys(CURVES);if(!bs.length){['cRoc','cPr','cAuc'].forEach(destroy);return;}
   if($('#rocPick').options.length!==bs.length){$('#rocPick').innerHTML=bs.map(b=>`<option>${b}</option>`).join('');$('#rocPick').onchange=drawROC;}
@@ -794,7 +837,8 @@ function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.to
   if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
   if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
   if(v==='train'){fillTrainData();fillTestData();}   // reflect any datasets built since load
-  if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc'){renderLeaderboard();renderROC();}}
+  if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();
+  if(v==='roc'){renderLeaderboard();renderROC();loadEnsembleMembers().then(renderEnsembleBuilder);}}
 async function syncRouteFromLocation(){
   const bench=parseBenchLocation();
   if(bench){
@@ -830,6 +874,7 @@ async function init(){
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
   $('#lbSort').onchange=renderLeaderboard;$('#lbReport').onclick=generateReport;
+  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;
   $('#sampleSearch').oninput=scheduleBenchSearch;
   $('#hazardFilter').onchange=applyBenchFilters;
   $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
