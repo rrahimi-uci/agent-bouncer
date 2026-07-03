@@ -37,11 +37,14 @@ def main() -> None:
                     help="path to a created test split (JSONL); overrides --benchmarks")
     ap.add_argument("--per-class", type=int, default=40)
     ap.add_argument("--device", default="cpu", choices=["cpu", "mps", "cuda"])
+    ap.add_argument("--workers", type=int, default=0,
+                    help="parallel prediction workers (0 = auto; encoder/cpu only by default)")
     args = ap.parse_args()
 
     load_dotenv()
     exp = evaluate_and_record(args.exp, benchmarks=args.benchmarks, test_set=args.test_set,
-                              per_class=args.per_class, device=args.device)
+                              per_class=args.per_class, device=args.device,
+                              workers=args.workers)
     print("EVAL_EXPERIMENT_ID=" + exp["id"])
 
 

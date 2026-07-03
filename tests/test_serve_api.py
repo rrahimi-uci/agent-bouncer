@@ -121,6 +121,8 @@ def test_parse_line_result_and_log():
 def test_parse_line_test_result_and_experiment():
     e = api._parse_line("  [beavertails] smollm2-1.7b: F1=0.74 P=0.7 R=0.8 FPR=0.3 p90=320ms thr=3.1/s")
     assert e["type"] == "test_result" and e["latency_p90_ms"] == 320.0 and e["f1"] == 0.74
+    h = api._parse_line("  [set-1] smollm2-1.7b: F1=0.74 P=0.7 R=0.8 FPR=0.3 p90=320ms")
+    assert h["type"] == "test_result" and h["benchmark"] == "set-1"
     assert api._parse_line("EXPERIMENT_ID=smollm2-1.7b-sft-x")["exp_id"] == "smollm2-1.7b-sft-x"
     assert api._parse_line("EVAL_EXPERIMENT_ID=abc")["type"] == "experiment"
 
@@ -201,6 +203,7 @@ def test_test_endpoint_uses_created_test_set(monkeypatch):
     client.post("/api/test", json={"exp": "e1", "test_set": "data/train_sets/set-1/test.jsonl"})
     cmd = " ".join(launched["c"][0])
     assert "--test-set data/train_sets/set-1/test.jsonl" in cmd and "--benchmarks" not in cmd
+    assert "--workers 0" in cmd
 
 
 def test_train_endpoint_trains_many_model_technique_jobs(monkeypatch):
@@ -242,6 +245,7 @@ def test_test_endpoint_tests_many_versions(monkeypatch):
     joined = [" ".join(c) for c in launched["c"]]
     assert any("--exp e1" in j for j in joined) and any("--exp e2" in j for j in joined)
     assert all("--test-set data/train_sets/x/test.jsonl" in j and "--device mps" in j for j in joined)
+    assert all("--workers 0" in j for j in joined)
 
 
 def test_test_endpoint_requires_an_exp():

@@ -461,12 +461,12 @@ async def _terminate_run(run: dict, *, grace: float = 4.0) -> bool:
 
 
 _RESULT_RE = re.compile(
-    r"\[([a-z_]+)\]\s+([\w.\-]+):\s+P=([\d.]+)\s+R=([\d.]+)\s+F1=([\d.]+)\s+FPR=([\d.]+)\s+p50=([\d.]+)ms"
+    r"\[([\w\-]+)\]\s+([\w.\-]+):\s+P=([\d.]+)\s+R=([\d.]+)\s+F1=([\d.]+)\s+FPR=([\d.]+)\s+p50=([\d.]+)ms"
 )
 _TEST_RE = re.compile(
-    r"\[(\w+)\]\s+([\w.\-]+):\s+F1=([\d.]+)\s+P=([\d.]+)\s+R=([\d.]+)\s+FPR=([\d.]+)\s+p90=([\d.]+)ms"
+    r"\[([\w\-]+)\]\s+([\w.\-]+):\s+F1=([\d.]+)\s+P=([\d.]+)\s+R=([\d.]+)\s+FPR=([\d.]+)\s+p90=([\d.]+)ms"
 )
-_LOADING_RE = re.compile(r"loading benchmark (\w+)")
+_LOADING_RE = re.compile(r"loading benchmark ([\w\-]+)")
 _EXP_RE = re.compile(r"(?:EXPERIMENT_ID|EVAL_EXPERIMENT_ID)=(\S+)")
 
 
@@ -631,6 +631,7 @@ class TestConfig(BaseModel):
     test_set: str | None = None    # path to a created test split (JSONL) — overrides benchmarks
     per_class: int = 40
     device: str = "cpu"
+    workers: int = 0               # 0=auto, >0 explicit worker count
 
 
 _PARAM_FLAGS = {"epochs": "--epochs", "lr": "--lr", "batch_size": "--batch",
@@ -671,7 +672,8 @@ async def start_test(cfg: TestConfig) -> dict:
     cmds = []
     for e in exps:
         cmd = [sys.executable, "scripts/eval/run_testing.py", "--exp", e,
-               "--per-class", str(cfg.per_class), "--device", cfg.device]
+               "--per-class", str(cfg.per_class), "--device", cfg.device,
+               "--workers", str(cfg.workers)]
         if cfg.test_set:                   # test on a created dataset's held-out split
             cmd += ["--test-set", cfg.test_set]
         elif cfg.benchmarks:

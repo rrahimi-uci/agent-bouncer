@@ -3,6 +3,8 @@
 All tests use a fake guard + injected loaders, so no torch/model weights are needed.
 """
 
+import time
+
 import pytest
 
 from agent_bouncer.core.schema import Decision, Surface, Verdict
@@ -42,6 +44,22 @@ def test_score_guard_streams_progress(capsys):
     metrics, _ = runner.score_guard(FakeGuard(), ["b1"], loader=lambda b: _bench_recs())
     out = capsys.readouterr().out
     assert "PROGRESS phase=test label=b1" in out and "step=4 total=4" in out
+    assert metrics["b1"]["f1"] == 1.0
+
+
+def test_score_guard_parallel_workers_keep_row_order(capsys):
+    class SlowFastGuard(FakeGuard):
+        def predict(self, text, *, surface=Surface.USER_PROMPT):
+            time.sleep(0.03 if "slow" in text else 0.001)
+            return super().predict(text, surface=surface)
+
+    # If futures are collected out of order and not re-ordered by row index, this tiny set
+    # scores poorly; with correct ordering it stays perfect.
+    recs = [{"text": "slow-safe", "label": "safe"}, {"text": "bad-fast", "label": "unsafe"}]
+    metrics, _ = runner.score_guard(SlowFastGuard(), ["b1"], loader=lambda b: recs, workers=2)
+    out = capsys.readouterr().out
+    assert "🧠 Testing in parallel with 2 workers (b1)" in out
+    assert "PROGRESS phase=test label=b1 step=0 total=2" in out
     assert metrics["b1"]["f1"] == 1.0
 
 

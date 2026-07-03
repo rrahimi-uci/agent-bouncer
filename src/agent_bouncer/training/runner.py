@@ -13,6 +13,7 @@ server both call these — the server runs them as subprocesses to avoid co-load
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import tempfile
 import time
@@ -269,8 +270,31 @@ def _norm(text: str | None) -> str:
     return " ".join((text or "").lower().split())
 
 
+def _auto_test_workers(arch: str, device: str, requested: int) -> int:
+    """Worker-count policy for test scoring.
+
+    Safety default: parallelize only encoder-on-CPU runs (decoder/mps/cuda stay single-stream).
+    ``requested <= 0`` means auto.
+    """
+    if requested > 0:
+        return requested
+    if arch == "encoder" and device == "cpu":
+        cpu = os.cpu_count() or 4
+        return min(8, max(2, cpu // 2))
+    return 1
+
+
+def _warm_guard_for_parallel(guard) -> None:
+    """Load the model once on the main thread before spawning worker threads."""
+    if getattr(guard, "_model", None) is None:
+        load = getattr(guard, "_load", None)
+        if callable(load):
+            load()
+
+
 def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
-                train_recs: list[dict] | None = None, loader=None) -> tuple[dict, dict]:
+                train_recs: list[dict] | None = None, loader=None,
+                workers: int = 1) -> tuple[dict, dict]:
     """Score a guard over benchmarks with leakage guards; returns (metrics, leakage).
 
     ``loader(bench)`` returns that benchmark's records (defaults to the balanced registry
@@ -285,22 +309,52 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
     metrics: dict = {}
     leakage: dict = {}
     for bench in benchmarks:
+        print(f"loading benchmark {bench}", flush=True)
         recs = loader(bench)
         leaked = set(find_leakage(train_recs, recs)) if train_recs else set()
         clean = [r for r in recs if _norm(r.get("text")) not in leaked]
         leakage[bench] = {"n": len(recs), "dropped_leaked": len(recs) - len(clean)}
-        # Predict one at a time so the console shows steady progress (a full benchmark can be
-        # thousands of prompts — minutes for a decoder guard — otherwise silent until done).
         n = len(clean)
         verdicts = []
+        worker_count = max(1, min(int(workers or 1), n or 1))
         throttle, t0 = Throttle(2.0), time.perf_counter()
-        for i, r in enumerate(clean, 1):
-            verdicts.append(guard.predict(r["text"], surface=Surface.USER_PROMPT))
-            now = time.perf_counter()
-            if throttle.ready(now, force=(i == n)):
-                rate = i / (now - t0) if now > t0 else None
-                eta = (n - i) / rate if rate else None
-                print(progress_line(i, n, phase="test", label=bench, rate=rate, eta=eta), flush=True)
+        if n:
+            print(progress_line(0, n, phase="test", label=bench), flush=True)
+        else:
+            print(f"⚠️ No clean samples left for {bench} after leakage filtering.", flush=True)
+
+        if worker_count > 1 and n > 0:
+            print(f"🧠 Testing in parallel with {worker_count} workers ({bench})", flush=True)
+            _warm_guard_for_parallel(guard)
+            verdicts = [None] * n
+            done = 0
+            with ThreadPoolExecutor(max_workers=worker_count) as pool:
+                futures = {
+                    pool.submit(guard.predict, r["text"], surface=Surface.USER_PROMPT): i
+                    for i, r in enumerate(clean)
+                }
+                for fut in as_completed(futures):
+                    i = futures[fut]
+                    verdicts[i] = fut.result()
+                    done += 1
+                    now = time.perf_counter()
+                    if throttle.ready(now, force=(done == n)):
+                        rate = done / (now - t0) if now > t0 else None
+                        eta = (n - done) / rate if rate else None
+                        print(progress_line(done, n, phase="test", label=bench, rate=rate, eta=eta),
+                              flush=True)
+            verdicts = [v for v in verdicts if v is not None]
+        else:
+            # Predict one at a time so the console shows steady progress (a full benchmark can
+            # be thousands of prompts — minutes for a decoder guard — otherwise silent until done).
+            for i, r in enumerate(clean, 1):
+                verdicts.append(guard.predict(r["text"], surface=Surface.USER_PROMPT))
+                now = time.perf_counter()
+                if throttle.ready(now, force=(i == n)):
+                    rate = i / (now - t0) if now > t0 else None
+                    eta = (n - i) / rate if rate else None
+                    print(progress_line(i, n, phase="test", label=bench, rate=rate, eta=eta),
+                          flush=True)
         gold = [Decision(r["label"]) for r in clean]
         lat = [v.latency_ms for v in verdicts if v.latency_ms is not None]
         m = compute_metrics(gold, [v.decision for v in verdicts], lat).to_dict()
@@ -316,7 +370,8 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
 
 def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = None,
                         test_set: str | None = None, per_class: int = 40,
-                        device: str = "cpu", merge_scoreboard: bool = False) -> dict:
+                        device: str = "cpu", workers: int = 0,
+                        merge_scoreboard: bool = False) -> dict:
     """Load a trained version and score it — on a **created test set** (``test_set`` JSONL)
     or on benchmarks — with train→test leakage guards (overlapping prompts are dropped)."""
     train_exp = X.get(train_exp_id)
@@ -327,7 +382,14 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
     out_dir = train_exp["output_dir"]
     train_recs = read_jsonl(train_exp["data"]["train"]) if os.path.exists(train_exp["data"]["train"]) else []
 
+    print(f"🔧 Loading guard {model_key} ({arch}) from {out_dir} on {device}", flush=True)
     guard = _load_guard(model_key, arch, out_dir, train_exp.get("technique", "sft"), device)
+    worker_count = _auto_test_workers(arch, device, int(workers or 0))
+    if int(workers or 0) > 1 and worker_count == 1:
+        print("⚠️ Parallel workers disabled for this model/device (decoder or non-cpu run).", flush=True)
+    elif worker_count > 1:
+        source = "manual" if int(workers or 0) > 0 else "auto"
+        print(f"⚙️ Test workers: {worker_count} ({source})", flush=True)
     stamp, created = X.now()
     if test_set:
         # test on a created dataset's held-out split (train on train-1 → test on test-1)
@@ -335,13 +397,14 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
         test_recs = read_jsonl(test_set) if os.path.exists(test_set) else []
         benchmarks = [name]
         metrics, leakage = score_guard(guard, benchmarks, train_recs=train_recs,
-                                       loader=lambda b: test_recs)
+                                       loader=lambda b: test_recs, workers=worker_count)
     else:
         from agent_bouncer.evaluation.benchmarks import BENCHMARKS, load_benchmark
         benchmarks = benchmarks or list(BENCHMARKS)
         metrics, leakage = score_guard(
             guard, benchmarks, per_class=per_class, train_recs=train_recs,
             loader=lambda b: load_benchmark(b, balanced=True, per_class=per_class),
+            workers=worker_count,
         )
     macro = macro_average(metrics)
     exp = X.Experiment(

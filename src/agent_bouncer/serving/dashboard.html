@@ -180,9 +180,8 @@
       <a data-view="benchmarks"><span class="ic">📚</span> Explore Benchmarks <span class="n" id="nBench">0</span></a>
       <a data-view="datasets"><span class="ic">🧪</span> Datasets Creation <span class="n" id="nSets">0</span></a>
       <a data-view="train"><span class="ic">⚙︎</span> Train &amp; Test <span class="n" id="trainBadge">idle</span></a>
-      <a data-view="evaluate"><span class="ic">🎯</span> Evaluate</a>
       <a data-view="experiments"><span class="ic">🧬</span> Experiments <span class="n" id="expBadge">0</span></a>
-      <a data-view="roc"><span class="ic">📈</span> ROC &amp; AUC</a>
+      <a data-view="roc"><span class="ic">🏆</span> Leaderboard</a>
     </nav>
   </aside>
 
@@ -290,28 +289,6 @@
       <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="trainConsole"><div class="empty" style="padding:26px"><div class="big">⚙︎</div>Configure and press Train or Test.</div></div></div>
     </section>
 
-    <!-- EVALUATE (eval-only) -->
-    <section class="view" id="v-evaluate">
-      <h2 class="vh">Evaluate a saved model</h2><p class="vs">Score an already-trained model on benchmarks — no training. Leakage-guarded; results are per-benchmark and macro-averaged.</p>
-      <div class="grid2">
-        <div class="chartcard" style="margin:0">
-          <h3>① Saved model</h3><p class="sub">From the model store (train &amp; test one in Train &amp; Test to save it)</p>
-          <div class="form">
-            <label>Model<select id="evModel" aria-label="Saved model"></select></label>
-            <div class="frow">
-              <label>Test size / class (0 = full)<input id="evPerClass" type="number" min="0" value="40"></label>
-              <label>Device<select id="evDevice"><option>cpu</option><option>mps</option></select></label>
-            </div>
-            <label>Benchmarks<select id="evBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
-            <div class="mnote" id="evNote"></div>
-            <button type="button" class="runbtn" id="evBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🎯 Run evaluation</button>
-          </div>
-        </div>
-        <div class="chartcard" style="margin:0"><h3>② Metrics</h3><p class="sub">Macro across selected benchmarks</p><div class="cbox"><canvas id="cEval"></canvas></div></div>
-      </div>
-      <div class="chartcard" style="margin-top:16px"><h3>Console</h3><div class="console" id="evConsole"><div class="empty" style="padding:26px"><div class="big">🎯</div>Pick a saved model and press Run evaluation.</div></div></div>
-    </section>
-
     <!-- EXPERIMENTS -->
     <section class="view" id="v-experiments">
       <h2 class="vh">Experiments</h2><p class="vs">Every training &amp; evaluation run — versioned, with the hardware it ran on.</p>
@@ -326,7 +303,7 @@
 
     <!-- ROC / AUC -->
     <section class="view" id="v-roc">
-      <h2 class="vh">ROC &amp; AUC</h2><p class="vs">Threshold curves for continuous-score guards; single operating point otherwise.</p>
+      <h2 class="vh">Leaderboard</h2><p class="vs">How every guard &amp; trained model scores — ROC / Precision–Recall threshold curves and ROC-AUC by benchmark.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0"><div class="row-between" style="margin-bottom:10px"><h3>ROC curves</h3><select id="rocPick" aria-label="benchmark"></select></div><div class="cbox tall"><canvas id="cRoc"></canvas></div></div>
         <div class="chartcard" style="margin:0"><h3>Precision–Recall</h3><p class="sub">Same threshold sweep</p><div class="cbox tall"><canvas id="cPr"></canvas></div></div>
@@ -610,14 +587,13 @@ function fmtRunLine(e){
 }
 // --- run persistence: survive a page refresh by reconnecting to the run and replaying history
 const ACTIVE_RUN_KEY='ab_active_run';
-const CONSOLE_VIEW={trainConsole:'train',evConsole:'evaluate',buildConsole:'datasets'};
+const CONSOLE_VIEW={trainConsole:'train',buildConsole:'datasets'};
 function saveActiveRun(run_id,consoleId){try{localStorage.setItem(ACTIVE_RUN_KEY,JSON.stringify({run_id,consoleId}));}catch(e){}}
 function clearActiveRun(){try{localStorage.removeItem(ACTIVE_RUN_KEY);}catch(e){}}
 function getActiveRun(){try{return JSON.parse(localStorage.getItem(ACTIVE_RUN_KEY)||'null');}catch(e){return null;}}
 function refreshForKind(kind){                          // pull fresh data once a reattached run ends
   if(kind==='train'){loadExperiments().then(()=>{renderTrainControls();renderExperiments();});}
   else if(kind==='test'){loadExperiments().then(()=>renderExperiments());}
-  else if(kind==='eval'){loadExperiments().then(loadSaved).then(()=>{renderEvaluate();drawEval();});}
   else if(kind==='dataset'){loadDatasets().then(()=>{renderDatasets();fillTrainData();fillTestData();});}
 }
 async function reattachActiveRun(){
@@ -670,7 +646,9 @@ async function runTrain(){
   const con=$('#trainConsole');con.innerHTML='';
   let resp;try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobs,train_data:$('#tData').value,params})});}
   catch(e){toast('train failed to start');btn.disabled=false;updateTrainBtn();return;}
-  const {run_id}=await resp.json();
+  let payload={};try{payload=await resp.json();}catch(e){}
+  if(!resp.ok){toast(payload.detail||'train failed');btn.disabled=false;updateTrainBtn();return;}
+  const {run_id}=payload;
   streamRun(run_id,con,null,async()=>{btn.disabled=false;$('#trainBadge').textContent='done';await loadExperiments();renderTrainControls();renderExperiments();toast(`✓ Trained ${jobs.length} model(s) — versions registered`);});
 }
 async function runTest(){
@@ -685,14 +663,16 @@ async function runTest(){
   const con=$('#trainConsole');con.innerHTML='';
   let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
   catch(e){toast('test failed to start');btn.disabled=false;updateTestBtn();return;}
-  const {run_id}=await resp.json();
+  let payload={};try{payload=await resp.json();}catch(e){}
+  if(!resp.ok){toast(payload.detail||'test failed');btn.disabled=false;updateTestBtn();$('#trainBadge').textContent='idle';return;}
+  const {run_id}=payload;
   const evalExps=[];   // one EVAL_EXPERIMENT_ID streams per version, in `exps` order
   streamRun(run_id,con,e=>{if(e.type==='experiment')evalExps.push(e.exp_id);},async()=>{
     $('#trainBadge').textContent='done';
-    // persist each tested version to the store (feeds the Evaluate tab)
+    // persist each tested version to the model store (metrics per saved model)
     for(let i=0;i<exps.length;i++){try{await fetch('/api/saved_models',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({train_exp:exps[i],eval_exp:evalExps[i]||null,test_set:body.test_set||null,benchmarks:body.benchmarks||[]})});}catch(e){}}
-    await loadExperiments();await loadSaved();renderTestVersions();renderExperiments();renderEvaluate();
+    await loadExperiments();renderTestVersions();renderExperiments();
     btn.disabled=false;toast(`✓ Tested ${exps.length} version(s) — recorded & saved`);});
 }
 
@@ -741,31 +721,9 @@ function drawAUC(){const bs=Object.keys(CURVES),gset=new Set();bs.forEach(b=>Obj
   destroy('cAuc');charts.cAuc=new Chart($('#cAuc'),{type:'bar',data:{labels:bs,datasets:gs.map((g,i)=>({label:gLabel(g),data:bs.map(b=>CURVES[b][g]?.auc??null),backgroundColor:PALETTE[i%8],borderRadius:5,maxBarThickness:24}))},options:{...barOpts(1),scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{beginAtZero:true,max:1,grid:{color:'#1c2439'}}}}});}
 function curveOpts(xl,yl){return{responsive:true,maintainAspectRatio:false,parsing:false,plugins:{legend:{position:'top',align:'start',labels:{boxWidth:20,usePointStyle:false}},tooltip:{callbacks:{label:c=>` ${xl} ${c.parsed.x.toFixed(2)}, ${yl} ${c.parsed.y.toFixed(2)}`}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:xl},grid:{color:'#1c2439'}},y:{type:'linear',min:0,max:1,title:{display:true,text:yl},grid:{color:'#1c2439'}}}};}
 
-/* ---------- saved-model store (feeds the Evaluate tab) ---------- */
-let SAVED=[];
-async function loadSaved(){SAVED=(await (await fetch('/api/saved_models')).json()).models||[];}
-/* ---------- evaluate (eval-only) ---------- */
-function renderEvaluate(){
-  $('#evModel').innerHTML=SAVED.length?SAVED.map(m=>`<option value="${m.id}">${m.name||(m.base_model+' · '+m.technique)} · ${(m.created||'').slice(0,10)}</option>`).join(''):'<option value="">— no saved models yet —</option>';
-  $('#evBenchmarks').innerHTML=(DATA.sources||[]).map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
-  $('#evNote').textContent=SAVED.length?`${SAVED.length} saved model(s) available.`:'Train & test a model in Train & Test first (it is saved automatically).';
-}
-async function runEval(){
-  const model_id=$('#evModel').value;if(!model_id){toast('No saved model selected');return;}
-  const benchmarks=[...$('#evBenchmarks').selectedOptions].map(o=>o.value);
-  const con=$('#evConsole');con.innerHTML='';const btn=$('#evBtn');btn.disabled=true;btn.textContent='● Evaluating…';
-  const epc=$('#evPerClass').value===''?40:Number($('#evPerClass').value);
-  let r;try{r=await fetch('/api/eval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id,benchmarks,per_class:epc,device:$('#evDevice').value})});}catch(e){toast('eval failed');btn.disabled=false;btn.textContent='🎯 Run evaluation';return;}
-  const {run_id}=await r.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🎯 Run evaluation';await loadExperiments();await loadSaved();renderEvaluate();drawEval();toast('✓ Evaluation complete');});
-}
-function drawEval(){const m=SAVED.find(x=>x.id===$('#evModel').value);destroy('cEval');if(!m||!m.metrics)return;
-  const keys=['precision','recall','f1','roc_auc','fpr_on_benign'];
-  charts.cEval=new Chart($('#cEval'),{type:'bar',data:{labels:keys.map(k=>k==='roc_auc'?'AUC':k==='fpr_on_benign'?'FPR':k[0].toUpperCase()+k.slice(1)),datasets:[{data:keys.map(k=>m.metrics[k]??0),backgroundColor:PALETTE,borderRadius:5,maxBarThickness:34}]},options:barOpts(1)});}
-
 /* ---------- shell ---------- */
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-const VIEWS=['overview','benchmarks','datasets','train','evaluate','experiments','roc'];
+const VIEWS=['overview','benchmarks','datasets','train','experiments','roc'];
 function viewUrl(v){
   if(v==='benchmarks')return curBench?benchUrl(curBench,{page:(window._benchMeta&&window._benchMeta.page)||1,...currentBenchFilters()}):'/benchmarks';
   return v==='overview'?'/':`/#${v}`;
@@ -773,7 +731,6 @@ function viewUrl(v){
 function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
   if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
   if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
-  if(v==='evaluate'){renderEvaluate();drawEval();}
   if(v==='train'){fillTrainData();fillTestData();}   // reflect any datasets built since load
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
 async function syncRouteFromLocation(){
@@ -806,11 +763,10 @@ async function loadHardware(){const h=await (await fetch('/api/hardware')).json(
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
-  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadSaved()]);
+  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware()]);
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
-  $('#evBtn').onclick=runEval;$('#evModel').onchange=drawEval;
   $('#sampleSearch').oninput=scheduleBenchSearch;
   $('#hazardFilter').onchange=applyBenchFilters;
   $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
