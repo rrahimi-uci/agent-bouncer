@@ -7,7 +7,10 @@ name = "agent-bouncer"
 version = "0.0.1"
 description = "A tiny, fast safety bouncer for LLMs and agents — screens prompts, tool calls, and outputs before they reach your model."
 readme = "README.md"
-requires-python = ">=3.10"
+# Python 3.10–3.13 (the full ML stack — torch/transformers/trl/peft — ships wheels here).
+# 3.12 is the recommended/tested version (see .python-version); 3.14 is excluded because
+# trl/peft wheels are not yet published for it.
+requires-python = ">=3.10,<3.14"
 license = { text = "Apache-2.0" }
 keywords = ["llm", "agent", "guardrail", "safety", "prompt-injection", "moderation", "slm"]
 classifiers = [

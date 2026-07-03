@@ -6,7 +6,7 @@
 Screens prompts, tool calls, and outputs *before* they reach your model — and doesn't hassle the regulars.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](pyproject.toml)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-7%20standard-4c8dff.svg)](docs/benchmarks.md)
 [![Studio](https://img.shields.io/badge/UI-Benchmark%20Studio-8b6dff.svg)](#benchmark-studio-the-ui)
 
@@ -69,8 +69,12 @@ flowchart LR
 
 ```bash
 git clone <your-repo-url> agent-bouncer && cd agent-bouncer
-make setup        # venv + eval/benchmark extras
+make setup        # venv + eval/benchmark extras   (Python 3.12 recommended — see .python-version)
 ```
+
+> **Python version.** Supported on **3.10–3.13**; **3.12 is recommended** (pinned in
+> `.python-version`) because the full ML stack — `torch` / `transformers` / `trl` / `peft` —
+> ships wheels for it. Python **3.14 is not yet supported** (no `trl`/`peft` wheels).
 
 **1 · CLI** — runs on day one via a reference heuristic guard:
 
