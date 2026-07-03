@@ -14,14 +14,20 @@ outputs *before* they reach your model. SLM guardrails, trained with **fine-tuni
 ## Highlights
 
 - **7-benchmark standard suite** across guardrail, red-teaming, and over-refusal axes.
-- **Compared live vs GPT-4o-mini and GPT-5.2 (low reasoning)** + OpenAI Moderation, through one harness.
+- **Compared live vs GPT-4o-mini and GPT-5.2 at low / medium / high reasoning** + OpenAI Moderation, through one harness.
 - **Precision / Recall / F1 / ROC-AUC / latency / throughput / P90** — over-blocking (`fpr_on_benign`) front and center.
 - **Full training lifecycle**: model registry (Qwen3, DeepSeek-R1-1.5B, SmolLM2-1.7B, Gemma-1B),
   configurable SFT/GRPO/DPO, **versioning**, **experiment tracking**, **hardware capture**, and
   **train/test leakage guards**.
-- **Benchmark Studio** — configure, train, test, and compare from a polished web UI.
+- **Benchmark Studio** — configure, train, test, and compare from a polished web UI, with a
+  **Leaderboard** (results table + ROC/PR/AUC curves), a **PDF report** export, and an
+  **interactive ensemble builder**.
 
 ## Headline result (7 benchmarks, one harness)
+
+> **Illustrative figures from a reference run** — the repo ships with an empty results directory.
+> Run `make bench` (or use the Studio) to generate your own; numbers vary with hardware, sampling,
+> and model versions.
 
 | Guard | Params | macro-F1 | macro-FPR@benign ↓ | p50 ms ↓ |
 |-------|-------:|---------:|-------------------:|---------:|
@@ -52,7 +58,7 @@ student training material:
 - [Benchmarks & results](benchmarks.md) — the full scoreboard + analysis
 - [Ensembles](ensembles.md) — can combining SLMs match GPT-5.2 Low?
 - [Datasets](datasets.md) · [Taxonomy](taxonomy.md) · [Roadmap](roadmap.md)
-- [Auto-generated scoreboard](../outputs/BENCHMARKS.md)
+- Auto-generated scoreboard → `outputs/BENCHMARKS.md` (created by `make bench`)
 
 ## Run it
 

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System architecture | Agent Bouncer</title>
+  <meta name="description" content="System architecture — part of the Agent Bouncer documentation.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+
+<body data-doc-page="module">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="index.html#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content doc-body">
+        <nav class="doc-breadcrumb" aria-label="Breadcrumb">
+          <span>Architecture</span>
+          <span aria-hidden="true">/</span>
+          <span class="current">System architecture</span>
+        </nav>
+        <header class="doc-header">
+          <div class="doc-eyebrow">Architecture</div>
+          <h1 id="top">System architecture</h1>
+          <p class="doc-summary">How Agent Bouncer fits together: the guard interface, the FastAPI Benchmark Studio, the evaluation harness, training + versioning, experiment tracking, and the model store.</p>
+          <div class="doc-actions">
+            <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
+              Copy page
+            </button>
+          </div>
+        </header>
+<p>./</p>
+<h1 id="architecture">Architecture<a class="anchor" href="#architecture" aria-hidden="true" tabindex="-1">#</a></h1>
+<p>Agent Bouncer sits <strong>on the request path</strong>, in front of your LLM/agent. It runs on <em>every</em> call (and every agent step), so it must be small and fast — which is exactly why a <strong>small language model (SLM)</strong> is the right tool, not a compromise. This document explains how the whole system fits together, layer by layer, with diagrams.</p>
+<p>---</p>
+<h2 id="1-where-it-runs">1 · Where it runs<a class="anchor" href="#1-where-it-runs" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>The bouncer screens input <strong>before</strong> it reaches the model, and (optionally) screens what the model is about to do or return.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    U["User / upstream agent"] --&gt;|"prompt · tool_call · agent_output"| G
+
+    subgraph G["🕶️ Agent Bouncer (tiny guard, target &lt;30 ms CPU)"]
+        direction TB
+        H["Verdict = decision + hazard + score"]
+    end
+
+    G --&gt;|"decision = safe → ALLOW"| M["LLM / Agent"]
+    G --&gt;|"decision = unsafe → BLOCK"| R["Safe refusal"]
+    M -.-&gt;|"agent_output re-screened"| G
+    G -.-&gt;|"metrics · latency (optional MLflow)"| O[("mlruns/")]</pre></div>
+<p><strong>Surfaces</strong> (<code>agent_bouncer.core.schema.Surface</code>) — guarding <em>agents</em> means screening more than user text:</p>
+<div class="table-wrap"><table><thead><tr><th>Surface</th><th>What it protects against</th></tr></thead><tbody><tr><td><code>user_prompt</code></td><td>content harm, prompt injection, jailbreaks in the incoming request</td></tr><tr><td><code>tool_call</code></td><td>a dangerous action the agent is about to execute</td></tr><tr><td><code>agent_output</code></td><td>unsafe content the agent is about to return</td></tr></tbody></table></div>
+<p>---</p>
+<h2 id="2-the-core-contract-one-verdict">2 · The core contract: one <code>Verdict</code><a class="anchor" href="#2-the-core-contract-one-verdict" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Every guard — heuristic, encoder, RL-tuned decoder, OpenAI, or an incumbent — returns the <strong>same typed object</strong>, so the eval harness, serving layer, and reward functions all speak one language. That single contract is what makes the whole scoreboard apples-to-apples.</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+    class Guard {
+        &lt;&lt;protocol&gt;&gt;
+        +str name
+        +predict(text, surface) Verdict
+    }
+    class Verdict {
+        +Decision decision
+        +Hazard hazard
+        +float score
+        +str rationale
+        +Surface surface
+        +float latency_ms
+        +blocked() bool
+    }
+    class Decision {
+        &lt;&lt;enum&gt;&gt;
+        safe
+        unsafe
+    }
+    class Hazard {
+        &lt;&lt;enum&gt;&gt;
+        none
+        violent_crimes
+        hate
+        prompt_injection
+        jailbreak
+    }
+    Guard ..&gt; Verdict : returns
+    Verdict --&gt; Decision
+    Verdict --&gt; Hazard
+    KeywordGuard ..|&gt; Guard
+    EncoderGuard ..|&gt; Guard
+    DecoderGuard ..|&gt; Guard
+    OpenAIChatGuard ..|&gt; Guard</pre></div>
+<ul><li><strong><code>taxonomy.Hazard</code></strong> — one canonical label space (MLCommons-aligned content hazards + two agent-specific surfaces: <code>prompt_injection</code>, <code>jailbreak</code>).</li><li><strong><code>schema.Verdict</code></strong> — the I/O contract (<code>decision</code>, <code>hazard</code>, <code>score</code>, <code>rationale</code>, …).</li><li><strong><code>guard.Guard</code></strong> — a <code>Protocol</code>; anything with <code>.name</code> + <code>.predict()</code> is a guard.</li></ul>
+<p>---</p>
+<h2 id="3-repository-map">3 · Repository map<a class="anchor" href="#3-repository-map" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="diagram"><pre class="mermaid">flowchart TD
+    subgraph C["core/ — contracts (dependency-light)"]
+        TAX["core/taxonomy.py — Hazard"]
+        SCH["core/schema.py — Decision·Surface·Verdict"]
+        GRD["core/guard.py — Guard protocol + KeywordGuard"]
+    end
+    subgraph CFG["config/"]
+        ENV["config/envfile.py — .env / settings"]
+    end
+    subgraph D["data/"]
+        DAT["data/loaders.py — normalizers + loaders → unified JSONL"]
+        SPL["data/split.py — disjoint splits + anti-leakage"]
+        TS["data/training_sets.py — strategy-built train/test sets"]
+    end
+    subgraph MDL["models/ — guards"]
+        ENC["models/encoder.py — EncoderGuard"]
+        DEC["models/decoder.py — DecoderGuard + prompt/parse"]
+        ENS["models/ensemble.py — EnsembleGuard + combine()"]
+        REG["models/registry.py — base-model catalog"]
+    end
+    subgraph TR["training/"]
+        SFT["training/sft.py — encoder + decoder LoRA"]
+        GRPO["training/grpo.py — RLVR"]
+        DPO["training/dpo.py — preference tuning"]
+        REW["training/rewards.py — verifiable GRPO reward"]
+        RUN["training/runner.py — train→version→record"]
+    end
+    subgraph EV["evaluation/"]
+        MET["evaluation/metrics.py — P/R/F1 · FPR@benign · latency"]
+        HAR["evaluation/harness.py — evaluate()"]
+        BEN["evaluation/benchmarks.py — registry + runner"]
+        OAI["evaluation/openai_guards.py — Moderation · GPT-4o-mini · GPT-5.2"]
+        BAS["evaluation/baselines.py — Llama Guard · ShieldGemma · PromptGuard"]
+        CUR["evaluation/curves.py — ROC · PR · AUC"]
+        REP["evaluation/report.py — tables · model card"]
+    end
+    subgraph TRK["tracking/"]
+        EXP["tracking/experiments.py — experiment store + versioning"]
+        HW["tracking/hardware.py — cross-OS hardware snapshot"]
+    end
+    subgraph SV["serving/"]
+        API["serving/api.py — FastAPI /screen + Studio"]
+        DASH["serving/dashboard.html — Benchmark Studio UI"]
+    end
+
+    SCH --&gt; GRD --&gt; MET
+    TAX --&gt; SCH
+    ENV --&gt; DAT
+    DAT --&gt; HAR
+    SPL --&gt; TS --&gt; SFT
+    GRD --&gt; ENC &amp; DEC
+    REW --&gt; GRPO
+    SFT --&gt; ENC &amp; DEC
+    GRPO --&gt; DEC
+    DPO --&gt; DEC
+    REG --&gt; RUN --&gt; EXP
+    HW --&gt; EXP
+    ENC &amp; DEC --&gt; ENS
+    ENC &amp; DEC &amp; ENS &amp; OAI &amp; BAS --&gt; HAR --&gt; BEN --&gt; REP
+    BEN --&gt; CUR
+    HAR --&gt; API --&gt; DASH</pre></div>
+<div class="table-wrap"><table><thead><tr><th>Module</th><th>Role</th></tr></thead><tbody><tr><td><code>core/taxonomy</code></td><td>single hazard label space (content + injection/jailbreak)</td></tr><tr><td><code>core/schema</code></td><td>the<code>Verdict</code> contract every guard returns</td></tr><tr><td><code>core/guard</code></td><td><code>Guard</code> protocol + dependency-free reference <code>KeywordGuard</code></td></tr><tr><td><code>config/envfile</code></td><td>auto-loads<code>.env</code> (OPENAI_API_KEY, HF_TOKEN) into the environment</td></tr><tr><td><code>data/loaders</code></td><td>dataset loaders/normalizers → unified taxonomy (train sets<strong>and</strong> benchmarks)</td></tr><tr><td><code>data/split</code></td><td>deterministic train/test split +<strong>anti-leakage</strong> guards</td></tr><tr><td><code>data/training_sets</code></td><td>training-set<strong>strategies</strong> (balanced / mixed / over-refusal-aware / red-team)</td></tr><tr><td><code>models/*</code></td><td>trained guards:<code>EncoderGuard</code> (BERT), <code>DecoderGuard</code> (Qwen3/…), <code>ensemble</code>, <code>registry</code></td></tr><tr><td><code>models/registry</code></td><td>base-model catalog (Qwen3, DeepSeek-R1, SmolLM2, Gemma, …) + techniques</td></tr><tr><td><code>models/ensemble</code></td><td><code>EnsembleGuard</code> + pure <code>combine()</code> (union/intersection/majority/mean/weighted)</td></tr><tr><td><code>training/*</code></td><td><code>sft.py</code>, <code>grpo.py</code>, <code>dpo.py</code>, <code>rewards.py</code> (label = reward), <code>runner.py</code></td></tr><tr><td><code>training/runner</code></td><td>train→version→record and leakage-checked test→record orchestration</td></tr><tr><td><code>evaluation/*</code></td><td><code>metrics</code>, <code>harness</code>, benchmark registry, OpenAI + incumbent guards, ROC/AUC, reports</td></tr><tr><td><code>tracking/experiments</code></td><td>experiment store + model versioning (JSON, no server)</td></tr><tr><td><code>tracking/hardware</code></td><td>CPU/GPU/memory/runtime snapshot per run (cross-OS)</td></tr><tr><td><code>serving</code></td><td>FastAPI<code>/screen</code> API <strong>and</strong> the Benchmark Studio dashboard (train/test/experiments)</td></tr></tbody></table></div>
+<p>---</p>
+<h2 id="4-data-layer-one-taxonomy-many-sources">4 · Data layer — one taxonomy, many sources<a class="anchor" href="#4-data-layer-one-taxonomy-many-sources" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Each dataset labels harm in its own scheme. Pure <strong>normalizer</strong> functions map every source onto one record shape — <code>{"text", "label", "hazard", "source"}</code> — so training and evaluation are comparable across datasets. Normalizers are unit-tested with no network; <strong>loaders</strong> add the Hugging Face download on top (lazy import).</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    subgraph SRC["Hugging Face datasets"]
+        BT["BeaverTails"]; OM["OpenAI-Moderation eval"]; TC["ToxicChat"]
+        PI["deepset prompt-injections"]; JC["jailbreak-classification"]
+        JB["JailbreakBench"]; XS["XSTest"]
+    end
+    SRC --&gt; N["normalize_*() — pure, tested"]
+    N --&gt; U["Unified record&lt;br/&gt;{text, label, hazard, source}"]
+    U --&gt; J["JSONL splits&lt;br/&gt;(data/ · data/demo/)"]
+    U --&gt; S["balanced subset&lt;br/&gt;(data/benchmarks/)"]
+    J --&gt; TRAIN["training"]
+    S --&gt; EVAL["benchmark suite"]</pre></div>
+<ul><li><strong>Positive class = <code>unsafe</code>.</strong> Labels normalize to <code>safe</code> / <code>unsafe</code>; the hazard is a best-effort category (it doesn't affect binary P/R/F1).</li><li><strong>Splits are deterministic</strong> (<code>train_val_split</code>, <code>seed=42</code>). The <code>beavertails</code> benchmark uses the held-out <code>30k_test</code> split — disjoint from the demo training data (no leakage).</li><li><strong>Gated sets</strong> (WildGuardMix, HarmBench, AdvBench, Lakera PINT) need <code>HF_TOKEN</code>; the suite reports them as <em>not run</em> rather than fabricating numbers.</li></ul>
+<p>---</p>
+<h2 id="5-guards-three-regimes-baselines">5 · Guards — three regimes + baselines<a class="anchor" href="#5-guards-three-regimes-baselines" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>All guards implement the same <code>Guard</code> interface, so they drop into one harness.</p>
+<div class="diagram"><pre class="mermaid">flowchart TD
+    subgraph OURS["Agent Bouncer guards"]
+        A["A · Encoder&lt;br/&gt;ModernBERT/DistilBERT + head&lt;br/&gt;SFT · latency hero (~8 ms)"]
+        B["B · Decoder-SFT&lt;br/&gt;Qwen3-0.6B + LoRA&lt;br/&gt;emits JSON verdict"]
+        Cc["C · Decoder-GRPO&lt;br/&gt;RL from the SFT checkpoint&lt;br/&gt;reason-then-verdict"]
+    end
+    subgraph REF["Reference / incumbents / frontier"]
+        K["KeywordGuard (regex baseline)"]
+        L["Llama Guard · ShieldGemma · PromptGuard2  (gated)"]
+        O["OpenAI Moderation · GPT-4o-mini · GPT-5.2 (low/medium/high reasoning)"]
+    end
+    A &amp; B &amp; Cc &amp; K &amp; L &amp; O --&gt; H["eval.harness.evaluate()"]
+    H --&gt; V["GuardMetrics&lt;br/&gt;P · R · F1 · FPR@benign · latency"]</pre></div>
+<div class="table-wrap"><table><thead><tr><th>Regime</th><th>Model</th><th>Idea</th><th>Trade-off</th></tr></thead><tbody><tr><td><strong>A — Encoder</strong></td><td>DistilBERT 66M</td><td>safety as classification</td><td>fastest (~8 ms), continuous score → real ROC/AUC</td></tr><tr><td><strong>B — SFT decoder</strong></td><td>Qwen3-0.6B (LoRA)</td><td>instruction-style<code>safe/unsafe + hazard</code> JSON</td><td>generalizes better, ~500 ms on CPU</td></tr><tr><td><strong>C — GRPO decoder</strong></td><td>Qwen3-0.6B (RL)</td><td>reason-then-verdict,<strong>verifiable reward</strong></td><td>RLVR on top of SFT</td></tr></tbody></table></div>
+<p>The decoder's <strong>prompt / target / parse</strong> format lives in one place (<code>models/decoder.py</code>) so SFT, GRPO, DPO, and inference never drift. <code>build_prompt</code> → model → <code>parse_verdict</code> → <code>Verdict</code>; unparseable output <strong>fails closed</strong> (treated as unsafe).</p>
+<p>---</p>
+<h2 id="6-training-sft-dpo-and-rl-grpo-rlvr">6 · Training — SFT, DPO, and RL (GRPO / RLVR)<a class="anchor" href="#6-training-sft-dpo-and-rl-grpo-rlvr" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    D["unified JSONL"] --&gt; SFTe["SFT · encoder (Trainer)"] --&gt; Ae["outputs/demo-encoder"]
+    D --&gt; SFTd["SFT · decoder (TRL SFTTrainer + LoRA)"] --&gt; Bd["outputs/*-decoder-sft"]
+    Bd --&gt; G["GRPO from SFT checkpoint"] --&gt; Cg["outputs/grpo-qwen3-0.6b"]
+    D --&gt; DPOt["DPO · over-refusal preference pairs"] --&gt; Bd</pre></div>
+<p>The headline experiment is <strong>RLVR</strong>: a guardrail has ground-truth labels, so the <strong>label is the reward</strong> — no reward model needed.</p>
+<div class="diagram"><pre class="mermaid">flowchart TD
+    P["prompt (from a labeled example)"] --&gt; RO["policy generates N rollouts"]
+    RO --&gt; PA["parse_verdict() each rollout"]
+    PA --&gt; RWD["composite_reward(pred, gold)"]
+    subgraph RWD["verifiable reward = Σ"]
+        direction LR
+        c["+ correctness"]; cat["+ hazard category"]; f["+ parseable format"]
+        fp["− false-positive penalty"]; br["+ brevity"]
+    end
+    RWD --&gt; ADV["group-relative advantage (GRPO)"] --&gt; UPD["policy update (KL-regularized)"]
+    UPD --&gt; P</pre></div>
+<p>The <strong>false-positive penalty</strong> bakes the headline metric (don't over-block benign traffic) directly into the objective. Reward functions are pure and unit-tested; the LoRA adapter is merged after training so the RL model loads as a standalone guard, exactly like SFT.</p>
+<p>---</p>
+<h2 id="6b-training-experiment-lifecycle">6b · Training &amp; experiment lifecycle<a class="anchor" href="#6b-training-experiment-lifecycle" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>A dedicated training subsystem turns "run a script" into a tracked, reproducible, <strong>versioned</strong> experiment — for any model in the registry (the Qwen3 SLMs plus <strong>DeepSeek-R1-1.5B, SmolLM2-1.7B, Gemma-1B</strong>), with the same SFT + RL techniques.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    REG["models/registry&lt;br/&gt;base model + arch + techniques"] --&gt; CFG["configure params&lt;br/&gt;(epochs · lr · LoRA · max_steps)"]
+    CFG --&gt; TR["train_and_record&lt;br/&gt;SFT / GRPO / DPO"]
+    TR --&gt; V["versioned checkpoint&lt;br/&gt;outputs/models/&lt;key&gt;/&lt;version&gt;"]
+    TR --&gt; EXPT["experiment (kind=train)&lt;br/&gt;params · hardware · git · timing"]
+    V --&gt; EV["evaluate_and_record"]
+    SEP["split · leakage guard&lt;br/&gt;drop train∩test items"] --&gt; EV
+    BM["benchmark suite"] --&gt; EV
+    EV --&gt; EXPE["experiment (kind=eval)&lt;br/&gt;P/R/F1 · AUC · p90 · throughput · hardware"]
+    EXPT &amp; EXPE --&gt; HIST["experiment history&lt;br/&gt;comparison · P90 graphs"]</pre></div>
+<ul><li><strong>Model registry</strong> (<code>models/registry.py</code>) — base models + arch + supported techniques.</li><li><strong>Versioning</strong> (<code>tracking/experiments.py</code>) — every train writes <code>outputs/models/&lt;key&gt;/&lt;version&gt;/</code>.</li><li><strong>Experiment store</strong> — one JSON per run under <code>outputs/experiments/</code> + an index; captures params, dataset, <strong>hardware</strong> (<code>tracking/hardware.py</code>: CPU/GPU/memory/runtime), git commit, and metrics.</li><li><strong>Dataset separation</strong> (<code>data/split.py</code>) — deterministic disjoint splits + <code>assert_no_leakage</code>; at test time, any benchmark prompt found in the model's <em>training</em> data is <strong>dropped and reported</strong>, so a model is never scored on what it trained on.</li><li><strong>Orchestration</strong> (<code>training/runner.py</code>) — <code>train_and_record</code> / <code>evaluate_and_record</code>, driven by <code>scripts/train/run_training.py</code>, <code>scripts/eval/run_testing.py</code>, and the Studio's <code>/api/train</code> <code>/api/test</code>.</li></ul>
+<h2 id="7-evaluation-harness-the-benchmark-suite">7 · Evaluation harness &amp; the benchmark suite<a class="anchor" href="#7-evaluation-harness-the-benchmark-suite" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>One harness scores any guard on any labeled set; the benchmark suite is a <strong>registry</strong> of standard datasets wired to that harness.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    REG["BENCHMARKS registry&lt;br/&gt;(name → loader · axis · description)"] --&gt; LB["load_benchmark()&lt;br/&gt;download + balanced subsample"]
+    LB --&gt; DS["records per benchmark"]
+    GUARDS["selected guards"] --&gt; RUN
+    DS --&gt; RUN["run_suite / evaluate()&lt;br/&gt;guard × benchmark → GuardMetrics"]
+    RUN --&gt; J["outputs/benchmark_results.json&lt;br/&gt;(merge-on-write)"]
+    RUN --&gt; CU["compute_curves → outputs/curves.json"]
+    J --&gt; RPT["report.render_benchmark_report → BENCHMARKS.md"]
+    J --&gt; UI["Benchmark Studio"]
+    CU --&gt; UI</pre></div>
+<p>Three axes are covered: <strong>guardrail</strong> (BeaverTails, OpenAI-Moderation, ToxicChat), <strong>red-teaming</strong> (deepset prompt-injections, jailbreak-classification, JailbreakBench), and <strong>over-refusal</strong> (XSTest). Every guard is scored on the <em>same</em> balanced subset per benchmark.</p>
+<p>---</p>
+<h2 id="8-metrics-curves">8 · Metrics &amp; curves<a class="anchor" href="#8-metrics-curves" aria-hidden="true" tabindex="-1">#</a></h2>
+<p><code>UNSAFE</code> is the positive class. Definitions in <code>evaluation/metrics.py</code> / <code>evaluation/curves.py</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>Metric</th><th>Meaning</th><th>Direction</th></tr></thead><tbody><tr><td><strong>Precision</strong></td><td>of flagged prompts, how many were truly unsafe</td><td>higher ↑</td></tr><tr><td><strong>Recall</strong></td><td>of unsafe prompts, how many were caught</td><td>higher ↑</td></tr><tr><td><strong>F1</strong></td><td>harmonic mean of precision &amp; recall</td><td>higher ↑</td></tr><tr><td><strong><code>fpr_on_benign</code></strong></td><td>share of<em>benign</em> prompts wrongly blocked (<strong>over-blocking</strong>)</td><td><strong>lower ↓</strong></td></tr><tr><td><strong>p50 / p90 / p95 latency</strong></td><td>per-request cost;<strong>p90</strong> is the tail-latency SLO number</td><td>lower ↓</td></tr><tr><td><strong>throughput</strong></td><td>single-stream queries/sec (1000 / mean latency)</td><td>higher ↑</td></tr><tr><td><strong>ROC-AUC</strong></td><td>ranking quality; swept for continuous scores, single-operating-point otherwise</td><td>higher ↑</td></tr></tbody></table></div>
+<p><code>fpr_on_benign</code> is first-class because over-blocking is what makes a guardrail unusable in production — and it's the number incumbents underreport. It is also baked into the GRPO reward.</p>
+<p>---</p>
+<h2 id="9-serving-the-benchmark-studio">9 · Serving &amp; the Benchmark Studio<a class="anchor" href="#9-serving-the-benchmark-studio" aria-hidden="true" tabindex="-1">#</a></h2>
+<p><code>serving/api.py</code> exposes the guard as <code>POST /screen</code> <strong>and</strong> serves the Benchmark Studio — a web UI to <strong>browse benchmark contents</strong>, <strong>build training sets</strong> (by strategy), <strong>train / test</strong> SLM guards (streamed live), and <strong>compare experiments</strong> with hardware + P90 graphs. Tabs: Overview · Benchmarks · Datasets · Train &amp; Test · Experiments · ROC &amp; AUC.</p>
+<div class="diagram"><pre class="mermaid">sequenceDiagram
+    participant B as Browser (dashboard.html)
+    participant API as FastAPI (serving/api.py)
+    participant P as Subprocesses
+    B-&gt;&gt;API: GET /api/config, /api/results, /api/curves
+    API--&gt;&gt;B: benchmarks · guard catalog · latest results
+    B-&gt;&gt;API: POST /api/run {benchmarks, guards, per_class}
+    API-&gt;&gt;P: run_benchmarks.py (--skip-decoder)
+    loop each guard × benchmark
+        P--&gt;&gt;API: stdout "[bench] guard: P=.. R=.. F1=.."
+        API--&gt;&gt;B: SSE event (step · result · log)
+        B-&gt;&gt;B: update stepper · live table · console
+    end
+    API-&gt;&gt;P: eval_added_guard.py (isolated decoders) → compute_curves.py
+    P--&gt;&gt;API: done
+    API--&gt;&gt;B: SSE done
+    B-&gt;&gt;API: GET /api/results, /api/curves (refresh)
+    B-&gt;&gt;B: render P/R/F1 · FPR · latency · ROC/AUC</pre></div>
+<p>Design choices that keep it robust: <strong>process isolation</strong> (a BERT encoder and a Qwen decoder co-loaded in one process can deadlock the tokenizer thread-pool, so decoders run in their own subprocess); <strong>merge-on-write</strong> (a partial run augments the scoreboard instead of clobbering it); and <strong>Chart.js vendored locally</strong> (works offline).</p>
+<p>---</p>
+<h2 id="10-reproducing-end-to-end">10 · Reproducing end-to-end<a class="anchor" href="#10-reproducing-end-to-end" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    s0["make setup"] --&gt; s1["make data-demo"] --&gt; s2["make demo&lt;br/&gt;(train encoder, beat baseline)"]
+    s2 --&gt; s3["make bench&lt;br/&gt;(download + score all guards)"]
+    s3 --&gt; s4["compute_curves → curves.json"]
+    s4 --&gt; s5["render → BENCHMARKS.md"]
+    s5 --&gt; s6["make serve / ./start.sh&lt;br/&gt;→ Benchmark Studio"]</pre></div>
+<p>Everything is seeded and deterministic; benchmark subsets are cached; API guards are skipped (never faked) when a key is absent. The notebook <code>notebooks/agent_bouncer_studio.ipynb</code> drives the same path from a single file.</p>
+<p>---</p>
+<h2 id="11-extending-it">11 · Extending it<a class="anchor" href="#11-extending-it" aria-hidden="true" tabindex="-1">#</a></h2>
+<ul><li><strong>Add a benchmark</strong> — write a pure <code>normalize_*</code> in <code>data/loaders.py</code> (+ a loader), register a <code>Benchmark(name, loader, axis, description)</code> in <code>evaluation/benchmarks.py</code>. It flows into the suite, the report, and the dashboard automatically.</li><li><strong>Add a guard</strong> — implement <code>.name</code> + <code>.predict(text, *, surface) -&gt; Verdict</code>. It's immediately scorable and comparable.</li><li><strong>Add a dataset for training</strong> — a <code>normalize_*</code> + loader, then point a training config's <code>data:</code> at the JSONL.</li><li><strong>Tune the reward</strong> — edit <code>RewardWeights</code> (e.g. raise <code>false_positive_penalty</code> to push over-blocking down further).</li></ul>
+        <footer>
+          <p>
+            Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents —
+            this page is generated from the architecture series in <code>docs/</code>.
+          </p>
+        </footer>
+      </article>
+    </main>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <nav class="toc-links" id="page-toc"></nav>
+      </div>
+    </aside>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

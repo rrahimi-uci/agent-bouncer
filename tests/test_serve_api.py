@@ -327,3 +327,73 @@ def test_train_and_test_build_valid_launch(monkeypatch):
     r = client.post("/api/test", json={"exp": "e1", "benchmarks": ["xstest"], "device": "mps"})
     cmd = " ".join(launched["cmds"][0])
     assert "run_testing.py" in cmd and "--exp e1" in cmd and "--device mps" in cmd
+
+
+# --------------------------------------------------------- ensemble builder + report
+def _write_preds(tmp_path, preds):
+    d = tmp_path / "preds"
+    d.mkdir()
+    import json
+    for name, blob in preds.items():
+        (d / f"{name}.json").write_text(json.dumps(blob))
+    return d
+
+
+def test_ensemble_members_empty_when_no_predictions(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
+    d = client.get("/api/ensemble/members").json()
+    assert d["members"] == []
+    assert set(d["strategies"]) >= {"union", "majority", "mean", "weighted"}
+
+
+def test_ensemble_build_scores_and_merges(monkeypatch, tmp_path):
+    rows = [[1, 1, 0.9, 10], [1, 0, 0.3, 10], [1, 1, 0.7, 10],
+            [0, 0, 0.1, 10], [0, 1, 0.6, 10], [0, 0, 0.2, 10]]
+    rows2 = [[1, 1, 0.8, 20], [1, 1, 0.6, 20], [1, 0, 0.4, 20],
+             [0, 0, 0.2, 20], [0, 0, 0.1, 20], [0, 0, 0.15, 20]]
+    preds = {"guard-a": {"b1": rows}, "guard-b": {"b1": rows2}}
+    monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
+    monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+
+    assert set(client.get("/api/ensemble/members").json()["members"]) == {"guard-a", "guard-b"}
+    r = client.post("/api/ensemble", json={"members": ["guard-a", "guard-b"],
+                                           "strategy": "union", "name": "my mix"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["name"] == "ensemble-my-mix"          # sanitised + prefixed
+    assert 0.0 <= d["macro"]["f1"] <= 1.0
+    # merged into the (patched) scoreboard
+    import json
+    blob = json.loads((tmp_path / "results.json").read_text())
+    assert "ensemble-my-mix" in blob["results"]["b1"]
+
+
+def test_ensemble_build_bad_member_is_400(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
+    r = client.post("/api/ensemble", json={"members": ["nope", "nada"], "strategy": "majority"})
+    assert r.status_code == 400 and "predictions" in r.json()["detail"]
+
+
+def test_report_404_when_no_results(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "missing.json")
+    assert client.get("/api/report").status_code == 404
+
+
+def test_report_returns_pdf(monkeypatch, tmp_path):
+    import json
+    results = {"per_class": 10, "meta": {"b1": {"axis": "guardrail"}},
+               "results": {"b1": {"keyword-baseline": {"precision": .6, "recall": .5, "f1": .55,
+                                                       "roc_auc": .6, "fpr_on_benign": .3,
+                                                       "latency_p50_ms": 1, "latency_p90_ms": 2,
+                                                       "throughput_per_s": 1000}}}}
+    rj = tmp_path / "results.json"
+    rj.write_text(json.dumps(results))
+    monkeypatch.setattr(api, "RESULTS_JSON", rj)
+
+    # don't drive a real browser in the test — stub the PDF renderer
+    from agent_bouncer.serving import leaderboard_report
+    monkeypatch.setattr(leaderboard_report, "render_pdf",
+                        lambda html, out, **kw: open(out, "wb").write(b"%PDF-1.4 stub"))
+    r = client.get("/api/report")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF")

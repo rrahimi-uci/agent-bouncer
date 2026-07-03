@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Datasets | Agent Bouncer</title>
+  <meta name="description" content="Datasets — part of the Agent Bouncer documentation.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+
+<body data-doc-page="module">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="index.html#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content doc-body">
+        <nav class="doc-breadcrumb" aria-label="Breadcrumb">
+          <span>Studio &amp; workflow</span>
+          <span aria-hidden="true">/</span>
+          <span class="current">Datasets</span>
+        </nav>
+        <header class="doc-header">
+          <div class="doc-eyebrow">Studio &amp; workflow</div>
+          <h1 id="top">Datasets</h1>
+          <p class="doc-summary">How training sets are composed from benchmark sources, the balancing strategies, and the disjoint train/test split with an enforced no-leakage guarantee.</p>
+          <div class="doc-actions">
+            <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
+              Copy page
+            </button>
+          </div>
+        </header>
+<p>All training data is chosen to be <strong>license-compatible</strong> with an Apache-2.0 release.</p>
+<h2 id="training">Training<a class="anchor" href="#training" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Dataset</th><th>Size</th><th>License</th><th>Use</th></tr></thead><tbody><tr><td>WildGuardMix (<code>allenai/wildguardmix</code>)</td><td>~92K</td><td>Apache-2.0</td><td>Broad harm + refusals + jailbreaks</td></tr><tr><td>BeaverTails (<code>PKU-Alignment/BeaverTails</code>)</td><td>~330K QA</td><td>Apache-2.0 (CC-BY-NC for some splits — check)</td><td>14-category harm labels</td></tr><tr><td>Aegis 2.0 (<code>nvidia/Aegis-AI-Content-Safety-Dataset-2.0</code>)</td><td>~30K</td><td>CC-BY-4.0</td><td>Diverse safety taxonomy</td></tr></tbody></table></div>
+<blockquote class="callout"><p>⚠️ <strong>Avoid ToxicChat for the released model</strong> — it is Vicuna-generated (non-commercial). It's fine for internal analysis only.</p></blockquote>
+<h2 id="benign-over-refusal-for-the-false-positive-metric">Benign / over-refusal (for the false-positive metric)<a class="anchor" href="#benign-over-refusal-for-the-false-positive-metric" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Dataset</th><th>Use</th></tr></thead><tbody><tr><td>XSTest</td><td>Safe prompts that <em>look</em> unsafe — measures over-blocking</td></tr><tr><td>OR-Bench</td><td>Large-scale over-refusal benchmark</td></tr></tbody></table></div>
+<h2 id="evaluation-standard-benchmark-suite">Evaluation (standard benchmark suite)<a class="anchor" href="#evaluation-standard-benchmark-suite" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Run via <code>make bench</code> / <code>scripts/eval/run_benchmarks.py</code>; registered in <code>agent_bouncer/evaluation/benchmarks.py</code> and normalized in <code>agent_bouncer/data/loaders.py</code>. All are <strong>ungated</strong> (download without <code>HF_TOKEN</code>) and scored on class-balanced subsets by default — or on the <strong>full</strong> sets with <code>run_benchmarks.py --full</code> (fetched by <code>scripts/data/download_full_benchmarks.py</code>).</p>
+<div class="table-wrap"><table><thead><tr><th>Axis</th><th>Benchmark</th><th>HF dataset</th><th>Measures</th></tr></thead><tbody><tr><td>Guardrail</td><td>BeaverTails (30k_test)</td><td><code>PKU-Alignment/BeaverTails</code></td><td>14-category harmful-QA prompt safety</td></tr><tr><td>Guardrail</td><td>OpenAI-Moderation</td><td><code>mmathys/openai-moderation-api-evaluation</code></td><td>8-category content moderation</td></tr><tr><td>Guardrail</td><td>ToxicChat</td><td><code>lmsys/toxic-chat</code></td><td>Real user-input toxicity (eval-only license)</td></tr><tr><td>Red-team</td><td>prompt-injections</td><td><code>deepset/prompt-injections</code></td><td>Prompt-injection attack detection</td></tr><tr><td>Red-team</td><td>jailbreak-classification</td><td><code>jackhhao/jailbreak-classification</code></td><td>Jailbreak vs. benign</td></tr><tr><td>Red-team</td><td>JailbreakBench</td><td><code>JailbreakBench/JBB-Behaviors</code></td><td>100 harmful + 100 benign behaviors</td></tr><tr><td>Over-refusal</td><td>XSTest</td><td><code>natolambert/xstest-v2-copy</code></td><td>Safe-but-scary prompts → <code>fpr_on_benign</code></td></tr></tbody></table></div>
+<h3 id="gated-need-hf_token-license-acceptance-reported-as-not-run-never-faked">Gated (need <code>HF_TOKEN</code> + license acceptance — reported as <em>not run</em>, never faked)<a class="anchor" href="#gated-need-hf_token-license-acceptance-reported-as-not-run-never-faked" aria-hidden="true" tabindex="-1">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>Benchmark</th><th>Measures</th></tr></thead><tbody><tr><td>WildGuardMix (<code>allenai/wildguardmix</code>)</td><td>Broad harm + refusals + jailbreaks</td></tr><tr><td>HarmBench (<code>walledai/HarmBench</code>)</td><td>Red-teaming behaviors</td></tr><tr><td>AdvBench (<code>walledai/AdvBench</code>)</td><td>Adversarial harmful instructions</td></tr><tr><td>Lakera PINT</td><td>Prompt-injection / jailbreak (private benchmark)</td></tr></tbody></table></div>
+<p>Mapping details for each dataset's native labels live next to the code in <code>agent_bouncer/data.py</code>.</p>
+        <footer>
+          <p>
+            Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents —
+            this page is generated from the architecture series in <code>docs/</code>.
+          </p>
+        </footer>
+      </article>
+    </main>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <nav class="toc-links" id="page-toc"></nav>
+      </div>
+    </aside>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

@@ -114,11 +114,11 @@ with **Precision / Recall / F1 / ROC-AUC / latency / P90 / throughput** charts.
 | Tab | What you get |
 |-----|--------------|
 | **Overview** | KPI tiles + macro P/R/F1 + over-blocking + latency (p50) + **P90** + **throughput** |
-| **Benchmarks** | a **toolbar of benchmarks** — click one to **view its contents** (searchable, filter safe/unsafe, hazard tags) alongside per-model results |
-| **Datasets** | build a training set with a **strategy** (balanced · mixed · over-refusal-aware · red-team), leakage-safe |
+| **Explore Benchmarks** | a **toolbar of benchmarks** — click one to **view its contents** (searchable, filter safe/unsafe, hazard tags) alongside per-model results |
+| **Datasets Creation** | build a training set with a **strategy** (balanced · mixed · over-refusal-aware · red-team), leakage-safe |
 | **Train & Test** | pick a base model + technique + a built training set → **train**; then **test** a version (leakage-guarded), streamed live |
 | **Experiments** | full history with **hardware**, model **comparison**, and **P90 graphs** |
-| **ROC & AUC** | real ROC + precision-recall curves + per-benchmark AUC (all models) |
+| **Leaderboard** | macro-average **results table** (P/R/F1/AUC/p50/p90, grouped into small models · GPT baselines · ensembles), ROC/PR curves + per-benchmark AUC, a **Generate PDF report** button, and an **interactive ensemble builder** (pick members + a strategy → scored onto the leaderboard) |
 
 Chart.js is vendored (offline); the studio opens pre-populated from `outputs/`. Screenshots:
 [Benchmarks](docs/media/benchmark-studio-benchmarks.png) ·
@@ -149,7 +149,12 @@ python scripts/eval/run_testing.py  --exp <experiment-id> --per-class 40 --devic
 
 ## Results
 
-Live 7-benchmark run, `per_class=100`, one harness. **GPT-5.2 uses `reasoning_effort="low"`.**
+> **Illustrative figures from a reference run** — the repo ships with an empty `outputs/`. Generate
+> your own with `make bench` (or the Studio), then open the **Leaderboard** tab / export a PDF.
+> Numbers vary with hardware, sampling, and model versions.
+
+7-benchmark run, `per_class=100`, one harness. The reasoning judge is scored at **three effort
+tiers** (`openai-gpt-5.2-low` / `-medium` / `-high`); the row below is the `low` tier.
 `fpr_on_benign` (over-blocking) is the headline usability metric.
 
 | Guard | Params | macro-F1 | ROC-AUC | FPR@benign ↓ | p50 ms ↓ | p90 ms ↓ |

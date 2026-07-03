@@ -18,7 +18,14 @@ import json
 import os
 import tempfile
 
-from run_benchmarks import CACHE_DIR, REPORT_MD, RESULTS_JSON, evaluate_guard  # noqa: E402
+from run_benchmarks import (  # noqa: E402
+    CACHE_DIR,
+    REPORT_MD,
+    RESULTS_JSON,
+    dump_prediction_rows,
+    evaluate_guard,
+    prediction_rows,
+)
 
 from agent_bouncer.data import read_jsonl
 from agent_bouncer.evaluation.benchmarks import GATED_BENCHMARKS
@@ -28,8 +35,10 @@ from agent_bouncer.models.encoder import EncoderGuard
 
 # Canonical scoreboard order (present guards are filtered from this).
 CANON_ORDER = [
-    "keyword-baseline", "encoder-distilbert", "decoder-sft-0.6B", "decoder-sft-1.7B",
-    "decoder-grpo-0.6B", "openai-moderation", "openai-gpt-4o-mini", "openai-gpt-5.2-low",
+    "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",
+    "decoder-sft-0.6B", "decoder-sft-1.7B", "decoder-grpo-0.6B",
+    "openai-moderation", "openai-gpt-4o-mini",
+    "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
 ]
 
 
@@ -62,8 +71,9 @@ def main() -> None:
             print(f"!! no cached subset for {bench}; skipping")
             continue
         records = read_jsonl(path)
-        m = evaluate_guard(guard, records, workers=1)
+        m, verdicts = evaluate_guard(guard, records, workers=1)
         scored[bench] = m.to_dict()
+        dump_prediction_rows(args.name, bench, prediction_rows(records, verdicts))
         print(f"  [{bench}] {args.name}: P={m.precision:.3f} R={m.recall:.3f} "
               f"F1={m.f1:.3f} FPR={m.fpr_on_benign:.3f} p50={m.latency_p50_ms:.0f}ms")
 
@@ -85,7 +95,9 @@ def main() -> None:
 
     params.update(GUARD_PARAMS)
     params[args.name] = args.params
-    order = [g for g in CANON_ORDER if any(g in results[b] for b in results)]
+    present = {g for b in results for g in results[b]}
+    # canonical order first, then any other scored guards (incl. the just-added --name) so none are dropped
+    order = [g for g in CANON_ORDER if g in present] + sorted(present - set(CANON_ORDER))
 
     report = render_benchmark_report(results, meta, params, guard_order=order, gated=GATED_BENCHMARKS)
     header = (

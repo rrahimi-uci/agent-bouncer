@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fine-tuning techniques | Agent Bouncer</title>
+  <meta name="description" content="Fine-tuning techniques — part of the Agent Bouncer documentation.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+
+<body data-doc-page="module">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="index.html#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content doc-body">
+        <nav class="doc-breadcrumb" aria-label="Breadcrumb">
+          <span>Learn</span>
+          <span aria-hidden="true">/</span>
+          <span class="current">Fine-tuning techniques</span>
+        </nav>
+        <header class="doc-header">
+          <div class="doc-eyebrow">Learn</div>
+          <h1 id="top">Fine-tuning techniques</h1>
+          <p class="doc-summary">SFT · LoRA · GRPO (RLVR) · DPO explained with diagrams — what each technique optimizes, when to reach for it, and which technique applies to which base model.</p>
+          <div class="doc-actions">
+            <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
+              Copy page
+            </button>
+          </div>
+        </header>
+<p>--- title: Fine-tuning techniques ---</p>
+<h1 id="fine-tuning-techniques-sft-lora-grpo-dpo">Fine-tuning techniques — SFT · LoRA · GRPO · DPO<a class="anchor" href="#fine-tuning-techniques-sft-lora-grpo-dpo" aria-hidden="true" tabindex="-1">#</a></h1>
+<blockquote class="callout"><p><strong>Who this is for.</strong> Students and engineers learning how to <em>turn a base SLM into a safety guard</em>. Each technique is explained with a diagram, the intuition, when to reach for it, and where it lives in this repo. Pair this with the <a href="m-slm-architectures.html">SLM architecture guide</a>.</p></blockquote>
+<p>Every guard in Agent Bouncer returns the same typed <strong><code>Verdict</code></strong> (<code>{decision, hazard, score}</code>). Training is just <em>teaching a base model to produce that verdict well</em> — cheaply, without over-blocking. There are three tools for the job, plus the parameter-efficient trick (LoRA) that makes them affordable on a laptop.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    B["base SLM"] --&gt;|"SFT: imitate labels"| G1["guard v1"]
+    G1 --&gt;|"GRPO: reward correct verdicts"| G2["guard v2 (RL)"]
+    G1 --&gt;|"DPO: prefer good over bad"| G3["guard v2 (preference)"]</pre></div>
+<p>---</p>
+<h2 id="sft-supervised-fine-tuning-the-workhorse">SFT — Supervised Fine-Tuning (the workhorse)<a class="anchor" href="#sft-supervised-fine-tuning-the-workhorse" aria-hidden="true" tabindex="-1">#</a></h2>
+<p><strong>Idea.</strong> Show the model labeled examples and train it to reproduce the right answer with ordinary next-token (or classification) loss. This is the foundation; GRPO and DPO refine an SFT model.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    D["{text, label, hazard}"] --&gt; P["build prompt + target"]
+    P --&gt; M["base model"]
+    M --&gt; L["cross-entropy loss&lt;br/&gt;vs the gold verdict"]
+    L --&gt;|"backprop"| M</pre></div>
+<ul><li><strong>Encoder path</strong> — a sequence-classification head over <code>[CLS]</code>; loss on safe/unsafe. Fast, runs on CPU/MPS. → <code>training/sft.py::train_encoder</code></li><li><strong>Decoder path</strong> — teach the model to <em>emit the JSON verdict</em> after the prompt; loss on the target tokens. → <code>training/sft.py::train_decoder</code></li></ul>
+<p><strong>Reach for SFT when:</strong> you have labels (you do — the benchmarks). It's always step one.</p>
+<p>---</p>
+<h2 id="lora-the-efficiency-trick-behind-decoder-training">LoRA — the efficiency trick behind decoder training<a class="anchor" href="#lora-the-efficiency-trick-behind-decoder-training" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Full fine-tuning updates <em>all</em> weights (GBs of optimizer state). <strong>LoRA (Low-Rank Adaptation)</strong> freezes the base model and injects tiny trainable low-rank matrices <strong>A·B</strong> into each attention/ MLP projection. You train ~0.1–1% of the parameters, then <strong>merge</strong> them back so the guard loads as a normal standalone model.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    W["frozen W (d×d)"] --&gt; Y(("+"))
+    X["input"] --&gt; A["A (d×r)"] --&gt; Bm["B (r×d)"] --&gt; Y
+    X --&gt; W
+    Y --&gt; O["output"]
+    note["only A,B train · r≈8–32 · merge at the end"]</pre></div>
+<p>Knobs you'll see in the Studio / configs: <code>lora_r</code> (rank), <code>lora_alpha</code> (scaling), <code>dropout</code>. Higher <code>r</code> = more capacity + more compute. → <code>training/runner.py::build_config</code></p>
+<p>---</p>
+<h2 id="grpo-rl-from-a-verifiable-reward">GRPO — RL from a <em>verifiable</em> reward<a class="anchor" href="#grpo-rl-from-a-verifiable-reward" aria-hidden="true" tabindex="-1">#</a></h2>
+<p><strong>Idea.</strong> After SFT, improve the guard with reinforcement learning — but instead of training a separate (expensive, gameable) reward model, we use a *<em>verifiable reward: the ground-truth label </em>is<em> the reward.<strong> This is RLVR (RL from Verifiable Rewards). </strong>GRPO (Group Relative Policy Optimization)</em>* samples several completions per prompt, scores each, and pushes the policy toward the ones that beat the group average — no value network needed.</p>
+<div class="diagram"><pre class="mermaid">flowchart TD
+    P["prompt"] --&gt; S["sample G completions"]
+    S --&gt; C1["verdict 1"] &amp; C2["verdict 2"] &amp; C3["verdict …G"]
+    C1 &amp; C2 &amp; C3 --&gt; R["verifiable reward:&lt;br/&gt;correct? right hazard?&lt;br/&gt;valid JSON? brief?&lt;br/&gt;− false-positive penalty"]
+    R --&gt; ADV["advantage = reward − group mean"]
+    ADV --&gt; U["update policy toward&lt;br/&gt;above-average completions"]
+    U --&gt; P</pre></div>
+<p>The reward is a weighted sum you can tune (<code>training/rewards.py</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Component</th><th>Rewards…</th></tr></thead><tbody><tr><td><code>correctness</code></td><td>matching the gold decision</td></tr><tr><td><code>category</code></td><td>naming the right hazard</td></tr><tr><td><code>format</code></td><td>emitting parseable JSON</td></tr><tr><td><strong><code>false_positive_penalty</code></strong></td><td><strong>subtracts</strong> for blocking benign traffic (fights over-refusal)</td></tr><tr><td><code>brevity</code></td><td>short rationales (latency!)</td></tr></tbody></table></div>
+<p><strong>Reach for GRPO when:</strong> you want to <em>directly optimize the metric that matters</em> (correct, non-over-blocking verdicts) and, for reasoning models like DeepSeek-R1-Distill, shape the think-then-answer behavior. Decoders only. → <code>training/grpo.py</code></p>
+<p>---</p>
+<h2 id="dpo-direct-preference-optimization-over-refusal-focus">DPO — Direct Preference Optimization (over-refusal focus)<a class="anchor" href="#dpo-direct-preference-optimization-over-refusal-focus" aria-hidden="true" tabindex="-1">#</a></h2>
+<p><strong>Idea.</strong> Instead of a reward loop, give the model <strong>pairs</strong>: a <em>chosen</em> (good) and <em>rejected</em> (bad) response to the same prompt, and directly optimize it to prefer the chosen one. Simpler and more stable than full RL. We build pairs where the <strong>chosen</strong> verdict is the gold one and the <strong>rejected</strong> is its flip — especially useful to teach "benign → don't block."</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    P["prompt"] --&gt; CH["chosen = gold verdict"]
+    P --&gt; RJ["rejected = wrong verdict"]
+    CH &amp; RJ --&gt; DPO["DPO loss:&lt;br/&gt;raise P(chosen) − P(rejected)"]
+    DPO --&gt; M["model prefers correct verdicts"]</pre></div>
+<p><strong>Reach for DPO when:</strong> you have clear good/bad pairs and want targeted correction (e.g. an over-blocking guard) without standing up an RL loop. Decoders only. → <code>training/dpo.py</code></p>
+<p>---</p>
+<h2 id="which-technique-for-which-model">Which technique for which model?<a class="anchor" href="#which-technique-for-which-model" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>The UI <strong>greys out invalid combinations</strong>; the backend enforces the same matrix (<code>registry.assert_valid_combo</code>).</p>
+<div class="table-wrap"><table><thead><tr><th>Model</th><th>Arch</th><th style="text-align:center">SFT</th><th style="text-align:center">GRPO</th><th style="text-align:center">DPO</th><th>Why</th></tr></thead><tbody><tr><td><code>distilbert</code></td><td>encoder</td><td style="text-align:center">✅</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td>classifier: no generation to reward/prefer</td></tr><tr><td><code>qwen3-0.6b</code></td><td>decoder</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td>full toolkit</td></tr><tr><td><code>qwen3-1.7b</code></td><td>decoder</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td>full toolkit</td></tr><tr><td><code>deepseek-r1-1.5b</code></td><td>decoder</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td>reasoning-distilled → shines with GRPO</td></tr><tr><td><code>smollm2-1.7b</code></td><td>decoder</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td>full toolkit</td></tr></tbody></table></div>
+<p><strong>Encoders support SFT only</strong> — GRPO/DPO operate on <em>generated sequences</em>, and a classification head doesn't generate. This isn't a limitation to work around; it's the reason the encoder is the fast gate and decoders are the flexible reasoners.</p>
+<p>---</p>
+<h2 id="a-typical-recipe">A typical recipe<a class="anchor" href="#a-typical-recipe" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    S1["1 · SFT&lt;br/&gt;learn the verdict format"] --&gt; S2["2 · GRPO or DPO&lt;br/&gt;optimize correctness + low FPR"]
+    S2 --&gt; S3["3 · test (leakage-guarded)"] --&gt; S4["4 · save + compare"]</pre></div>
+<ol><li><strong>SFT</strong> a decoder to emit valid JSON verdicts.</li><li><strong>GRPO</strong> (or <strong>DPO</strong>) to push correctness up and over-blocking down.</li><li><strong>Test</strong> on held-out benchmarks — any training prompt found in the test set is dropped and reported (no leakage).</li><li><strong>Save</strong> the versioned model with its metrics and <strong>compare</strong> experiments.</li></ol>
+<p>All four steps are one click each in the <a href="m-workflow.html">guided workflow →</a>.</p>
+        <footer>
+          <p>
+            Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents —
+            this page is generated from the architecture series in <code>docs/</code>.
+          </p>
+        </footer>
+      </article>
+    </main>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <nav class="toc-links" id="page-toc"></nav>
+      </div>
+    </aside>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

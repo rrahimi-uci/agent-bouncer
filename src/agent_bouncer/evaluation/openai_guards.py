@@ -108,16 +108,20 @@ def build_chat_kwargs(
     """Build the Chat Completions kwargs, routing reasoning vs. standard models.
 
     Pure (no network) so the routing is unit-testable. Reasoning models get
-    `reasoning_effort` + a generous `max_completion_tokens` (low effort still
-    spends hidden reasoning tokens before the JSON); standard chat models get
-    deterministic `temperature=0` and a tight `max_tokens`.
+    `reasoning_effort` + a `max_completion_tokens` budget scaled by effort — the
+    budget covers hidden reasoning tokens AND the final JSON, so higher effort needs
+    more headroom or the reasoning eats the whole budget and the verdict comes back
+    empty (which would be mis-scored SAFE). Standard chat models get deterministic
+    `temperature=0` and a tight `max_tokens`.
     """
     messages = [
         {"role": "system", "content": _CLASSIFY_SYSTEM},
         {"role": "user", "content": text},
     ]
     if reasoning_effort is not None or is_reasoning_model(model):
-        kwargs = {"model": model, "messages": messages, "max_completion_tokens": 2048}
+        # leave room for the JSON answer after the (hidden) reasoning tokens.
+        budget = {"low": 2048, "medium": 4096, "high": 8192}.get(reasoning_effort or "", 4096)
+        kwargs = {"model": model, "messages": messages, "max_completion_tokens": budget}
         if reasoning_effort is not None:
             kwargs["reasoning_effort"] = reasoning_effort
         return kwargs

@@ -42,6 +42,7 @@ from agent_bouncer.evaluation.benchmarks import (  # noqa: E402
     class_counts,
     load_benchmark,
 )
+from agent_bouncer.evaluation.ensembles import PRED_DIR  # noqa: E402
 from agent_bouncer.evaluation.metrics import compute_metrics  # noqa: E402
 from agent_bouncer.evaluation.report import render_benchmark_report  # noqa: E402
 from agent_bouncer.models.decoder import DecoderGuard  # noqa: E402
@@ -53,8 +54,10 @@ REPORT_MD = "outputs/BENCHMARKS.md"
 
 # Canonical guard display order for the report.
 GUARD_ORDER = [
-    "keyword-baseline", "encoder-distilbert", "decoder-sft-0.6B", "decoder-sft-1.7B",
-    "decoder-grpo-0.6B", "openai-moderation", "openai-gpt-4o-mini", "openai-gpt-5.2-low",
+    "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",
+    "decoder-sft-0.6B", "decoder-sft-1.7B", "decoder-grpo-0.6B",
+    "openai-moderation", "openai-gpt-4o-mini",
+    "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
 ]
 
 # Guard display order + parameter counts for the report.
@@ -127,7 +130,8 @@ def evaluate_guard(guard, records: list[dict], *, workers: int = 1):
     """Score a guard on records; run I/O-bound (API) guards concurrently.
 
     Per-sample latency is measured around each individual request, so p50/p95
-    stay meaningful even under concurrency."""
+    stay meaningful even under concurrency. Returns ``(GuardMetrics, verdicts)`` so the
+    caller can also persist per-sample predictions for offline ensembling."""
     texts = [r["text"] for r in records]
     if workers > 1:
         with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -137,7 +141,36 @@ def evaluate_guard(guard, records: list[dict], *, workers: int = 1):
     gold = [Decision(r["label"]) for r in records]
     pred = [v.decision for v in verdicts]
     lat = [v.latency_ms for v in verdicts if v.latency_ms is not None]
-    return compute_metrics(gold, pred, lat)
+    return compute_metrics(gold, pred, lat), verdicts
+
+
+def prediction_rows(records: list[dict], verdicts: list) -> list[list]:
+    """Per-sample ``[y, u, score, latency_ms]`` rows aligned to the benchmark subset."""
+    rows = []
+    for r, v in zip(records, verdicts, strict=True):
+        y = 1 if r["label"] == "unsafe" else 0
+        u = 1 if v.decision == Decision.UNSAFE else 0
+        rows.append([y, u, round(float(v.score), 4), round(float(v.latency_ms or 0.0), 3)])
+    return rows
+
+
+def dump_prediction_rows(guard_name: str, bench: str, rows: list[list]) -> None:
+    """Merge one benchmark's prediction rows into ``outputs/predictions/<guard>.json`` atomically."""
+    import tempfile
+
+    os.makedirs(PRED_DIR, exist_ok=True)
+    path = f"{PRED_DIR}/{guard_name}.json"
+    blob = {}
+    if os.path.exists(path):
+        try:
+            blob = json.load(open(path))
+        except (ValueError, OSError):
+            blob = {}
+    blob[bench] = rows
+    fd, tmp = tempfile.mkstemp(dir=PRED_DIR, suffix=".tmp")
+    with os.fdopen(fd, "w") as fh:
+        json.dump(blob, fh)
+    os.replace(tmp, path)
 
 
 def build_guards(args) -> list[tuple[str, object, int]]:
@@ -174,10 +207,12 @@ def build_guards(args) -> list[tuple[str, object, int]]:
         guards.append(("openai-moderation", OpenAIModerationGuard(), args.workers))
         chat = OpenAIChatGuard(args.chat_model)
         guards.append((chat.name, chat, args.workers))
-        reasoning = OpenAIChatGuard(args.reasoning_model, reasoning_effort="low")
-        guards.append((reasoning.name, reasoning, args.workers))
-        for g in (chat.name, reasoning.name):
-            GUARD_PARAMS.setdefault(g, "api")
+        GUARD_PARAMS.setdefault(chat.name, "api")
+        # One reasoning guard per effort tier (low/medium/high) — same model, different budget.
+        for effort in args.reasoning_efforts:
+            reasoning = OpenAIChatGuard(args.reasoning_model, reasoning_effort=effort)
+            guards.append((reasoning.name, reasoning, args.workers))
+            GUARD_PARAMS.setdefault(reasoning.name, "api")
     else:
         print("!! OpenAI guards skipped (no key or --no-openai)")
 
@@ -194,6 +229,8 @@ def main() -> None:
     ap.add_argument("--full", action="store_true", help="evaluate on the FULL benchmarks (no subsampling)")
     ap.add_argument("--chat-model", default="gpt-4o-mini")
     ap.add_argument("--reasoning-model", default="gpt-5.2")
+    ap.add_argument("--reasoning-efforts", nargs="*", default=["low", "medium", "high"],
+                    help="reasoning_effort tiers to score for the reasoning model (default: all three)")
     ap.add_argument("--workers", type=int, default=8, help="concurrency for API guards")
     ap.add_argument("--no-openai", action="store_true")
     ap.add_argument("--skip-decoder", action="store_true",
@@ -231,11 +268,13 @@ def main() -> None:
     for name, records in datasets.items():
         for guard_name, guard, workers in guards:
             try:
-                m = evaluate_guard(guard, records, workers=workers)
+                m, verdicts = evaluate_guard(guard, records, workers=workers)
             except Exception as exc:  # noqa: BLE001 - one bad pair shouldn't kill the run
                 print(f"!! {guard_name} on {name} failed ({type(exc).__name__}: {exc}); skipping")
                 continue
             results[name][guard_name] = m.to_dict()
+            # Persist per-sample predictions so the ensemble builder can combine guards offline.
+            dump_prediction_rows(guard_name, name, prediction_rows(records, verdicts))
             print(f"  [{name}] {guard_name}: P={m.precision:.3f} R={m.recall:.3f} "
                   f"F1={m.f1:.3f} FPR={m.fpr_on_benign:.3f} p50={m.latency_p50_ms:.0f}ms")
         # Merge-on-write after each benchmark: augment the existing scoreboard (so a

@@ -193,6 +193,13 @@ def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
                            "max_completion_len": params.get("max_completion_len", 96),
                            "steps": params.get("max_steps", 60), "lr": params.get("lr", 1e-6),
                            "log_steps": 2}
+        elif technique == "dpo":
+            # DPOTrainer reads its own section — mirror the user's hyperparameters here so the
+            # CLI/UI flags actually take effect (run_dpo reads cfg["dpo"], not cfg["train"]).
+            cfg["dpo"] = {"epochs": params.get("epochs", 1), "lr": params.get("lr", 5e-6),
+                          "beta": params.get("beta", 0.1)}
+            if params.get("max_steps"):
+                cfg["dpo"]["max_steps"] = int(params["max_steps"])
     return cfg
 
 

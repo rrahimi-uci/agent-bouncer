@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Agent Bouncer — Studio</title>
+<title>Agent Bouncer — Benchmark Studio</title>
 <script src="/static/chart.umd.min.js"></script>
 <style>
   :root{
@@ -75,6 +75,9 @@
   th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:650}
   tbody tr:hover{background:var(--panel2)} td.name{font-weight:600}
   tbody tr.pick{background:rgba(76,141,255,.10)}
+  tr.lbcat td{background:var(--bg2);color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding-top:13px}
+  tr.lbcat:hover td{background:var(--bg2)}
+  td.lbbest{color:var(--good);font-weight:750}
   .bar{height:6px;border-radius:3px;background:var(--line);position:relative;width:70px;display:inline-block;vertical-align:middle}
   .bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
   .mono{font-variant-numeric:tabular-nums}
@@ -167,7 +170,7 @@
 <div class="app">
   <header>
     <div class="brand"><div class="logo">🕶️</div>
-      <div><h1>Agent Bouncer — Studio</h1><p>Train · test · experiment with SLM guardrails</p></div></div>
+      <div><h1>Agent Bouncer — Benchmark Studio</h1><p>Train · test · experiment with SLM guardrails</p></div></div>
     <div class="spacer"></div>
     <span class="pill" id="openaiPill"><span class="dot" id="openaiDot"></span> OpenAI</span>
     <span class="pill" id="hwPill"><span class="dot on"></span> <span id="hwLabel">…</span></span>
@@ -303,7 +306,34 @@
 
     <!-- ROC / AUC -->
     <section class="view" id="v-roc">
-      <h2 class="vh">Leaderboard</h2><p class="vs">How every guard &amp; trained model scores — ROC / Precision–Recall threshold curves and ROC-AUC by benchmark.</p>
+      <h2 class="vh">Leaderboard</h2><p class="vs">How every guard &amp; trained model scores — macro-averaged metrics, ROC / Precision–Recall threshold curves and ROC-AUC by benchmark.</p>
+      <div class="chartcard" style="margin-bottom:16px">
+        <div class="row-between" style="margin-bottom:12px">
+          <div><h3>Model leaderboard</h3><p class="sub" id="lbSub">Macro-averaged across benchmarks · positive class = <code>unsafe</code></p></div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <label style="font-size:12px;color:var(--muted)">Sort by
+              <select id="lbSort" style="margin-left:6px">
+                <option value="f1">F1</option><option value="roc_auc">AUC</option>
+                <option value="precision">Precision</option><option value="recall">Recall</option>
+                <option value="latency_p50_ms">p50 latency</option><option value="latency_p90_ms">p90 latency</option>
+              </select></label>
+            <button type="button" class="ghostbtn" id="lbReport">📄 Generate PDF report</button>
+          </div>
+        </div>
+        <div id="lbTable"><div class="empty"><div class="big">🏆</div>Run the benchmark suite to populate the leaderboard.</div></div>
+        <p class="footer-note" id="lbNote"></p>
+      </div>
+      <div class="chartcard" style="margin-bottom:16px">
+        <div class="row-between" style="margin-bottom:10px"><div><h3>Ensemble builder</h3><p class="sub">Combine trained models &amp; guards into one — scored instantly from their benchmark predictions, then added to the leaderboard</p></div></div>
+        <div id="ensMembers" class="jpick" style="margin-bottom:12px"></div>
+        <div class="frow" style="align-items:flex-end;gap:12px;flex-wrap:wrap">
+          <label style="flex:0 0 auto;font-size:12px;color:var(--muted)">Strategy<br><select id="ensStrategy" style="margin-top:5px"></select></label>
+          <label id="ensThreshWrap" style="flex:0 0 auto;font-size:12px;color:var(--muted)">Threshold<br><input id="ensThresh" type="number" step="0.05" min="0" max="1" value="0.5" style="margin-top:5px;width:90px"></label>
+          <label style="flex:1;min-width:160px;font-size:12px;color:var(--muted)">Name (optional)<br><input id="ensName" type="text" placeholder="ensemble-my-mix" style="margin-top:5px;width:100%"></label>
+          <button type="button" class="runbtn" id="ensBuild" style="flex:0 0 auto;width:auto;padding:11px 18px;margin-top:0">⚗️ Build &amp; score</button>
+        </div>
+        <p class="footer-note" id="ensNote"></p>
+      </div>
       <div class="grid2">
         <div class="chartcard" style="margin:0"><div class="row-between" style="margin-bottom:10px"><h3>ROC curves</h3><select id="rocPick" aria-label="benchmark"></select></div><div class="cbox tall"><canvas id="cRoc"></canvas></div></div>
         <div class="chartcard" style="margin:0"><h3>Precision–Recall</h3><p class="sub">Same threshold sweep</p><div class="cbox tall"><canvas id="cPr"></canvas></div></div>
@@ -329,7 +359,7 @@ let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMod
 Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
 Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
 
-const gLabel=n=>({'keyword-baseline':'Keyword','encoder-distilbert':'Encoder 66M','decoder-sft-0.6B':'Decoder-SFT 0.6B','decoder-sft-1.7B':'Decoder-SFT 1.7B','decoder-grpo-0.6B':'Decoder-GRPO','openai-moderation':'OpenAI-Mod','openai-gpt-4o-mini':'GPT-4o-mini','openai-gpt-5.2-low':'GPT-5.2 low'}[n]||n);
+const gLabel=n=>({'keyword-baseline':'Keyword','encoder-distilbert':'Encoder 66M','encoder-modernbert-large':'Encoder 395M','decoder-sft-0.6B':'Decoder-SFT 0.6B','decoder-sft-1.7B':'Decoder-SFT 1.7B','decoder-grpo-0.6B':'Decoder-GRPO','openai-moderation':'OpenAI-Mod','openai-gpt-4o-mini':'GPT-4o-mini','openai-gpt-5.2-low':'GPT-5.2 low','openai-gpt-5.2-medium':'GPT-5.2 medium','openai-gpt-5.2-high':'GPT-5.2 high'}[n]||n);
 const guardsIn=()=>{const s=new Set();for(const b in RESULTS.results||{})for(const g in RESULTS.results[b])s.add(g);return ORDER.filter(x=>s.has(x)).concat([...s].filter(x=>!ORDER.includes(x)));};
 const benchesIn=()=>Object.keys(RESULTS.results||{});
 function macro(){const out={};for(const b in RESULTS.results||{})for(const g in RESULTS.results[b]){const m=RESULTS.results[b][g];(out[g]=out[g]||{});for(const k of ['precision','recall','f1','roc_auc','fpr_on_benign','latency_p50_ms','latency_p90_ms','throughput_per_s']){(out[g][k]=out[g][k]||[]);if(m[k]!=null)out[g][k].push(m[k]);}}
@@ -708,6 +738,81 @@ async function showExpDetail(id){const e=await (await fetch('/api/experiment/'+i
   $('#expDetailCard').style.display='block';$('#expDetailCard').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
+/* ---------- leaderboard table ---------- */
+const LB_METRICS=[['precision','Precision','hi'],['recall','Recall','hi'],['f1','F1','hi'],['roc_auc','AUC','hi'],['latency_p50_ms','p50 ms','lo'],['latency_p90_ms','p90 ms','lo']];
+const CAT_ORDER=['Small models','GPT baselines','Ensembles'];
+const lbCat=g=>g.startsWith('ensemble-')?'Ensembles':g.startsWith('openai-')?'GPT baselines':'Small models';
+function lbLabel(g){const k=gLabel(g);if(k!==g)return k;let m;
+  if(m=g.match(/^openai-gpt-([\d.]+)-(low|medium|high)$/))return `GPT-${m[1]} ${m[2]}`;
+  if(g.startsWith('ensemble-'))return 'Ensemble · '+g.slice(9);
+  return g;}
+function lbParams(g){const P={'keyword-baseline':'0','encoder-distilbert':'66M','encoder-modernbert-large':'395M','modernbert-large':'395M','decoder-sft-0.6B':'0.6B','decoder-grpo-0.6B':'0.6B','decoder-sft-1.7B':'1.7B'};
+  if(P[g])return P[g];if(g.startsWith('openai-'))return 'api';
+  const m=g.match(/([\d.]+[BM]|\d+M)/);return m?m[1]:'—';}
+function lbRows(){const a=macro();return Object.keys(a).map(g=>({g,...a[g]})).filter(r=>r.f1!=null);}
+function renderLeaderboard(){
+  const rows=lbRows();
+  if(!rows.length){$('#lbTable').innerHTML='<div class="empty"><div class="big">🏆</div>No results yet — run the benchmark suite (Overview → run) to populate.</div>';$('#lbReport').disabled=true;$('#lbNote').textContent='';return;}
+  $('#lbReport').disabled=false;
+  const sort=$('#lbSort').value||'f1',lo=(LB_METRICS.find(m=>m[0]===sort)||[])[2]==='lo',dir=lo?1:-1;
+  const best={};LB_METRICS.forEach(([k,,hl])=>{const vs=rows.map(r=>r[k]).filter(v=>v!=null);if(vs.length)best[k]=hl==='lo'?Math.min(...vs):Math.max(...vs);});
+  const cell=(r,k,hl)=>{const v=r[k],isBest=v!=null&&best[k]!=null&&Math.abs(v-best[k])<1e-9;
+    const disp=v==null?'—':(k.indexOf('latency')===0?(v<10?v.toFixed(1):Math.round(v)):v.toFixed(3));
+    return `<td class="mono${isBest?' lbbest':''}">${disp}</td>`;};
+  let html=`<table><thead><tr><th>Model</th><th>Params</th>`+LB_METRICS.map(([,t,hl])=>`<th>${t} ${hl==='hi'?'↑':'↓'}</th>`).join('')+`</tr></thead>`;
+  CAT_ORDER.forEach(cat=>{
+    const rs=rows.filter(r=>lbCat(r.g)===cat).sort((x,y)=>dir*(((x[sort]??(lo?1e12:-1e12)))-((y[sort]??(lo?1e12:-1e12)))));
+    if(!rs.length)return;
+    html+=`<tbody><tr class="lbcat"><td colspan="${LB_METRICS.length+2}">${cat} · ${rs.length}</td></tr>`+
+      rs.map(r=>`<tr><td class="name">${lbLabel(r.g)}</td><td class="mono" style="color:var(--muted)">${lbParams(r.g)}</td>`+LB_METRICS.map(([k,,hl])=>cell(r,k,hl)).join('')+`</tr>`).join('')+`</tbody>`;
+  });
+  html+='</table>';$('#lbTable').innerHTML=html;
+  $('#lbNote').innerHTML=`Macro-averaged over ${benchesIn().length} benchmark(s), ≤${RESULTS.per_class||'?'}/class. Best per column highlighted. AUC for hard-decision guards (GPT, keyword) is the single-point estimate (recall+1−FPR)/2; the encoder & swept ensembles use a true threshold-swept AUC.`;
+}
+async function generateReport(){
+  const btn=$('#lbReport'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Rendering…';
+  try{
+    const r=await fetch('/api/report?sort='+encodeURIComponent($('#lbSort').value||'f1'));
+    if(!r.ok){let d='';try{d=(await r.json()).detail;}catch(e){}toast(d||'report failed');return;}
+    const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='agent-bouncer-leaderboard.pdf';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);toast('✓ Report downloaded');
+  }catch(e){toast('report failed');}
+  finally{btn.disabled=false;btn.textContent=orig;}
+}
+
+/* ---------- ensemble builder ---------- */
+let ENS_MEMBERS=[], ENS_STRATS=[], ensPick=new Set();
+async function loadEnsembleMembers(){try{const d=await (await fetch('/api/ensemble/members')).json();ENS_MEMBERS=d.members||[];ENS_STRATS=d.strategies||[];}catch(e){ENS_MEMBERS=[];ENS_STRATS=[];}}
+function updateEnsBtn(){const n=ensPick.size;$('#ensBuild').disabled=n<2;$('#ensBuild').textContent=`⚗️ Build & score${n?` (${n})`:''}`;}
+function syncEnsThresh(){const s=$('#ensStrategy').value;$('#ensThreshWrap').style.display=(s==='mean'||s==='weighted')?'':'none';}
+function renderEnsembleBuilder(){
+  const box=$('#ensMembers');
+  if(!ENS_MEMBERS.length){box.innerHTML='<span class="sub">No member predictions yet — run the benchmark suite (Overview → run) to dump per-guard predictions, then build ensembles here.</span>';}
+  else{
+    ensPick=new Set([...ensPick].filter(m=>ENS_MEMBERS.includes(m)));
+    box.innerHTML=ENS_MEMBERS.map(m=>`<button type="button" class="jpill ${ensPick.has(m)?'on':''}" data-m="${m}">${lbLabel(m)}</button>`).join('');
+    $$('#ensMembers .jpill').forEach(b=>b.onclick=()=>{const k=b.dataset.m;ensPick.has(k)?ensPick.delete(k):ensPick.add(k);b.classList.toggle('on');updateEnsBtn();});
+  }
+  if($('#ensStrategy').options.length!==ENS_STRATS.length)$('#ensStrategy').innerHTML=ENS_STRATS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  syncEnsThresh();updateEnsBtn();
+}
+async function buildEnsemble(){
+  const members=[...ensPick];if(members.length<2){toast('Pick at least two members');return;}
+  const strategy=$('#ensStrategy').value,threshold=Number($('#ensThresh').value)||0.5,name=$('#ensName').value.trim();
+  const btn=$('#ensBuild'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Scoring…';
+  try{
+    const r=await fetch('/api/ensemble',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({members,strategy,threshold,name:name||null})});
+    let d={};try{d=await r.json();}catch(e){}
+    if(!r.ok){toast(d.detail||'ensemble failed');return;}
+    await loadResults();renderLeaderboard();renderROC();
+    const M=d.macro||{};
+    $('#ensNote').innerHTML=`✓ <b>${d.name}</b> — F1 ${fmt(M.f1)} · AUC ${fmt(M.roc_auc)} · FPR ${fmt(M.fpr_on_benign)} · p50 ${M.latency_p50_ms!=null?Math.round(M.latency_p50_ms)+'ms':'—'}. Added to the leaderboard above.`;
+    toast('✓ Ensemble scored & added');
+  }catch(e){toast('ensemble failed');}
+  finally{btn.disabled=false;btn.textContent=orig;updateEnsBtn();}
+}
+
 /* ---------- roc ---------- */
 function renderROC(){const bs=Object.keys(CURVES);if(!bs.length){['cRoc','cPr','cAuc'].forEach(destroy);return;}
   if($('#rocPick').options.length!==bs.length){$('#rocPick').innerHTML=bs.map(b=>`<option>${b}</option>`).join('');$('#rocPick').onchange=drawROC;}
@@ -732,7 +837,8 @@ function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.to
   if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
   if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
   if(v==='train'){fillTrainData();fillTestData();}   // reflect any datasets built since load
-  if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
+  if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();
+  if(v==='roc'){renderLeaderboard();renderROC();loadEnsembleMembers().then(renderEnsembleBuilder);}}
 async function syncRouteFromLocation(){
   const bench=parseBenchLocation();
   if(bench){
@@ -767,6 +873,8 @@ async function init(){
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
+  $('#lbSort').onchange=renderLeaderboard;$('#lbReport').onclick=generateReport;
+  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;
   $('#sampleSearch').oninput=scheduleBenchSearch;
   $('#hazardFilter').onchange=applyBenchFilters;
   $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};

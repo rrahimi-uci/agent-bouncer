@@ -61,6 +61,7 @@ def run_dpo(config_path: str | Path) -> str:  # pragma: no cover - runs a real T
         beta=float(d.get("beta", 0.1)),
         learning_rate=float(d.get("lr", 5e-6)),
         num_train_epochs=float(d.get("epochs", 1)),
+        max_steps=int(d.get("max_steps", -1)),  # -1 = no cap (train by epochs)
         report_to="none",
         seed=int(cfg.get("seed", 42)),
     )

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guided workflow | Agent Bouncer</title>
+  <meta name="description" content="Guided workflow — part of the Agent Bouncer documentation.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+
+<body data-doc-page="module">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="index.html#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content doc-body">
+        <nav class="doc-breadcrumb" aria-label="Breadcrumb">
+          <span>Studio &amp; workflow</span>
+          <span aria-hidden="true">/</span>
+          <span class="current">Guided workflow</span>
+        </nav>
+        <header class="doc-header">
+          <div class="doc-eyebrow">Studio &amp; workflow</div>
+          <h1 id="top">Guided workflow</h1>
+          <p class="doc-summary">The end-to-end loop in the Benchmark Studio: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate &amp; compare on the leaderboard.</p>
+          <div class="doc-actions">
+            <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
+              Copy page
+            </button>
+          </div>
+        </header>
+<p>--- title: The guided training workflow ---</p>
+<h1 id="the-guided-training-evaluation-workflow">The guided training &amp; evaluation workflow<a class="anchor" href="#the-guided-training-evaluation-workflow" aria-hidden="true" tabindex="-1">#</a></h1>
+<p>An end-to-end, guided path from <strong>benchmark → sampling → model + technique → train → test → save → compare</strong>. Every step is available in the <strong>Benchmark Studio</strong> (<code>./start.sh</code>) and via the API/CLI. The Studio's tabs mirror the flow: <strong>Overview</strong> (scoreboard), <strong>Explore Benchmarks</strong>, <strong>Datasets Creation</strong>, <strong>Train &amp; Test</strong>, <strong>Experiments</strong>, and <strong>Leaderboard</strong> (macro-average results table, ROC/PR/AUC curves, a <strong>Generate PDF report</strong> button, and an <strong>interactive ensemble builder</strong>). Invalid choices are prevented, and train/test separation is guaranteed.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+    A["① Benchmarks&lt;br/&gt;pick sources"] --&gt; B["② Sampling &amp; split&lt;br/&gt;random/stratified · ratio/k-fold"]
+    B --&gt; C["③ Model + technique&lt;br/&gt;valid combos only"]
+    C --&gt; D["④ Build dataset&lt;br/&gt;(leakage-safe)"]
+    D --&gt; E["⑤ Train&lt;br/&gt;SFT/GRPO/DPO → versioned"]
+    E --&gt; F["⑥ Test&lt;br/&gt;leakage-guarded metrics"]
+    F --&gt; G["⑦ Save&lt;br/&gt;model store (files)"]
+    G --&gt; H["⑧ Compare / Evaluate-only"]</pre></div>
+<h2 id="1-benchmark-selection">1 · Benchmark selection<a class="anchor" href="#1-benchmark-selection" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Choose one or more of the <a href="m-benchmarks.html">7 standard benchmarks</a> (guardrail · red-team · over-refusal). <code>GET /api/config</code> lists them; the Workflow tab shows them as chips. The <strong>Benchmarks</strong> tab serves the <strong>full</strong> dataset when it's been downloaded (<code>scripts/data/download_full_benchmarks.py</code> → <code>data/benchmarks/full/</code>), with search, safe/unsafe filter, and <em>Load more</em> paging — so you can explore every prompt, not just a sample.</p>
+<h2 id="2-sampling-split">2 · Sampling &amp; split<a class="anchor" href="#2-sampling-split" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Two orthogonal choices, exposed at <code>GET /api/sampling</code> (<code>data/sampling.py</code>):</p>
+<ul><li><strong>Sampling</strong> — how to <em>draw</em> examples: <code>random</code> (uniform) or <code>stratified</code> (preserve the safe/unsafe balance — recommended for imbalanced sets).</li><li><strong>Split</strong> — how to <em>divide</em> them: a <strong>ratio</strong> (e.g. 70/30, 80/20) or <strong>k-fold</strong> cross-validation (K disjoint folds, each held out once).</li></ul>
+<p>Every split is <strong>de-duplicated and asserted leakage-free</strong> before use.</p>
+<h2 id="3-model-technique">3 · Model &amp; technique<a class="anchor" href="#3-model-technique" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Pick a base model from the <a href="m-slm-architectures.html#3--the-registry-side-by-side">registry</a> and a <a href="m-fine-tuning.html">technique</a>. The UI <strong>greys out invalid pairings</strong> using the validity matrix from <code>GET /api/models</code> (<code>matrix</code>); the backend re-checks with <code>assert_valid_combo</code>. Encoders → SFT only; decoders → SFT/GRPO/DPO.</p>
+<h2 id="46-build-train-test">4–6 · Build → Train → Test<a class="anchor" href="#46-build-train-test" aria-hidden="true" tabindex="-1">#</a></h2>
+<ul><li><strong>Build</strong> a leakage-safe training set (<code>POST /api/dataset/build</code>, strategy + holdout).</li><li><strong>Train</strong> the chosen model+technique to a <strong>versioned</strong> checkpoint (<code>POST /api/train</code>) — streamed live over Server-Sent Events.</li><li><strong>Test</strong> against the selected benchmarks with <strong>leakage guards</strong> (<code>POST /api/test</code>): any test prompt found in the model's training data is dropped and reported. Metrics are <strong>per-benchmark</strong> and <strong>macro-averaged</strong>: precision, recall, F1, ROC-AUC, <code>fpr_on_benign</code>, latency (p50/p90), throughput.</li></ul>
+<h2 id="7-save-model-persistence">7 · Save (model persistence)<a class="anchor" href="#7-save-model-persistence" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>Trained models are persisted to the <strong>model store</strong> (<code>tracking/model_store.py</code>) — the <strong>filesystem</strong> (default: one JSON per model) or <strong>SQLite</strong> — with full metadata: source benchmarks, sampling strategy, split, technique, evaluation metrics, version, timestamp, git commit, and the weights path. Everything (datasets, weights, experiments, results, model records) lives as files on disk. <code>GET/POST/DELETE /api/saved_models</code>.</p>
+<h2 id="8-evaluate-only-compare">8 · Evaluate-only &amp; compare<a class="anchor" href="#8-evaluate-only-compare" aria-hidden="true" tabindex="-1">#</a></h2>
+<ul><li><strong>Evaluate-only</strong> (<code>POST /api/eval</code>, <em>Evaluate</em> tab): score a <strong>saved</strong> model on any benchmarks without retraining — same leakage guards and metrics. → <code>runner.eval_only</code></li><li><strong>Compare</strong>: the <em>Experiments</em> tab charts P90 latency and macro metrics across runs; every experiment records the <strong>hardware</strong> it ran on for fair cross-machine comparison.</li></ul>
+<p>---</p>
+<h2 id="api-summary">API summary<a class="anchor" href="#api-summary" aria-hidden="true" tabindex="-1">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead><tbody><tr><td><code>GET /api/config</code></td><td>benchmarks + guard catalog</td></tr><tr><td><code>GET /api/sampling</code></td><td>sampling (random/stratified) + split (ratio/k-fold) strategies</td></tr><tr><td><code>GET /api/models</code></td><td>base-model catalog + techniques + <strong>validity matrix</strong></td></tr><tr><td><code>POST /api/dataset/build</code></td><td>build a leakage-safe training set</td></tr><tr><td><code>POST /api/train</code> · <code>POST /api/test</code></td><td>train a version · test it (leakage-guarded)</td></tr><tr><td><code>GET/POST/DELETE /api/saved_models</code></td><td>list / persist / delete saved models</td></tr><tr><td><code>POST /api/eval</code></td><td>evaluation-only on a saved model</td></tr><tr><td><code>GET /api/experiments</code></td><td>full run history (with hardware)</td></tr></tbody></table></div>
+<p>Reproduce from the CLI with <code>scripts/data/build_dataset.py</code>, <code>scripts/train/run_training.py</code>, <code>scripts/eval/run_testing.py</code>, and <code>scripts/eval/run_eval_only.py</code>.</p>
+        <footer>
+          <p>
+            Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents —
+            this page is generated from the architecture series in <code>docs/</code>.
+          </p>
+        </footer>
+      </article>
+    </main>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <nav class="toc-links" id="page-toc"></nav>
+      </div>
+    </aside>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

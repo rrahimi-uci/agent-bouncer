@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ensembles — can combining SLMs match GPT-5.2 Low? | Agent Bouncer</title>
+  <meta name="description" content="Ensembles — can combining SLMs match GPT-5.2 Low? — part of the Agent Bouncer documentation.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+
+<body data-doc-page="module">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="index.html#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" title="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents docs home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content doc-body">
+        <nav class="doc-breadcrumb" aria-label="Breadcrumb">
+          <span>Benchmarks &amp; results</span>
+          <span aria-hidden="true">/</span>
+          <span class="current">Ensembles</span>
+        </nav>
+        <header class="doc-header">
+          <div class="doc-eyebrow">Benchmarks &amp; results</div>
+          <h1 id="top">Ensembles — can combining SLMs match GPT-5.2 Low?</h1>
+          <p class="doc-summary">Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Studio.</p>
+          <div class="doc-actions">
+            <button type="button" class="doc-copy-button" data-copy-page data-copy-default="Copy page" data-copy-success="Copied" data-copy-failure="Copy failed">
+              Copy page
+            </button>
+          </div>
+        </header>
+<p><strong>Short answer: partly.</strong> An ensemble of our small guards beats <em>every</em> single SLM, matches GPT-5.2 on over-blocking (FPR), ranking quality (AUC), latency, and cost — but it does <strong>not</strong> close the gap on headline macro-F1 at a usable operating point. Below is the honest measurement.</p>
+<h2 id="how-its-measured-no-leakage-no-f1-gaming">How it's measured (no leakage, no F1-gaming)<a class="anchor" href="#how-its-measured-no-leakage-no-f1-gaming" aria-hidden="true" tabindex="-1">#</a></h2>
+<ol><li>Each guard is scored <strong>once</strong> per sample on the cached benchmark subsets (<code>scripts/eval/dump_predictions.py</code>) — one guard per process, so a BERT encoder and a Qwen decoder never co-load (that deadlocks the tokenizer threadpool). Output: <code>outputs/predictions/&lt;guard&gt;.json</code> = <code>{benchmark: [[gold, pred, score, latency_ms], …]}</code>.</li><li>Ensembles are combined <strong>offline</strong> from those per-sample rows (<code>scripts/eval/eval_ensembles.py</code>) via the pure <code>combine()</code> function — so any combination is free to explore. Ensemble latency per sample = <strong>sum</strong> of member latencies (members run sequentially).</li><li>The <code>ensemble-tuned</code> row tunes its decision threshold on a <strong>validation half</strong> and reports on a <strong>disjoint test half</strong>, and maximizes F1 <strong>subject to</strong> <code>val-FPR ≤ 0.20</code> — i.e. at GPT-5.2's over-blocking budget, not by flagging everything to inflate recall.</li></ol>
+<p>Reproduce:</p>
+<pre><code>for g in keyword-baseline encoder-distilbert; do python scripts/eval/dump_predictions.py --guard $g; done
+python scripts/eval/dump_predictions.py --guard decoder-sft-0.6B  --device mps
+python scripts/eval/dump_predictions.py --guard decoder-grpo-0.6B --device mps
+python scripts/eval/dump_predictions.py --guard openai-moderation --workers 8
+python scripts/eval/eval_ensembles.py --merge ensemble-maj5 ensemble-union2</code></pre>
+<h2 id="results-7-benchmarks-per_class100-macro-averaged">Results (7 benchmarks, per_class=100, macro-averaged)<a class="anchor" href="#results-7-benchmarks-per_class100-macro-averaged" aria-hidden="true" tabindex="-1">#</a></h2>
+<blockquote class="callout"><p><strong>Illustrative figures from a reference run</strong> — not shipped in the repo. Regenerate your own (<code>make bench</code> now dumps per-sample predictions automatically, then build ensembles from them).</p></blockquote>
+<div class="table-wrap"><table><thead><tr><th>Guard / ensemble</th><th style="text-align:right">macro-F1</th><th style="text-align:right">ROC-AUC</th><th style="text-align:right">FPR (over-block) ↓</th><th style="text-align:right">p50 latency</th></tr></thead><tbody><tr><td><strong>openai-gpt-5.2-low</strong> <em>(target)</em></td><td style="text-align:right"><strong>0.804</strong></td><td style="text-align:right"><strong>0.823</strong></td><td style="text-align:right">0.184</td><td style="text-align:right">1196 ms</td></tr><tr><td>openai-gpt-4o-mini</td><td style="text-align:right">0.794</td><td style="text-align:right">0.796</td><td style="text-align:right">0.266</td><td style="text-align:right">744 ms</td></tr><tr><td>— best single SLM (decoder-grpo-0.6B)</td><td style="text-align:right">0.673</td><td style="text-align:right">0.667</td><td style="text-align:right">0.377</td><td style="text-align:right">298 ms</td></tr><tr><td>— encoder-distilbert</td><td style="text-align:right">0.579</td><td style="text-align:right">0.703</td><td style="text-align:right">0.288</td><td style="text-align:right"><strong>9 ms</strong></td></tr><tr><td><code>ensemble-union2</code> (enc ∪ sft) — <strong>max recall</strong></td><td style="text-align:right"><strong>0.692</strong></td><td style="text-align:right">0.695</td><td style="text-align:right">0.455</td><td style="text-align:right">291 ms</td></tr><tr><td><code>ensemble-wtd</code> (weighted) — <strong>best AUC</strong></td><td style="text-align:right">0.664</td><td style="text-align:right"><strong>0.773</strong></td><td style="text-align:right">0.335</td><td style="text-align:right">793 ms</td></tr><tr><td><code>ensemble-maj5</code> (5-way majority) — <strong>balanced</strong></td><td style="text-align:right">0.617</td><td style="text-align:right">0.770</td><td style="text-align:right">0.216</td><td style="text-align:right">793 ms</td></tr><tr><td><code>ensemble-tuned</code> (F1 s.t. FPR ≤ 0.20)</td><td style="text-align:right">0.566</td><td style="text-align:right">0.770</td><td style="text-align:right"><strong>0.166</strong></td><td style="text-align:right">799 ms</td></tr><tr><td><code>ensemble-inter2</code> (enc ∩ sft) — <strong>min over-block</strong></td><td style="text-align:right">0.542</td><td style="text-align:right">0.720</td><td style="text-align:right">0.188</td><td style="text-align:right">291 ms</td></tr></tbody></table></div>
+<p>Members: <code>encoder-distilbert</code>, <code>decoder-sft-0.6B</code>, <code>decoder-grpo-0.6B</code>, <code>openai-moderation</code>, <code>keyword-baseline</code>. Full per-benchmark numbers in <code>outputs/ensemble_results.json</code>.</p>
+<h2 id="what-this-shows">What this shows<a class="anchor" href="#what-this-shows" aria-hidden="true" tabindex="-1">#</a></h2>
+<ul><li><strong>Ensembling is a free win over any single SLM.</strong> <code>union2</code> lifts macro-F1 to <strong>0.692</strong> vs the best single SLM's 0.673, and the weighted ensemble lifts AUC to <strong>0.773</strong> vs the best single 0.703.</li><li><strong>Competitive with the frontier on three of four axes.</strong> The weighted ensemble's <strong>ranking quality (AUC 0.773)</strong> is within 0.05 of GPT-5.2 (0.823) and near gpt-4o-mini (0.796). A consensus ensemble <strong>matches GPT-5.2's over-blocking</strong> (<code>inter2</code> FPR 0.188, <code>tuned</code> 0.166 vs GPT-5.2's 0.184). And it does so <strong>1.5–4× faster</strong> (union2 291 ms vs 1196 ms) at a fraction of the cost (local SLMs + one cheap Moderation call vs a frontier LLM per request).</li><li><strong>It does not close the F1 gap.</strong> At GPT-5.2's over-blocking budget (FPR ≈ 0.18) the best ensemble reaches macro-F1 ≈ <strong>0.62</strong>, ~0.18 below GPT-5.2's 0.804. You can trade that for recall (<code>union2</code> F1 0.692) but only by over-blocking 2.5× as often.</li></ul>
+<h2 id="why-and-what-would-actually-close-it">Why — and what would actually close it<a class="anchor" href="#why-and-what-would-actually-close-it" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>The members are <strong>correlated</strong>: the encoder, the 0.6B SFT decoder, and the GRPO decoder are all fine-tuned on the same BeaverTails-style data, so they tend to make the <em>same</em> mistakes. Ensembles only help when members fail <em>independently</em>; Moderation adds some diversity (it drives the AUC/FPR gains) but is itself weak on these sets. Closing the remaining F1 gap needs <strong>error diversity</strong>, not more voting — a stronger/larger base model, more or broader training data, or a genuinely different model family — rather than another copy of the same recipe.</p>
+<p><strong>Bottom line:</strong> ship the ensemble for its better-than-any-single-SLM quality, matched over-blocking, and lower latency/cost — but don't claim F1 parity with GPT-5.2 Low. The chosen <code>ensemble-*</code> columns are merged into the scoreboard (<code>outputs/benchmark_results.json</code>) and appear on the <strong>Leaderboard</strong>.</p>
+<h2 id="build-ensembles-interactively-in-the-studio">Build ensembles interactively in the Studio<a class="anchor" href="#build-ensembles-interactively-in-the-studio" aria-hidden="true" tabindex="-1">#</a></h2>
+<p>You don't need the CLI to explore ensembles. Every benchmark run dumps each guard's per-sample predictions to <code>outputs/predictions/&lt;guard&gt;.json</code>, and the <strong>Benchmark Studio → Leaderboard</strong> tab has an <strong>Ensemble builder</strong>:</p>
+<ol><li>Pick two or more member guards (any guard that has dumped predictions — trained models, GPT judges, OpenAI Moderation, keyword).</li><li>Choose a strategy — <strong>union · intersection · majority · mean · weighted</strong> — and, for <code>mean</code> / <code>weighted</code>, a decision threshold.</li><li>Click <strong>Build &amp; score</strong>. The ensemble is combined offline from the dumped predictions (no model inference, no cost), scored across the shared benchmarks, and dropped straight onto the leaderboard as a new <code>ensemble-…</code> row you can compare and export to PDF.</li></ol>
+<p>Under the hood this is the same pure <code>combine()</code> and <code>evaluate_ensemble()</code> used by the CLI, exposed via <code>GET /api/ensemble/members</code> and <code>POST /api/ensemble</code>.</p>
+<h3 id="strategies-at-a-glance">Strategies at a glance<a class="anchor" href="#strategies-at-a-glance" aria-hidden="true" tabindex="-1">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>Strategy</th><th>Flags unsafe when…</th><th>Tends to</th></tr></thead><tbody><tr><td><code>union</code></td><td><strong>any</strong> member flags</td><td>maximize recall (more over-blocking)</td></tr><tr><td><code>intersection</code></td><td><strong>all</strong> members flag</td><td>maximize precision (less over-blocking)</td></tr><tr><td><code>majority</code></td><td>a <strong>strict majority</strong> flag</td><td>balance the two</td></tr><tr><td><code>mean</code></td><td>the <strong>mean</strong> of member scores ≥ threshold</td><td>soft vote (tunable)</td></tr><tr><td><code>weighted</code></td><td>the <strong>weighted mean</strong> of scores ≥ threshold</td><td>upweight stronger members</td></tr></tbody></table></div>
+        <footer>
+          <p>
+            Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents —
+            this page is generated from the architecture series in <code>docs/</code>.
+          </p>
+        </footer>
+      </article>
+    </main>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <nav class="toc-links" id="page-toc"></nav>
+      </div>
+    </aside>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

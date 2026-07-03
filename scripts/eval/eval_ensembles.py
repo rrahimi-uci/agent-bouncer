@@ -19,6 +19,7 @@ import tempfile
 
 from agent_bouncer.core.schema import Decision
 from agent_bouncer.evaluation.curves import roc_auc
+from agent_bouncer.evaluation.ensembles import evaluate_ensemble, load_predictions, macro_average
 from agent_bouncer.evaluation.metrics import compute_metrics
 from agent_bouncer.models.ensemble import combine
 
@@ -46,42 +47,19 @@ ENSEMBLES = {
 
 
 def load_preds() -> dict[str, dict]:
-    preds = {}
-    if os.path.isdir(PRED):
-        for f in os.listdir(PRED):
-            if f.endswith(".json"):
-                preds[f[:-5]] = json.load(open(f"{PRED}/{f}"))
-    return preds
+    return load_predictions(PRED)
 
 
 def macro(metrics: dict) -> dict:
-    keys = ("precision", "recall", "f1", "roc_auc", "fpr_on_benign",
-            "latency_p50_ms", "latency_p90_ms", "throughput_per_s")
-    return {k: round(sum(metrics[b][k] for b in metrics) / len(metrics), 4) for k in keys} if metrics else {}
+    return macro_average(metrics)
 
 
 def eval_ensemble(members, strategy, kwargs, preds) -> dict | None:
-    if any(m not in preds for m in members):
+    """Thin wrapper over the shared evaluator: returns None (skip) on any bad-input error."""
+    try:
+        return evaluate_ensemble(preds, members, strategy, **kwargs)
+    except ValueError:
         return None
-    benches = set.intersection(*[set(preds[m]) for m in members])
-    out = {}
-    for b in sorted(benches):
-        rows = [preds[m][b] for m in members]
-        n = len(rows[0])
-        if any(len(r) != n for r in rows):
-            continue
-        gold, pred, lat, scores = [], [], [], []
-        for i in range(n):
-            gold.append(Decision.UNSAFE if rows[0][i][0] == 1 else Decision.SAFE)
-            unsafe, sc = combine([(bool(r[i][1]), r[i][2]) for r in rows], strategy, **kwargs)
-            pred.append(Decision.UNSAFE if unsafe else Decision.SAFE)
-            scores.append(sc)
-            lat.append(sum(r[i][3] for r in rows))  # members run sequentially
-        m = compute_metrics(gold, pred, lat).to_dict()
-        auc = roc_auc([1 if g == Decision.UNSAFE else 0 for g in gold], scores)
-        m["roc_auc"] = auc if auc is not None else (m["recall"] + 1 - m["fpr_on_benign"]) / 2
-        out[b] = m
-    return out
 
 
 def eval_tuned(members, preds, *, weights=None, seed=42, fpr_cap=0.20) -> tuple[dict, float]:
@@ -141,9 +119,29 @@ def eval_tuned(members, preds, *, weights=None, seed=42, fpr_cap=0.20) -> tuple[
     return out, best_t
 
 
+def member_metrics(preds: dict) -> dict[str, dict]:
+    """Per-benchmark metrics for each individual guard, derived from its dumped predictions.
+
+    Lets a single prediction pass populate both the ensemble rows AND each member's own
+    scoreboard row (so slow local decoders are scored only once)."""
+    out: dict[str, dict] = {}
+    for guard, benches in preds.items():
+        for b, rows in benches.items():
+            gold = [Decision.UNSAFE if r[0] == 1 else Decision.SAFE for r in rows]
+            pred = [Decision.UNSAFE if r[1] == 1 else Decision.SAFE for r in rows]
+            lat = [r[3] for r in rows]
+            m = compute_metrics(gold, pred, lat).to_dict()
+            auc = roc_auc([r[0] for r in rows], [r[2] for r in rows])
+            m["roc_auc"] = auc if auc is not None else (m["recall"] + 1 - m["fpr_on_benign"]) / 2
+            out.setdefault(guard, {})[b] = m
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--merge", nargs="*", default=None, help="ensemble names to merge into the scoreboard")
+    ap.add_argument("--merge-members", action="store_true",
+                    help="also merge each member's own metrics (from its predictions) into the scoreboard")
     args = ap.parse_args()
 
     preds = load_preds()
@@ -194,15 +192,19 @@ def main() -> None:
     print(f"\nwrote {OUT}")
 
     to_merge = args.merge if args.merge is not None else _auto_pick(summary)
-    if to_merge:
+    members = member_metrics(preds) if args.merge_members else {}
+    if to_merge or members:
         blob = json.load(open(RESULTS)) if os.path.exists(RESULTS) else {"meta": {}, "results": {}}
-        for name in to_merge:
+        for name in to_merge or []:
             for b, m in results.get(name, {}).items():
+                blob.setdefault("results", {}).setdefault(b, {})[name] = m
+        for name, benches in members.items():
+            for b, m in benches.items():
                 blob.setdefault("results", {}).setdefault(b, {})[name] = m
         fd, tmp = tempfile.mkstemp(dir="outputs", suffix=".tmp")
         json.dump(blob, os.fdopen(fd, "w"), indent=2)
         os.replace(tmp, RESULTS)
-        print(f"merged into scoreboard: {to_merge}")
+        print(f"merged into scoreboard: ensembles={to_merge or []} members={sorted(members)}")
 
 
 def _auto_pick(summary: dict) -> list[str]:

@@ -1,0 +1,29 @@
+# Agent Bouncer
+
+> A tiny, fast small-language-model (SLM) safety guardrail for LLMs and AI agents — screens prompts, tool calls, and outputs for prompt injection, jailbreaks, and unsafe content, trained with fine-tuning + RL and benchmarked against GPT-4o-mini, GPT-5.2, and OpenAI Moderation through one honest harness.
+
+The pages below are the documentation, one per topic. Each link is the raw Markdown source, built for programmatic access.
+
+## Learn
+
+- [SLM architectures](m-slm-architectures.md): Encoder vs decoder guardrails, the modern decoder block (RMSNorm · RoPE · GQA · SwiGLU), and a deep dive into each base model — DistilBERT, ModernBERT, Qwen3-0.6B/1.7B, DeepSeek-R1-Distill, SmolLM2.
+- [Fine-tuning techniques](m-fine-tuning.md): SFT · LoRA · GRPO (RLVR) · DPO explained with diagrams — what each technique optimizes, when to reach for it, and which technique applies to which base model.
+- [Safety taxonomy](m-taxonomy.md): The hazard taxonomy the guards label against — the safe/unsafe decision, hazard categories, and how benchmark labels map onto them (positive class = unsafe).
+
+## Studio & workflow
+
+- [Guided workflow](m-workflow.md): The end-to-end loop in the Benchmark Studio: explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate & compare on the leaderboard.
+- [Datasets](m-datasets.md): How training sets are composed from benchmark sources, the balancing strategies, and the disjoint train/test split with an enforced no-leakage guarantee.
+
+## Benchmarks & results
+
+- [Benchmark suite](m-benchmarks.md): The seven-benchmark standard suite across guardrail, red-teaming, and over-refusal axes; every guard scored through one harness; over-blocking (FPR@benign) as the headline usability metric.
+- [Ensembles](m-ensembles.md): Combining guards into one — union / intersection / majority / mean / weighted strategies — evaluated offline from dumped per-sample predictions, and the interactive ensemble builder in the Studio.
+
+## Architecture
+
+- [System architecture](m-architecture.md): How Agent Bouncer fits together: the guard interface, the FastAPI Benchmark Studio, the evaluation harness, training + versioning, experiment tracking, and the model store.
+
+## Roadmap
+
+- [Roadmap](m-roadmap.md): Where Agent Bouncer is headed — planned guards, benchmarks, training techniques, and Studio features.

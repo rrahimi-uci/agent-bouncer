@@ -7,6 +7,40 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+
+- **Leaderboard** tab in the Benchmark Studio: a macro-average results table (Precision /
+  Recall / F1 / ROC-AUC / p50 / p90) grouped into small models · GPT baselines · ensembles,
+  with best-in-column highlighting and sortable columns, above the ROC/PR/AUC curves.
+- **Generate PDF report** button (`GET /api/report`) — renders the leaderboard to a styled PDF
+  via headless Chrome (no extra Python dependencies).
+- **Interactive ensemble builder** (`GET /api/ensemble/members`, `POST /api/ensemble`): pick
+  member guards + a strategy (union / intersection / majority / mean / weighted), scored offline
+  from dumped per-sample predictions and merged onto the leaderboard. Shared evaluator in
+  `agent_bouncer.evaluation.ensembles`.
+- **GPT-5.2 reasoning tiers**: the reasoning judge is now scored at `low` / `medium` / `high`
+  effort (`--reasoning-efforts`), with the token budget scaled per tier.
+- Benchmark runs now dump per-sample predictions to `outputs/predictions/<guard>.json`, so the
+  ensemble builder works straight after a run.
+- **GitHub Pages**: a dependency-free docs-site generator (`docs-site/build-docs.mjs`) renders
+  `docs/**/*.md` into a polished, self-navigating site published by `.github/workflows/pages.yml`.
+
+### Changed
+
+- Renamed the web UI to **Agent Bouncer — Benchmark Studio**.
+
+### Fixed
+
+- GRPO decoder is scored in `reasoning` mode everywhere (SFT mode truncated its `<think>` trace
+  and failed closed to `unsafe`), fixing its scoreboard row and every ensemble that includes it.
+- Experiment index writes are atomic (temp file + rename), so an interrupted write can no longer
+  zero out the experiment history.
+- DPO hyperparameters (`epochs` / `lr` / `beta` / `max_steps`) now reach the trainer.
+- Reasoning-judge verdicts that exhausted the token budget are no longer mis-scored as `safe`.
+- Benchmark report renderers keep every scored guard (medium/high tiers, ensembles) instead of
+  dropping non-canonical names.
+
+### Historical
+
 - Initial repository scaffold: taxonomy, verdict schema, reference `KeywordGuard`,
   verifiable reward functions, metrics (incl. false-positive-on-benign), MLflow eval
   harness, CLI, and stubs for SFT/GRPO training and standard-benchmark adapters.

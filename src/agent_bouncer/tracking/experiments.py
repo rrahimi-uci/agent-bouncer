@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
@@ -83,18 +84,30 @@ def _summary(exp: dict) -> dict:
     return {k: exp.get(k) for k in _SUMMARY_KEYS}
 
 
+def _write_json_atomic(path: str, obj) -> None:
+    """Write JSON via a temp file + atomic rename, so a crash mid-write never
+    truncates or empties ``path`` (which ``_load_index`` would silently read as [])."""
+    directory = os.path.dirname(path) or "."
+    fd, tmp = tempfile.mkstemp(dir=directory, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(obj, fh, indent=2)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
 def record(exp: Experiment | dict) -> str:
     """Persist an experiment (full JSON) + update the index. Returns its id."""
     data = exp.to_dict() if isinstance(exp, Experiment) else dict(exp)
     os.makedirs(EXP_DIR, exist_ok=True)
     eid = data["id"]
-    with open(os.path.join(EXP_DIR, f"{eid}.json"), "w") as fh:
-        json.dump(data, fh, indent=2)
+    _write_json_atomic(os.path.join(EXP_DIR, f"{eid}.json"), data)
     index = [e for e in _load_index() if e.get("id") != eid]
     index.append(_summary(data))
     index.sort(key=lambda e: e.get("created", ""))
-    with open(INDEX, "w") as fh:
-        json.dump(index, fh, indent=2)
+    _write_json_atomic(INDEX, index)
     return eid
 
 

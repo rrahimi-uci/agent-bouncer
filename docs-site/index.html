@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents</title>
+  <meta name="description"
+    content="Agent Bouncer is an open-source small language model (SLM) safety guardrail for LLMs and AI agents: it screens prompts, tool calls, and outputs for prompt injection, jailbreaks, and unsafe content. Fine-tuned + RL-tuned (GRPO), benchmarked against GPT-4o-mini, GPT-5.2, and OpenAI Moderation through one honest harness, with a web Benchmark Studio.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕶️</text></svg>">
+  <script>
+    // Resolve theme before first paint to avoid a flash of the wrong mode.
+    (function () {
+      try {
+        var t = localStorage.getItem("agent-bouncer-docs-theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    })();
+  </script>
+  <meta property="og:title" content="Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs & agents">
+  <meta property="og:description"
+    content="Open-source SLM guardrail: detects prompt injection, jailbreaks, and unsafe content on the request path. Benchmarked vs GPT-4o-mini, GPT-5.2, and OpenAI Moderation with an honest scoreboard and a web Benchmark Studio.">
+  <meta property="og:image" content="agent-bouncer-poster.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+
+<body data-doc-page="home">
+  <a class="skip-link" href="#docsContent">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="topbar-brand" href="index.html" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <strong>Agent Bouncer</strong>
+      </a>
+      <nav class="docs-section-tabs" id="docsSectionTabs" aria-label="Documentation sections"></nav>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-search-trigger" id="topbarSearch" aria-label="Search docs" title="Search docs">
+          <svg class="topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <span class="topbar-search-label">Search docs</span>
+          <span class="keycap" data-doc-search-key>⌘K</span>
+        </button>
+        <a class="topbar-cta" href="#quickstart">Quickstart</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle light / dark theme">
+          <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-controls="docsSidebar" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+  </button>
+
+  <div class="layout">
+    <aside class="sidebar" id="docsSidebar">
+      <a class="sidebar-brand" href="index.html" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">🕶️</span>
+        <div class="sidebar-brand-title">Agent Bouncer</div>
+      </a>
+      <div class="sidebar-search">
+        <input id="nav-filter" type="search" placeholder="Search docs and sections..." aria-label="Search docs and sections">
+      </div>
+      <nav id="docs-nav" aria-label="Documentation"></nav>
+    </aside>
+
+    <main class="main" id="docsContent">
+      <article class="content">
+        <section class="hero" id="overview">
+          <div class="hero-eyebrow">Open-source · SLM safety guardrail · request-path</div>
+          <h1>🕶️ Agent Bouncer</h1>
+          <p class="lede">
+            A tiny, fast safety <strong>bouncer for LLMs and agents</strong> — it screens prompts, tool calls,
+            and outputs <em>before</em> they reach your model. Small-language-model guardrails trained with
+            <strong>fine-tuning + RL</strong>, <strong>benchmarked</strong> on a standard suite against
+            GPT-4o-mini, GPT-5.2, and OpenAI Moderation through one honest harness, and shipped with a web
+            <strong>Benchmark Studio</strong>.
+          </p>
+          <div class="hero-cta">
+            <a class="btn" href="#quickstart">Quickstart</a>
+            <a class="btn btn-secondary" href="#reference">Browse the docs</a>
+            <a class="btn btn-secondary" href="https://github.com/rrahimi-uci/agent-bouncer">GitHub</a>
+          </div>
+          <div class="hero-highlights">
+            <div class="hero-highlight">
+              <strong>Screen the request path</strong>
+              <span>Prompt injection, jailbreaks, and unsafe content caught before they reach the model — positive class = <code>unsafe</code>.</span>
+            </div>
+            <div class="hero-highlight">
+              <strong>Train &amp; benchmark</strong>
+              <span>SFT · LoRA · GRPO · DPO across a model registry, scored on a 7-benchmark suite with versioning, tracking, and leakage guards.</span>
+            </div>
+            <div class="hero-highlight">
+              <strong>Compare honestly</strong>
+              <span>Every guard through one harness — over-blocking (FPR@benign) front and center — with a Leaderboard, PDF report, and an interactive ensemble builder.</span>
+            </div>
+          </div>
+        </section>
+
+        <figure class="hero-shot">
+          <img src="agent-bouncer-poster.png" alt="Agent Bouncer — Benchmark Studio" style="width:100%;border-radius:12px;border:1px solid var(--border, #e5e9f2)">
+          <figcaption class="section-lead" style="margin-top:8px">The Benchmark Studio — train, test, and compare SLM guardrails from the browser.</figcaption>
+        </figure>
+
+        <section id="what-it-does">
+          <div class="section-lead">
+            <h2>What it does</h2>
+            <p>Agent Bouncer is a request-path guardrail: a small, cheap classifier/judge that decides <code>safe</code> vs <code>unsafe</code> for each prompt, tool call, or output — and a workbench for making that guard measurably good.</p>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <h3>Guards, from 0 to GPT</h3>
+              <p>A keyword baseline, a fine-tuned encoder (DistilBERT 66M / ModernBERT-large 395M), decoder guards (Qwen3-0.6B/1.7B via SFT, and a GRPO reasoning guard), OpenAI Moderation, GPT-4o-mini, and GPT-5.2 at low / medium / high reasoning effort.</p>
+            </div>
+            <div class="card">
+              <h3>One honest harness</h3>
+              <p>Seven benchmarks across guardrail, red-teaming, and over-refusal axes. Precision / Recall / F1 / ROC-AUC / p50 / p90 / throughput — with <strong>over-blocking (FPR@benign)</strong> as the headline usability metric.</p>
+            </div>
+            <div class="card">
+              <h3>Ensembles, interactively</h3>
+              <p>Combine guards with union / intersection / majority / mean / weighted strategies. The Studio's ensemble builder scores your mix instantly from dumped per-sample predictions and drops it onto the leaderboard.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="quickstart">
+          <div class="section-lead">
+            <h2>Quickstart</h2>
+            <p>Clone the repo, set up the environment, and launch the Benchmark Studio.</p>
+          </div>
+          <pre><code># 1. Environment (Python 3.12 recommended)
+make setup                       # venv + eval/benchmark/serve extras
+#   or:  pip install -e '.[eval,serve,notebook]'
+
+# 2. Launch the Benchmark Studio  →  http://127.0.0.1:8000
+./start.sh                       # installs fastapi/uvicorn if needed
+#   or:  uvicorn agent_bouncer.serving.api:app --reload
+
+# 3. Build a dataset, train a guard, test it (leakage-guarded),
+#    and compare on the Leaderboard — from the Studio or the CLI.
+make bench                       # download + run the 7-benchmark suite
+make test                        # run the test suite (green)</code></pre>
+          <p class="section-lead">Set <code>OPENAI_API_KEY</code> in <code>.env</code> to score the OpenAI Moderation, GPT-4o-mini, and GPT-5.2 (low/medium/high) guards; everything else runs locally on CPU.</p>
+        </section>
+
+        <section id="reference">
+          <div class="section-lead">
+            <h2>Documentation</h2>
+            <p>Scan by area. Each link opens a full page generated from the authoritative Markdown sources in <code>docs/</code>.</p>
+          </div>
+          <div class="reference-directory">
+
+            <section class="reference-group" data-ref-group>
+              <div class="reference-group-head">
+                <h3>Learn</h3>
+                <p>A self-contained mini-course on the models and methods behind SLM guardrails.</p>
+              </div>
+              <div class="ref-list">
+                <a class="ref-card ref-row" href="m-slm-architectures.html">
+                  <span class="ref-row-kicker">Learn</span>
+                  <span class="ref-row-title">SLM architectures</span>
+                  <span class="ref-row-summary">Encoder vs decoder guards, the modern decoder block (RMSNorm · RoPE · GQA · SwiGLU), and a deep dive into each base model.</span>
+                </a>
+                <a class="ref-card ref-row" href="m-fine-tuning.html">
+                  <span class="ref-row-kicker">Learn</span>
+                  <span class="ref-row-title">Fine-tuning techniques</span>
+                  <span class="ref-row-summary">SFT · LoRA · GRPO (RLVR) · DPO explained with diagrams, and which technique applies to which model.</span>
+                </a>
+                <a class="ref-card ref-row" href="m-taxonomy.html">
+                  <span class="ref-row-kicker">Learn</span>
+                  <span class="ref-row-title">Safety taxonomy</span>
+                  <span class="ref-row-summary">The hazard taxonomy the guards label against, and how benchmark labels map onto safe/unsafe.</span>
+                </a>
+              </div>
+            </section>
+
+            <section class="reference-group" data-ref-group>
+              <div class="reference-group-head">
+                <h3>Studio &amp; workflow</h3>
+                <p>The guided loop from raw benchmarks to a tracked, versioned, compared guard.</p>
+              </div>
+              <div class="ref-list">
+                <a class="ref-card ref-row" href="m-workflow.html">
+                  <span class="ref-row-kicker">Studio</span>
+                  <span class="ref-row-title">Guided workflow</span>
+                  <span class="ref-row-summary">Explore benchmarks → build a leakage-free train/test set → pick model × technique → train → test → save → evaluate.</span>
+                </a>
+                <a class="ref-card ref-row" href="m-datasets.html">
+                  <span class="ref-row-kicker">Studio</span>
+                  <span class="ref-row-title">Datasets</span>
+                  <span class="ref-row-summary">Composing training sets from benchmark sources, balancing strategies, and the disjoint no-leakage split.</span>
+                </a>
+              </div>
+            </section>
+
+            <section class="reference-group" data-ref-group>
+              <div class="reference-group-head">
+                <h3>Benchmarks &amp; results</h3>
+                <p>How guards are scored, and how to combine them.</p>
+              </div>
+              <div class="ref-list">
+                <a class="ref-card ref-row" href="m-benchmarks.html">
+                  <span class="ref-row-kicker">Benchmarks</span>
+                  <span class="ref-row-title">Benchmark suite</span>
+                  <span class="ref-row-summary">The 7-benchmark standard suite, one harness for every guard, and over-blocking as the headline metric.</span>
+                </a>
+                <a class="ref-card ref-row" href="m-ensembles.html">
+                  <span class="ref-row-kicker">Benchmarks</span>
+                  <span class="ref-row-title">Ensembles</span>
+                  <span class="ref-row-summary">Union / intersection / majority / mean / weighted strategies, and the interactive ensemble builder.</span>
+                </a>
+              </div>
+            </section>
+
+            <section class="reference-group" data-ref-group>
+              <div class="reference-group-head">
+                <h3>Architecture &amp; roadmap</h3>
+                <p>How the pieces fit, and where the project is going.</p>
+              </div>
+              <div class="ref-list">
+                <a class="ref-card ref-row" href="m-architecture.html">
+                  <span class="ref-row-kicker">Architecture</span>
+                  <span class="ref-row-title">System architecture</span>
+                  <span class="ref-row-summary">The guard interface, the FastAPI Benchmark Studio, the eval harness, training + versioning, and the model store.</span>
+                </a>
+                <a class="ref-card ref-row" href="m-roadmap.html">
+                  <span class="ref-row-kicker">Roadmap</span>
+                  <span class="ref-row-title">Roadmap</span>
+                  <span class="ref-row-summary">Planned guards, benchmarks, training techniques, and Studio features.</span>
+                </a>
+              </div>
+            </section>
+
+          </div>
+        </section>
+
+        <footer>
+          <p>Agent Bouncer — a tiny, fast SLM safety guardrail for LLMs &amp; agents. These pages are generated from the Markdown in <code>docs/</code>.</p>
+        </footer>
+      </article>
+    </main>
+  </div>
+
+  <script defer src="docs-nav.js"></script>
+  <script defer src="docs.js"></script>
+</body>
+
+</html>

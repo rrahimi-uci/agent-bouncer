@@ -172,6 +172,99 @@ def curves() -> JSONResponse:
     return JSONResponse({})
 
 
+@app.get("/api/report")
+def report(sort: str = "f1") -> FileResponse:
+    """Render the leaderboard (macro-average scoreboard) to a PDF and return it for download."""
+    import tempfile
+    from datetime import datetime, timezone
+
+    from starlette.background import BackgroundTask
+
+    from agent_bouncer.serving.leaderboard_report import build_html, render_pdf
+
+    if not RESULTS_JSON.exists():
+        raise HTTPException(404, "No benchmark results yet — run the suite to populate the leaderboard.")
+    blob = json.loads(RESULTS_JSON.read_text())
+    if not blob.get("results"):
+        raise HTTPException(404, "No benchmark results yet — run the suite to populate the leaderboard.")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    html_str = build_html(blob, sort=sort, generated=stamp)
+    # Render to a temp file (deleted after the response is sent) so the report never
+    # litters outputs/.
+    fd, out = tempfile.mkstemp(prefix="ab-leaderboard-", suffix=".pdf")
+    os.close(fd)
+    try:
+        render_pdf(html_str, out)
+    except RuntimeError as exc:
+        os.remove(out)
+        raise HTTPException(501, str(exc)) from exc
+    return FileResponse(out, media_type="application/pdf",
+                        filename="agent-bouncer-leaderboard.pdf",
+                        headers={"Cache-Control": "no-store"},
+                        background=BackgroundTask(lambda: os.path.exists(out) and os.remove(out)))
+
+
+# ---------------------------------------------------------------- ensemble builder
+PRED_DIR = ROOT / "outputs" / "predictions"
+
+
+def _merge_scoreboard(name: str, per_bench: dict) -> None:
+    """Graft an ensemble's per-benchmark metrics into the scoreboard, atomically."""
+    import tempfile
+
+    blob = {"per_class": None, "meta": {}, "results": {}}
+    if RESULTS_JSON.exists():
+        try:
+            blob = json.loads(RESULTS_JSON.read_text())
+        except ValueError:
+            pass
+    for bench, metrics in per_bench.items():
+        blob.setdefault("results", {}).setdefault(bench, {})[name] = metrics
+    fd, tmp = tempfile.mkstemp(dir=str(RESULTS_JSON.parent), suffix=".tmp")
+    with os.fdopen(fd, "w") as fh:
+        json.dump(blob, fh, indent=2)
+    os.replace(tmp, RESULTS_JSON)
+
+
+@app.get("/api/ensemble/members")
+def ensemble_members() -> dict:
+    """Guards with dumped predictions (candidate members) + the available strategies."""
+    from agent_bouncer.evaluation.ensembles import available_members
+    from agent_bouncer.models.ensemble import STRATEGIES
+
+    return {"members": available_members(str(PRED_DIR)), "strategies": list(STRATEGIES)}
+
+
+class EnsembleConfig(BaseModel):
+    """Build + score an ensemble from dumped per-sample predictions."""
+    members: list[str]
+    strategy: str = "majority"
+    threshold: float = 0.5
+    weights: list[float] | None = None
+    name: str | None = None
+
+
+@app.post("/api/ensemble")
+def build_ensemble(cfg: EnsembleConfig) -> dict:
+    """Combine the selected members offline, merge the result into the scoreboard, return metrics."""
+    from agent_bouncer.evaluation.ensembles import evaluate_ensemble, load_predictions, macro_average
+
+    preds = load_predictions(str(PRED_DIR))
+    try:
+        per_bench = evaluate_ensemble(preds, cfg.members, cfg.strategy,
+                                      weights=cfg.weights, threshold=cfg.threshold)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    name = (cfg.name or "").strip() or ("ensemble-" + cfg.strategy + "-" + str(len(cfg.members)))
+    name = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-") or "ensemble"
+    if not name.startswith("ensemble-"):  # keep leaderboard categorization intact
+        name = "ensemble-" + name
+    _merge_scoreboard(name, per_bench)
+    return {"name": name, "members": cfg.members, "strategy": cfg.strategy,
+            "macro": macro_average(per_bench), "per_benchmark": per_bench}
+
+
 # ------------------------------------------------------- training / experiments API
 @app.get("/api/models")
 def models() -> dict:
@@ -536,15 +629,17 @@ def _build_commands(cfg: RunConfig) -> list[list[str]]:
         main.append("--no-openai")
     cmds = [main]
 
+    # name -> (checkpoint path, decode mode, param count). GRPO is a reasoning model, so it
+    # must be scored in "reasoning" mode (SFT mode truncates its <think> trace → fails closed).
     decoders = {
-        "decoder-sft-0.6B": ("outputs/demo-decoder-sft", "sft"),
-        "decoder-sft-1.7B": ("outputs/decoder-sft-Qwen3-1.7B", "sft"),
-        "decoder-grpo-0.6B": ("outputs/grpo-qwen3-0.6b", "sft"),
+        "decoder-sft-0.6B": ("outputs/demo-decoder-sft", "sft", "0.6B"),
+        "decoder-sft-1.7B": ("outputs/decoder-sft-Qwen3-1.7B", "sft", "1.7B"),
+        "decoder-grpo-0.6B": ("outputs/grpo-qwen3-0.6b", "reasoning", "0.6B"),
     }
-    for name, (path, mode) in decoders.items():
+    for name, (path, mode, params) in decoders.items():
         if name in guards and (ROOT / path).is_dir():
             cmds.append([py, "scripts/eval/eval_added_guard.py", "--path", path, "--arch",
-                         "decoder", "--mode", mode, "--name", name, "--params", "0.6B"])
+                         "decoder", "--mode", mode, "--name", name, "--params", params])
     cmds.append([py, "scripts/report/compute_curves.py"])
     return cmds
 

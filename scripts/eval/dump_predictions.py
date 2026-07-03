@@ -32,27 +32,38 @@ CACHE = "data/benchmarks"
 OUT = "outputs/predictions"
 
 
-def build_guard(name: str, device: str):
+def build_guard(name: str, device: str, path: str | None = None, arch: str = "decoder",
+                mode: str = "sft"):
     if name == "keyword-baseline":
         return KeywordGuard()
+    # Explicit --path wins: score a real trained checkpoint under the given --name.
+    if path:
+        if arch == "encoder":
+            from agent_bouncer.models.encoder import EncoderGuard
+            return EncoderGuard(path, name=name)
+        from agent_bouncer.models.decoder import DecoderGuard
+        return DecoderGuard(path, mode=mode, name=name, device=device)
     if name == "encoder-distilbert":
         from agent_bouncer.models.encoder import EncoderGuard
         return EncoderGuard("outputs/demo-encoder", name=name)
     decoders = {"decoder-sft-0.6B": ("outputs/demo-decoder-sft", "sft"),
-                "decoder-grpo-0.6B": ("outputs/grpo-qwen3-0.6b", "sft"),
+                "decoder-grpo-0.6B": ("outputs/grpo-qwen3-0.6b", "reasoning"),
                 "decoder-sft-1.7B": ("outputs/decoder-sft-Qwen3-1.7B", "sft")}
     if name in decoders:
         from agent_bouncer.models.decoder import DecoderGuard
         path, mode = decoders[name]
         return DecoderGuard(path, mode=mode, name=name, device=device)
     if name.startswith("openai-"):
+        import re
+
         from agent_bouncer.evaluation.openai_guards import OpenAIChatGuard, OpenAIModerationGuard
         if name == "openai-moderation":
             return OpenAIModerationGuard()
         if name == "openai-gpt-4o-mini":
             return OpenAIChatGuard("gpt-4o-mini")
-        if name == "openai-gpt-5.2-low":
-            return OpenAIChatGuard("gpt-5.2", reasoning_effort="low")
+        m = re.match(r"^openai-(gpt-[\d.]+)-(low|medium|high)$", name)
+        if m:
+            return OpenAIChatGuard(m.group(1), reasoning_effort=m.group(2))
     raise ValueError(f"unknown guard {name!r}")
 
 
@@ -61,9 +72,12 @@ def main() -> None:
     ap.add_argument("--guard", required=True)
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--path", default=None, help="explicit checkpoint path (score a real trained model)")
+    ap.add_argument("--arch", choices=["decoder", "encoder"], default="decoder")
+    ap.add_argument("--mode", default="sft", help="decoder mode: sft|reasoning")
     args = ap.parse_args()
 
-    guard = build_guard(args.guard, args.device)
+    guard = build_guard(args.guard, args.device, path=args.path, arch=args.arch, mode=args.mode)
     benches = sorted(f[:-6] for f in os.listdir(CACHE) if f.endswith(".jsonl"))
     out: dict[str, list] = {}
     for bench in benches:

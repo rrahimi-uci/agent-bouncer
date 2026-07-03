@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://rrahimi-uci.github.io/agent-bouncer/sitemap.xml

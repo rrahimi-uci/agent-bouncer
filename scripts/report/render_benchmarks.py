@@ -14,11 +14,13 @@ from agent_bouncer.evaluation.benchmarks import GATED_BENCHMARKS
 from agent_bouncer.evaluation.report import render_benchmark_report
 
 CANON_ORDER = [
-    "keyword-baseline", "encoder-distilbert", "decoder-sft-0.6B", "decoder-sft-1.7B",
-    "decoder-grpo-0.6B", "openai-moderation", "openai-gpt-4o-mini", "openai-gpt-5.2-low",
+    "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",
+    "decoder-sft-0.6B", "decoder-sft-1.7B", "decoder-grpo-0.6B",
+    "openai-moderation", "openai-gpt-4o-mini",
+    "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
 ]
 PARAMS = {
-    "keyword-baseline": "0", "encoder-distilbert": "66M",
+    "keyword-baseline": "0", "encoder-distilbert": "66M", "encoder-modernbert-large": "395M",
     "decoder-sft-0.6B": "0.6B", "decoder-sft-1.7B": "1.7B", "decoder-grpo-0.6B": "0.6B",
 }
 
@@ -37,7 +39,9 @@ def main() -> None:
         for g in results[bench]:
             params.setdefault(g, "api" if g.startswith("openai-") else "")
 
-    order = [g for g in CANON_ORDER if any(g in results[b] for b in results)]
+    present = {g for b in results for g in results[b]}
+    # canonical order first, then any other scored guards (ensembles, custom names) so nothing is dropped
+    order = [g for g in CANON_ORDER if g in present] + sorted(present - set(CANON_ORDER))
     report = render_benchmark_report(results, meta, params, guard_order=order, gated=GATED_BENCHMARKS)
     header = (
         "# Agent Bouncer — standard benchmark suite\n\n"
