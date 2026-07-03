@@ -526,7 +526,7 @@ async function buildDataset(){
   let payload={};try{payload=await resp.json();}catch(e){}
   if(!resp.ok){toast(payload.detail||'build failed');btn.disabled=false;btn.textContent='🧪  Build training set';syncDatasetSourceState();return;}
   const {run_id}=payload;
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();toast('✓ Training set built');});
+  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();fillTestData();toast('✓ Dataset built — available in Train & Test');});
 }
 
 /* ---------- train & test ---------- */
@@ -721,6 +721,7 @@ function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.to
   if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
   if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
   if(v==='evaluate'){renderEvaluate();drawEval();}
+  if(v==='train'){fillTrainData();fillTestData();}   // reflect any datasets built since load
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
 async function syncRouteFromLocation(){
   const bench=parseBenchLocation();
