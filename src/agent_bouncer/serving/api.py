@@ -448,31 +448,45 @@ def _build_commands(cfg: RunConfig) -> list[list[str]]:
     return cmds
 
 
-async def _run(run_id: str, commands: list[list[str]]) -> None:
+async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = False) -> None:
+    """Run each command in sequence. By default a failed step (e.g. a gated model, an OOM, or
+    a killed process) is reported but the remaining steps STILL run — so selecting many
+    model×technique jobs trains every one that can, instead of aborting the whole batch on the
+    first failure. Set ``stop_on_error`` for dependent pipelines."""
     run = _RUNS[run_id]
     q: asyncio.Queue = run["queue"]
     env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1"}
+    total, failures = len(commands), 0
     try:
-        for cmd in commands:
-            await q.put({"type": "step", "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
-            proc = await asyncio.create_subprocess_exec(
-                *cmd, cwd=str(ROOT), env=env,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            )
-            run["proc"] = proc
-            assert proc.stdout is not None
-            async for raw in proc.stdout:
-                line = raw.decode(errors="replace").rstrip()
-                if line and "\r" not in line:  # skip tqdm progress-bar carriage lines
-                    await q.put(_parse_line(line))
-            await proc.wait()
-            if proc.returncode != 0:
-                await q.put({"type": "error", "text": f"step exited with code {proc.returncode}"})
-                break
-    except Exception as exc:  # noqa: BLE001 - surface any launch failure to the UI
+        for i, cmd in enumerate(commands, 1):
+            await q.put({"type": "step", "index": i, "total": total,
+                         "text": " ".join(Path(c).name if "/" in c else c for c in cmd)})
+            rc, err = -1, None
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd, cwd=str(ROOT), env=env,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+                )
+                run["proc"] = proc
+                assert proc.stdout is not None
+                async for raw in proc.stdout:
+                    line = raw.decode(errors="replace").rstrip()
+                    if line and "\r" not in line:  # skip tqdm progress-bar carriage lines
+                        await q.put(_parse_line(line))
+                await proc.wait()
+                rc = proc.returncode
+            except Exception as exc:  # noqa: BLE001 - a launch failure shouldn't kill the batch
+                err = f"{type(exc).__name__}: {exc}"
+            if rc != 0:
+                failures += 1
+                msg = f"step {i}/{total} failed" + (f": {err}" if err else f" (exit {rc})")
+                await q.put({"type": "error", "text": msg + ("" if stop_on_error else " — continuing")})
+                if stop_on_error:
+                    break
+    except Exception as exc:  # noqa: BLE001 - surface any unexpected failure to the UI
         await q.put({"type": "error", "text": f"{type(exc).__name__}: {exc}"})
     finally:
-        await q.put({"type": "done"})
+        await q.put({"type": "done", "failures": failures, "total": total})
         run["done"] = True
 
 

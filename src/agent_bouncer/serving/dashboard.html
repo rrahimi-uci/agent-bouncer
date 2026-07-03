@@ -578,7 +578,7 @@ const fmtElapsed=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 function fmtRunLine(e){
   const d=document.createElement('div');d.className='l';
   const f=(x,n=2)=>x==null?'—':Number(x).toFixed(n);
-  if(e.type==='step'){d.className='l step';d.textContent='▸ '+(e.text||'').replace(/^\S*python\S*\s*/,'').trim();}
+  if(e.type==='step'){d.className='l step';const n=e.index&&e.total?`[${e.index}/${e.total}] `:'';d.textContent=`▸ ${n}`+(e.text||'').replace(/^\S*python\S*\s*/,'').trim();}
   else if(e.type==='result'||e.type==='test_result'){d.className='l res';
     d.textContent=`✓ ${e.benchmark} · ${e.guard} — F1 ${f(e.f1)} · P ${f(e.precision)} · R ${f(e.recall)} · FPR ${f(e.fpr_on_benign)}`;}
   else if(e.type==='loading'){d.className='l load';d.textContent=`⋯ loading ${e.benchmark}`;}
@@ -591,22 +591,22 @@ function fmtRunLine(e){
 function streamRun(run_id,con,onEvt,onDone){
   con.innerHTML='';
   const status=document.createElement('div');status.className='runstatus';con.appendChild(status);
-  const t0=Date.now();let si=0,steps=0,failed=false,finished=false;
+  const t0=Date.now();let si=0,steps=0,total=0,finished=false;
   const paint=(txt,cls)=>{const el=Math.floor((Date.now()-t0)/1000);
     status.className='runstatus'+(cls?' '+cls:'');
     status.innerHTML=(cls?'':`<span class="spin">${SPIN[si=(si+1)%SPIN.length]}</span> `)+
-      `<span>${txt}</span>`+(steps?`<span class="stp">· step ${steps}</span>`:'')+`<span class="el">⏱ ${fmtElapsed(el)}</span>`;};
+      `<span>${txt}</span>`+(steps?`<span class="stp">· step ${steps}${total?'/'+total:''}</span>`:'')+`<span class="el">⏱ ${fmtElapsed(el)}</span>`;};
   paint('Starting…');
-  const tick=setInterval(()=>{if(!finished)paint(failed?'Failed…':'Running…',failed?'fail':'');},130);
+  const tick=setInterval(()=>{if(!finished)paint('Running…');},130);
   const es=new EventSource(`/api/run/${run_id}/events`);
   const end=(txt,cls)=>{if(finished)return;finished=true;clearInterval(tick);paint(txt,cls);try{es.close();}catch(e){}onDone&&onDone();};
   es.onmessage=ev=>{const e=JSON.parse(ev.data);
-    if(e.type==='done'){end(failed?'Failed':'Done ✓',failed?'fail':'done');return;}
-    if(e.type==='step')steps++;
-    if(e.type==='error')failed=true;
+    if(e.type==='done'){const f=e.failures||0,t=e.total||steps;
+      end(f?`Done · ${t-f}/${t} ok, ${f} failed`:'Done ✓',f?'fail':'done');return;}
+    if(e.type==='step'){steps++;if(e.total)total=e.total;}
     const line=fmtRunLine(e);if(line){con.appendChild(line);con.scrollTop=con.scrollHeight;}
     onEvt&&onEvt(e);};
-  es.onerror=()=>end(failed?'Failed':'Stream closed',failed?'fail':'done');
+  es.onerror=()=>end('Stream closed','done');
 }
 async function runTrain(){
   const jobs=[...trainJobs].map(k=>{const [model,technique]=k.split('::');return {model,technique};});

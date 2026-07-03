@@ -69,6 +69,50 @@ def test_run_reports_nonzero_exit(monkeypatch):
     assert any(e["type"] == "error" for e in events)
 
 
+def test_run_continues_past_a_failed_step(monkeypatch):
+    # 3 jobs: ok, FAIL, ok — the failure must NOT abort the remaining jobs
+    procs = iter([_FakeProc([b"a\n"], 0), _FakeProc([b"boom\n"], 1), _FakeProc([b"c\n"], 0)])
+
+    async def fake_exec(*a, **k):
+        return next(procs)
+
+    monkeypatch.setattr(api.asyncio, "create_subprocess_exec", fake_exec)
+
+    async def drive():
+        rid = "rmulti"
+        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        await api._run(rid, [["j1"], ["j2"], ["j3"]])
+        q = api._RUNS[rid]["queue"]
+        return [q.get_nowait() for _ in range(q.qsize())]
+
+    events = asyncio.run(drive())
+    steps = [e for e in events if e["type"] == "step"]
+    errs = [e for e in events if e["type"] == "error"]
+    done = next(e for e in events if e["type"] == "done")
+    assert len(steps) == 3                       # all three jobs ran despite the middle failure
+    assert steps[0]["index"] == 1 and steps[2]["total"] == 3
+    assert len(errs) == 1 and done["failures"] == 1 and done["total"] == 3
+
+
+def test_run_stop_on_error_aborts(monkeypatch):
+    procs = iter([_FakeProc([b"boom\n"], 1), _FakeProc([b"c\n"], 0)])
+
+    async def fake_exec(*a, **k):
+        return next(procs)
+
+    monkeypatch.setattr(api.asyncio, "create_subprocess_exec", fake_exec)
+
+    async def drive():
+        rid = "rstop"
+        api._RUNS[rid] = {"queue": asyncio.Queue(), "done": False, "proc": None}
+        await api._run(rid, [["j1"], ["j2"]], stop_on_error=True)
+        q = api._RUNS[rid]["queue"]
+        return [q.get_nowait() for _ in range(q.qsize())]
+
+    events = asyncio.run(drive())
+    assert len([e for e in events if e["type"] == "step"]) == 1  # aborted after the first
+
+
 def test_run_events_streams_sse():
     async def drive():
         rid = "rsse"
