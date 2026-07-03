@@ -488,14 +488,16 @@ async def start_run(cfg: RunConfig) -> dict:
 
 
 class TrainConfig(BaseModel):
-    model: str
+    model: str | None = None       # single model (back-compat)
     technique: str = "sft"
+    jobs: list[dict] = []          # [{model, technique}, …] — train many at once
     train_data: str = "data/demo/train.jsonl"
     params: dict = {}
 
 
 class TestConfig(BaseModel):
-    exp: str                       # training-experiment id to evaluate
+    exp: str | None = None         # single training-experiment id (back-compat)
+    exps: list[str] = []           # multiple trained versions to test at once
     benchmarks: list[str] = []
     test_set: str | None = None    # path to a created test split (JSONL) — overrides benchmarks
     per_class: int = 40
@@ -507,27 +509,46 @@ _PARAM_FLAGS = {"epochs": "--epochs", "lr": "--lr", "batch_size": "--batch",
                 "max_seq_len": "--max-seq-len"}
 
 
+def _param_flags(params: dict) -> list[str]:
+    flags = []
+    for key, flag in _PARAM_FLAGS.items():
+        if params.get(key) is not None:
+            flags += [flag, str(params[key])]
+    if params.get("bf16"):
+        flags.append("--bf16")
+    return flags
+
+
 @app.post("/api/train")
 async def start_train(cfg: TrainConfig) -> dict:
-    cmd = [sys.executable, "scripts/train/run_training.py", "--model", cfg.model,
-           "--technique", cfg.technique, "--train-data", cfg.train_data]
-    for key, flag in _PARAM_FLAGS.items():
-        if cfg.params.get(key) is not None:
-            cmd += [flag, str(cfg.params[key])]
-    if cfg.params.get("bf16"):
-        cmd.append("--bf16")
-    return {"run_id": _launch([cmd]), "steps": 1}
+    """Train one or many (model × technique) jobs — each on the same training set — as a
+    sequential multi-step run."""
+    jobs = cfg.jobs or ([{"model": cfg.model, "technique": cfg.technique}] if cfg.model else [])
+    if not jobs:
+        raise HTTPException(400, "no models selected to train")
+    flags = _param_flags(cfg.params)
+    cmds = [[sys.executable, "scripts/train/run_training.py", "--model", j["model"],
+             "--technique", j.get("technique", "sft"), "--train-data", cfg.train_data, *flags]
+            for j in jobs]
+    return {"run_id": _launch(cmds), "steps": len(cmds)}
 
 
 @app.post("/api/test")
 async def start_test(cfg: TestConfig) -> dict:
-    cmd = [sys.executable, "scripts/eval/run_testing.py", "--exp", cfg.exp,
-           "--per-class", str(cfg.per_class), "--device", cfg.device]
-    if cfg.test_set:                       # test on a created dataset's held-out split
-        cmd += ["--test-set", cfg.test_set]
-    elif cfg.benchmarks:
-        cmd += ["--benchmarks", *cfg.benchmarks]
-    return {"run_id": _launch([cmd]), "steps": 1}
+    """Test one or many trained versions — each on the same test set / benchmarks."""
+    exps = cfg.exps or ([cfg.exp] if cfg.exp else [])
+    if not exps:
+        raise HTTPException(400, "no trained versions selected to test")
+    cmds = []
+    for e in exps:
+        cmd = [sys.executable, "scripts/eval/run_testing.py", "--exp", e,
+               "--per-class", str(cfg.per_class), "--device", cfg.device]
+        if cfg.test_set:                   # test on a created dataset's held-out split
+            cmd += ["--test-set", cfg.test_set]
+        elif cfg.benchmarks:
+            cmd += ["--benchmarks", *cfg.benchmarks]
+        cmds.append(cmd)
+    return {"run_id": _launch(cmds), "steps": len(cmds)}
 
 
 class BuildConfig(BaseModel):

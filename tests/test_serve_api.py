@@ -185,6 +185,51 @@ def test_test_endpoint_uses_created_test_set(monkeypatch):
     assert "--test-set data/train_sets/set-1/test.jsonl" in cmd and "--benchmarks" not in cmd
 
 
+def test_train_endpoint_trains_many_model_technique_jobs(monkeypatch):
+    launched = {}
+
+    def fake_launch(cmds):
+        launched["c"] = cmds
+        return "r"
+
+    monkeypatch.setattr(api, "_launch", fake_launch)
+    r = client.post("/api/train", json={"jobs": [
+        {"model": "qwen3-0.6b", "technique": "sft"},
+        {"model": "qwen3-0.6b", "technique": "grpo"},
+        {"model": "smollm2-1.7b", "technique": "dpo"},
+    ], "train_data": "data/train_sets/x/train.jsonl", "params": {"max_steps": 20}})
+    assert r.json()["steps"] == 3
+    joined = [" ".join(c) for c in launched["c"]]
+    assert any("--model qwen3-0.6b" in j and "--technique sft" in j for j in joined)
+    assert any("--model qwen3-0.6b" in j and "--technique grpo" in j for j in joined)
+    assert any("--model smollm2-1.7b" in j and "--technique dpo" in j for j in joined)
+    assert all("--max-steps 20" in j and "train_sets/x/train.jsonl" in j for j in joined)
+
+
+def test_train_endpoint_requires_a_model():
+    assert client.post("/api/train", json={}).status_code == 400
+
+
+def test_test_endpoint_tests_many_versions(monkeypatch):
+    launched = {}
+
+    def fake_launch(cmds):
+        launched["c"] = cmds
+        return "r"
+
+    monkeypatch.setattr(api, "_launch", fake_launch)
+    r = client.post("/api/test", json={"exps": ["e1", "e2"],
+                                       "test_set": "data/train_sets/x/test.jsonl", "device": "mps"})
+    assert r.json()["steps"] == 2
+    joined = [" ".join(c) for c in launched["c"]]
+    assert any("--exp e1" in j for j in joined) and any("--exp e2" in j for j in joined)
+    assert all("--test-set data/train_sets/x/test.jsonl" in j and "--device mps" in j for j in joined)
+
+
+def test_test_endpoint_requires_an_exp():
+    assert client.post("/api/test", json={}).status_code == 400
+
+
 def test_eval_endpoint_launches_eval_only(monkeypatch):
     launched = {}
 
