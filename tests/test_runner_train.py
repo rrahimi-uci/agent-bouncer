@@ -36,20 +36,43 @@ def test_load_guard_dispatch(monkeypatch):
     assert runner._load_guard("qwen3-0.6b", "decoder", "/o", "grpo", "mps")[1] == "reasoning"
 
 
-def test_train_and_record(tmp_path, monkeypatch):
+def test_train_and_record(tmp_path, monkeypatch, capsys):
     import agent_bouncer.training.sft as sft
     monkeypatch.setattr(sft, "run_sft", lambda cfg_path: None)
     recorded = {}
     monkeypatch.setattr(runner.X, "record",
                         lambda e: recorded.update(e if isinstance(e, dict) else e.to_dict()))
     tr = tmp_path / "train.jsonl"
-    tr.write_text('{"text": "a", "label": "safe"}\n')
+    tr.write_text('{"text": "a", "label": "safe"}\n{"text": "b", "label": "unsafe"}\n')
     exp = runner.train_and_record("distilbert", "sft", train_data=str(tr), params={"epochs": 1})
     assert exp["model_key"] == "distilbert" and exp["kind"] == "train"
-    assert exp["data"]["n_train"] == 1 and recorded["id"] == exp["id"]
+    assert exp["data"]["n_train"] == 2 and recorded["id"] == exp["id"]
     # naming: <model>-<params>-<technique>-<dataset>-<stamp> (params added since not in key)
     assert exp["id"].startswith("distilbert-66M-sft-")
     assert exp["params"]["name"].startswith("distilbert-66M-sft-") and exp["data"]["dataset"]
+    # beautiful, informative console banner (start header + done footer)
+    out = capsys.readouterr().out
+    assert "🚀 Training distilbert" in out and "1 safe / 1 unsafe" in out
+    assert "⏱️ Estimated:" in out and "🏷️ Saves as:" in out
+    assert "✅ Trained distilbert" in out
+
+
+def test_training_console_helpers():
+    assert runner.fmt_duration(45) == "45s"
+    assert runner.fmt_duration(344) == "5m 44s"
+    assert runner.fmt_duration(3900) == "1h 05m"
+    assert runner._params_billions("0.6B") == 0.6 and runner._params_billions("66M") == 0.066
+    assert runner._params_billions("weird") == 1.0
+    assert runner._class_balance([{"label": "unsafe"}, {"label": "safe"}, {"label": "1"}]) == (1, 2)
+    # steps: encoder ceil(n/batch)*epochs; grpo uses configured steps; max_steps wins
+    enc = runner.build_config("distilbert", "sft", "t", "/o", {"batch_size": 8, "epochs": 2}, 0)
+    assert runner._plan_steps(enc, "sft", 32) == 8            # ceil(32/8)*2
+    grpo = runner.build_config("qwen3-0.6b", "grpo", "t", "/o", {}, 0)
+    assert runner._plan_steps(grpo, "grpo", 999) == 60        # configured grpo steps
+    # GRPO wall-clock estimate exceeds a plain SFT step count (rollouts dominate)
+    assert runner._eta_seconds("decoder", 0.6, "mps", 60, "grpo", 4) > \
+        runner._eta_seconds("decoder", 0.6, "mps", 60, "sft")
+    assert runner._device_from_hw({"gpu": "mps"}) == "mps" and runner._device_from_hw({}) == "cpu"
 
 
 def test_naming_helpers():

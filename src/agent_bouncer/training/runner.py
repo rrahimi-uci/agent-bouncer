@@ -45,6 +45,118 @@ def descriptive_name(model_key: str, technique: str, dataset: str) -> str:
     return f"{base}-{technique}-{dataset}"
 
 
+# --------------------------------------------------------- live-console helpers
+def _params_billions(params: str) -> float:
+    """Parameter count in billions: '0.6B'→0.6, '1.7B'→1.7, '66M'→0.066; unknown→1.0."""
+    s = (params or "").strip().upper()
+    try:
+        if s.endswith("B"):
+            return float(s[:-1])
+        if s.endswith("M"):
+            return float(s[:-1]) / 1000.0
+        return float(s)
+    except ValueError:
+        return 1.0
+
+
+def fmt_duration(sec: float) -> str:
+    """Human duration: 45→'45s', 344→'5m 44s', 3900→'1h 05m'."""
+    s = int(round(max(0.0, sec)))
+    if s < 60:
+        return f"{s}s"
+    m, s = divmod(s, 60)
+    if m < 60:
+        return f"{m}m {s:02d}s" if s else f"{m}m"
+    h, m = divmod(m, 60)
+    return f"{h}h {m:02d}m"
+
+
+def _class_balance(recs: list[dict]) -> tuple[int, int]:
+    """(n_safe, n_unsafe) from a list of labelled records."""
+    unsafe = sum(1 for r in recs if str(r.get("label", "")).strip().lower() in ("unsafe", "1", "true"))
+    return len(recs) - unsafe, unsafe
+
+
+def _plan_steps(cfg: dict, technique: str, n_train: int) -> int:
+    """Rough number of optimizer steps the run will take (for the ETA estimate)."""
+    import math
+
+    t = cfg.get("train", {})
+    if technique == "grpo":
+        return max(1, int(cfg.get("grpo", {}).get("steps", 60) or 60))
+    ms = int(t.get("max_steps", 0) or 0)
+    if ms > 0:
+        return ms
+    batch = max(1, int(t.get("batch_size", 8) or 8))
+    epochs = max(1, int(t.get("epochs", 1) or 1))
+    return max(1, math.ceil(max(1, n_train) / batch) * epochs)
+
+
+def _eta_seconds(arch: str, params_b: float, device: str, steps: int, technique: str,
+                 num_gen: int = 4) -> float:
+    """Very rough wall-clock estimate (order-of-magnitude only) for the training run."""
+    if arch == "encoder":
+        per = {"cuda": 0.15, "mps": 0.4, "cpu": 1.2}.get(device, 1.2)
+    else:
+        base = {"cuda": 0.6, "mps": 2.0, "cpu": 9.0}.get(device, 9.0)
+        per = base * max(0.5, params_b / 0.6)
+        if technique == "grpo":
+            per *= max(2, num_gen)   # generation rollouts dominate GRPO
+        elif technique == "dpo":
+            per *= 1.6               # chosen + rejected pair per step
+    return per * max(1, steps)
+
+
+def _device_from_hw(hw: dict) -> str:
+    """Map hardware_info()'s gpu field to a training device label ('cuda'|'mps'|'cpu')."""
+    return {"cuda": "cuda", "mps": "mps"}.get(hw.get("gpu"), "cpu")
+
+
+def _print_training_header(model_key: str, bm, technique: str, ds: str, recs: list[dict],
+                           cfg: dict, hw: dict, name: str, seed: int) -> None:
+    """A beautiful, informative console banner shown before a training run starts —
+    what's being trained, on which dataset, with what config, and a rough ETA."""
+    n_train = len(recs)
+    n_safe, n_unsafe = _class_balance(recs)
+    device = _device_from_hw(hw)
+    steps = _plan_steps(cfg, technique, n_train)
+    eta = _eta_seconds(bm.arch, _params_billions(bm.params), device, steps, technique,
+                       int(cfg.get("grpo", {}).get("num_generations", 4)))
+    dev_label = {"cuda": "cuda · GPU", "mps": "mps · Apple Silicon", "cpu": "cpu"}[device]
+
+    t = cfg.get("train", {})
+    bits = [f"epochs {t.get('epochs', 1)}", f"batch {t.get('batch_size', 8)}"]
+    if bm.arch == "decoder":
+        bits.append(f"LoRA r={cfg.get('lora', {}).get('r', 16)}")
+    if t.get("max_steps"):
+        bits.append(f"max-steps {t['max_steps']}")
+    if technique == "grpo":
+        bits.append(f"rollouts {cfg.get('grpo', {}).get('num_generations', 4)}")
+    bits.append(f"seed {seed}")
+
+    lo, hi = fmt_duration(eta * 0.6), fmt_duration(eta * 1.9)
+    bal = f"⚖️ {n_safe} safe / {n_unsafe} unsafe" if n_train else "⚠️ no examples found"
+    for line in (
+        "",
+        f"🚀 Training {model_key} · {bm.params} {bm.arch} · {technique.upper()}",
+        f"📚 Dataset: {ds} — {n_train} examples ({bal})",
+        f"🎛️ Config: {' · '.join(bits)}",
+        f"🖥️ Device: {dev_label}",
+        f"⏱️ Estimated: ~{lo}–{hi} for ~{steps} steps (rough)",
+        f"🏷️ Saves as: {name}",
+        "",
+    ):
+        print(line, flush=True)
+
+
+def _print_training_footer(model_key: str, technique: str, name: str, elapsed: float,
+                           out_dir: str, exp_id: str) -> None:
+    """Closing banner once training finishes — actual duration + where it was saved."""
+    print("", flush=True)
+    print(f"✅ Trained {model_key} · {technique.upper()} in {fmt_duration(elapsed)}", flush=True)
+    print(f"🏷️ Saved as {name} → {out_dir}  (experiment {exp_id})", flush=True)
+
+
 # --------------------------------------------------------------------------- train
 def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
                  params: dict, seed: int) -> dict:
@@ -93,10 +205,17 @@ def train_and_record(model_key: str, technique: str, *, train_data: str,
     out_dir = X.version_dir(model_key, version)
     cfg = build_config(model_key, technique, train_data, out_dir, params, seed)
 
+    # Read the training set once — reused for the console banner and the experiment record.
+    recs = read_jsonl(train_data) if os.path.exists(train_data) else []
+    n_train = len(recs)
+    ds = dataset_name(train_data)
+    name = descriptive_name(model_key, technique, ds)   # <model>-<params>-<technique>-<dataset>
+    hw = hardware_info()
+    _print_training_header(model_key, bm, technique, ds, recs, cfg, hw, name, seed)
+
     tmp = tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False)
     yaml.safe_dump(cfg, tmp)
     tmp.close()
-    print(f"[train] {model_key} ({bm.hf_id}) · {technique} · v{version}", flush=True)
 
     t0 = time.perf_counter()
     if technique == "sft":
@@ -111,19 +230,16 @@ def train_and_record(model_key: str, technique: str, *, train_data: str,
     elapsed = round(time.perf_counter() - t0, 1)
     os.unlink(tmp.name)
 
-    n_train = len(read_jsonl(train_data)) if os.path.exists(train_data) else None
-    ds = dataset_name(train_data)
-    name = descriptive_name(model_key, technique, ds)   # <model>-<params>-<technique>-<dataset>
     exp = X.Experiment(
         id=f"{name}-{stamp}", kind="train", model_key=model_key,
         base_hf_id=bm.hf_id, technique=technique, version=version, created=created,
         params={**params, "seed": seed, "arch": bm.arch, "name": name}, output_dir=out_dir,
         data={"train": train_data, "dataset": ds, "n_train": n_train, "leakage_checked": False},
-        hardware=hardware_info(), git_commit=X.git_commit(),
+        hardware=hw, git_commit=X.git_commit(),
         metrics_summary={"train_seconds": elapsed}, notes=notes,
     )
     X.record(exp)
-    print(f"[train] done in {elapsed}s → {out_dir}  (experiment {exp.id})", flush=True)
+    _print_training_footer(model_key, technique, name, elapsed, out_dir, exp.id)
     return exp.to_dict()
 
 

@@ -142,6 +142,8 @@
   .console .l{color:var(--muted);white-space:pre-wrap;word-break:break-word}
   .console .l.res{color:#bfe3c8} .console .l.step{color:#9dc0ff;font-weight:600} .console .l.err{color:#ffb4b4}
   .console .l.load{color:#8aa0c6} .console .l.ok{color:#7fe0a6}
+  .console .l.info{color:#dbe6f7;font-weight:500;letter-spacing:.1px}
+  .console .l.info.hd{color:#fff;font-weight:700;font-size:13.5px;margin-top:2px}
   .runstatus{position:sticky;top:-12px;margin:-12px -14px 8px;padding:9px 14px;background:linear-gradient(90deg,#0c1322,#0a0f1a);
     border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-weight:600;color:#cdd8ef;z-index:2}
   .runstatus .spin{color:var(--accent);font-size:14px} .runstatus.done{color:#7fe0a6} .runstatus.fail{color:#ffb4b4}
@@ -588,6 +590,8 @@ function fmtRunLine(e){
   else if(e.type==='experiment'){d.className='l ok';d.textContent=`✓ experiment ${e.exp_id}`;}
   else if(e.type==='dataset'){d.className='l ok';d.textContent=`✓ dataset ${e.name}`;}
   else if(e.type==='error'){d.className='l err';d.textContent='✗ '+(e.text||'error');}
+  else if(e.type==='info'){const t=(e.text||'').trim();if(!t)return null;
+    d.className='l info'+(/^(✅|🎯)/.test(t)?' ok':/^🚀/.test(t)?' hd':'');d.textContent=t;}
   else{const t=(e.text||'').trim();if(!t)return null;d.textContent=t;if(/saved|done|complete|merged/i.test(t))d.className='l ok';}
   return d;
 }

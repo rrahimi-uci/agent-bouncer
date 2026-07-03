@@ -125,6 +125,14 @@ def test_parse_line_test_result_and_experiment():
     assert api._parse_line("EVAL_EXPERIMENT_ID=abc")["type"] == "experiment"
 
 
+def test_parse_line_info_banner():
+    # emoji banner lines from the runner become highlighted "info" lines in the console
+    assert api._parse_line("🚀 Training qwen3-0.6b · 0.6B decoder · GRPO")["type"] == "info"
+    assert api._parse_line("⏱️ Estimated: ~6m–18m for ~60 steps (rough)")["type"] == "info"
+    assert api._parse_line("✅ Trained qwen3-0.6b · GRPO in 5m 44s")["type"] == "info"
+    assert api._parse_line("plain log")["type"] == "log"
+
+
 def test_models_endpoint_lists_new_models():
     d = client.get("/api/models").json()
     keys = {m["key"] for m in d["models"]}

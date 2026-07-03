@@ -420,7 +420,14 @@ def _parse_line(text: str) -> dict:
     m = _LOADING_RE.search(text)
     if m:
         return {"type": "loading", "benchmark": m.group(1), "text": text}
+    if text.lstrip().startswith(_INFO_PREFIXES):  # beautiful training/eval banner lines
+        return {"type": "info", "text": text}
     return {"type": "log", "text": text}
+
+
+# Leading glyphs of the rich console banners emitted by the runner (train/eval headers,
+# config, device, ETA, save name, done) — surfaced as highlighted "info" lines in the UI.
+_INFO_PREFIXES = ("🚀", "📚", "🎛", "🖥", "⏱", "🏷", "✅", "🎯", "🧠", "🔧", "⚙", "📈", "⚖", "⚠")
 
 
 def _build_commands(cfg: RunConfig) -> list[list[str]]:
@@ -456,7 +463,8 @@ async def _run(run_id: str, commands: list[list[str]], stop_on_error: bool = Fal
     first failure. Set ``stop_on_error`` for dependent pipelines."""
     run = _RUNS[run_id]
     q: asyncio.Queue = run["queue"]
-    env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1"}
+    env = {**os.environ, "TOKENIZERS_PARALLELISM": "false", "PYTHONUNBUFFERED": "1",
+           "PYTHONIOENCODING": "utf-8"}  # so the emoji banner lines pipe through cleanly
     total, failures = len(commands), 0
     try:
         for i, cmd in enumerate(commands, 1):
