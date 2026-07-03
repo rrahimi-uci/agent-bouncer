@@ -17,7 +17,7 @@ from typing import Any
 import yaml
 
 from agent_bouncer.data import read_jsonl
-from agent_bouncer.training.runtime import load_decoder_training_assets
+from agent_bouncer.training.runtime import load_decoder_training_assets, training_device
 
 BINARY_LABEL2ID = {"safe": 0, "unsafe": 1}
 BINARY_ID2LABEL = {0: "safe", 1: "unsafe"}
@@ -101,6 +101,8 @@ def train_encoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real
         logging_steps=20,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
+        # pin_memory only helps on CUDA; enabling it on MPS/CPU just prints a noisy warning
+        dataloader_pin_memory=training_device() == "cuda",
     )
     trainer = Trainer(
         model=model,
@@ -163,6 +165,7 @@ def train_decoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real
         bf16=bf16,
         report_to="none",
         seed=int(cfg.get("seed", 42)),
+        dataloader_pin_memory=device == "cuda",  # avoid the noisy MPS/CPU pin_memory warning
     )
     # Load the model ourselves so TRL does not default to `device_map="auto"`
     # and create meta/offloaded parameters on single-device runs.
