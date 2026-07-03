@@ -152,22 +152,13 @@
     <nav class="nav" id="nav">
       <a data-view="overview"><span class="ic">📊</span> Overview</a>
       <a data-view="workflow"><span class="ic">🧭</span> Workflow</a>
-      <a data-view="benchmarks"><span class="ic">📚</span> Benchmarks <span class="n" id="nBench">0</span></a>
-      <a data-view="datasets"><span class="ic">🧪</span> Datasets <span class="n" id="nSets">0</span></a>
+      <a data-view="benchmarks"><span class="ic">📚</span> Explore Benchmarks <span class="n" id="nBench">0</span></a>
+      <a data-view="datasets"><span class="ic">🧪</span> Datasets Creation <span class="n" id="nSets">0</span></a>
       <a data-view="train"><span class="ic">⚙︎</span> Train &amp; Test <span class="n" id="trainBadge">idle</span></a>
       <a data-view="evaluate"><span class="ic">🎯</span> Evaluate</a>
       <a data-view="experiments"><span class="ic">🧬</span> Experiments <span class="n" id="expBadge">0</span></a>
       <a data-view="roc"><span class="ic">📈</span> ROC &amp; AUC</a>
     </nav>
-    <div class="railcard"><h4>This machine</h4><div class="hw" id="hwRail">…</div></div>
-    <div class="railcard"><h4>At a glance</h4>
-      <div class="stat"><span>Guards scored</span><b id="sgGuards">–</b></div>
-      <div class="stat"><span>Benchmarks</span><b id="sgBench">–</b></div>
-      <div class="stat"><span>Base models</span><b id="sgModels">–</b></div>
-      <div class="stat"><span>Experiments</span><b id="sgExp">–</b></div>
-      <div class="stat"><span>Training sets</span><b id="sgSets">–</b></div>
-    </div>
-    <div class="footer-note">Local guards on CPU · decoders on MPS · OpenAI via API. Hardware is recorded per run for fair comparison.</div>
   </aside>
 
   <main>
@@ -233,7 +224,7 @@
 
     <!-- BENCHMARKS -->
     <section class="view" id="v-benchmarks">
-      <h2 class="vh">Benchmarks</h2><p class="vs">Click a benchmark in the toolbar to explore its contents — search, filter safe/unsafe, and inspect hazard labels.</p>
+      <h2 class="vh">Explore Benchmarks</h2><p class="vs">Click a benchmark in the toolbar to explore its contents — search, filter safe/unsafe, and inspect hazard labels.</p>
       <div class="btoolbar" id="btoolbar"></div>
       <div id="benchHead"></div>
       <div class="chartcard" style="margin:0">
@@ -249,7 +240,7 @@
 
     <!-- DATASETS -->
     <section class="view" id="v-datasets">
-      <h2 class="vh">Training sets</h2><p class="vs">Choose a <b>strategy</b> for what your guard learns from. Every set is split into disjoint train / held-out test — <b>no leakage</b>.</p>
+      <h2 class="vh">Datasets Creation</h2><p class="vs">Create a training set: choose a <b>strategy</b> for what your guard learns from. Every set is split into disjoint train / held-out test — <b>no leakage</b> — and becomes selectable in Train &amp; Test.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
           <h3>① Strategy</h3><p class="sub">How to compose the training data</p>
@@ -275,14 +266,14 @@
 
     <!-- TRAIN & TEST -->
     <section class="view" id="v-train">
-      <h2 class="vh">Train &amp; Test</h2><p class="vs">Fine-tune (SFT) or RL-tune (GRPO) a base model → a versioned checkpoint, then test it against benchmarks with leakage guards.</p>
+      <h2 class="vh">Train &amp; Test</h2><p class="vs">① Train a base model on a <b>dataset you created</b> → a versioned checkpoint. ② Test it on the <b>benchmarks you choose</b> — any benchmark prompt found in the training data is <b>dropped &amp; reported</b>, so nothing leaks train → test.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
-          <h3>① Train a model</h3><p class="sub">Any registered SLM · same SFT / GRPO / DPO</p>
+          <h3>① Train on a created dataset</h3><p class="sub">Any registered SLM · SFT / GRPO / DPO</p>
           <div class="form">
             <label>Base model<select id="tModel" aria-label="Base model"></select></label>
             <label>Technique<select id="tTech" aria-label="Technique"></select></label>
-            <label>Training set<select id="tData" aria-label="Training set"></select></label>
+            <label>Training set <span class="sub">(from Datasets Creation)</span><select id="tData" aria-label="Training set"></select></label>
             <div class="frow">
               <label>Epochs<input id="tEpochs" type="number" step="0.5" value="1"></label>
               <label>Max steps<input id="tMaxSteps" type="number" placeholder="(bounded)"></label>
@@ -293,14 +284,14 @@
           </div>
         </div>
         <div class="chartcard" style="margin:0">
-          <h3>② Test against the pipeline</h3><p class="sub">Leakage-guarded: any test prompt seen in training is dropped &amp; reported</p>
+          <h3>② Test on benchmarks</h3><p class="sub">🔒 Leakage-guarded — prompts seen in this model's training set are auto-dropped</p>
           <div class="form">
             <label>Trained version<select id="tVersion" aria-label="Trained version"></select></label>
             <div class="frow">
               <label>Test size / class (0 = full)<input id="tPerClass" type="number" min="0" value="40"></label>
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
-            <label>Benchmarks<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
+            <label>Benchmarks to test on<select id="tBenchmarks" multiple size="4" aria-label="Benchmarks"></select></label>
             <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test model</button>
           </div>
         </div>
@@ -450,7 +441,7 @@ function renderDatasets(){
 }
 function updateStratNote(){const s=DATA.strategies.find(x=>x.key===curStrat)||{};$('#dsNote').textContent=`${s.desc||''} (needs ${s.min_sources}–${s.max_sources} source${s.max_sources>1?'s':''}).`;}
 function renderSetsList(){
-  const ts=DATA.train_sets;$('#sgSets').textContent=ts.length;$('#nSets').textContent=ts.length;
+  const ts=DATA.train_sets;$('#nSets').textContent=ts.length;
   $('#setsList').innerHTML=ts.length?`<table><thead><tr><th>Name</th><th>Strategy</th><th>Train</th><th>Test</th><th>Sources</th></tr></thead><tbody>`+
     ts.map(t=>`<tr><td class="name">${t.name}</td><td>${t.strategy}</td><td class="mono">${t.n_train} <span style="color:var(--faint)">(${t.train_safe}/${t.train_unsafe})</span></td><td class="mono">${t.n_test}</td><td style="font-size:11px">${(t.sources||[]).join(', ')}</td></tr>`).join('')+'</tbody></table>'
     :'<div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div>';
@@ -469,9 +460,10 @@ async function buildDataset(){
 
 /* ---------- train & test ---------- */
 function fillTrainData(){
-  const opts=['<option value="data/demo/train.jsonl">demo · BeaverTails balanced</option>']
-    .concat(DATA.train_sets.map(t=>`<option value="${t.train_path}">${t.name} · ${t.strategy} (${t.n_train})</option>`));
-  $('#tData').innerHTML=opts.join('');
+  // your created datasets first (so one is the default), demo as a fallback
+  const created=(DATA.train_sets||[]).map(t=>`<option value="${t.train_path}">${t.name} · ${t.strategy} (${t.n_train} train)</option>`);
+  const demo='<option value="data/demo/train.jsonl">demo · BeaverTails balanced</option>';
+  $('#tData').innerHTML=(created.length?created.join('')+demo:demo);
 }
 function renderTrainControls(){
   $('#tModel').innerHTML=MODELS.map(m=>`<option value="${m.key}">${m.key} · ${m.family} ${m.params}${m.gated?' 🔒':''}</option>`).join('');
@@ -514,7 +506,7 @@ async function runTest(){
 
 /* ---------- experiments ---------- */
 function renderExperiments(){
-  $('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;
+  $('#expBadge').textContent=EXPERIMENTS.length;
   if(EXPERIMENTS.length){
     $('#expTable').innerHTML=`<table><thead><tr><th></th><th>Model</th><th>Technique</th><th>Version</th><th>F1 / time</th><th>Device</th><th>When</th></tr></thead><tbody>`+
     EXPERIMENTS.map(e=>{const s=e.metrics_summary||{};const hw=e.hardware||{};const dev=hw.gpu_name||hw.gpu||'cpu';const can=e.kind==='eval'&&s.f1!=null;
@@ -641,14 +633,12 @@ function switchView(v){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset
   if(v==='workflow')renderWorkflow();if(v==='evaluate'){renderEvaluate();drawEval();}
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
 function renderAll(){renderOverview();
-  $('#sgGuards').textContent=guardsIn().length;$('#sgBench').textContent=benchesIn().length;$('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
+  $('#nBench').textContent=(CONFIG.benchmarks||[]).length;}
 async function loadResults(){RESULTS=await (await fetch('/api/results')).json();CURVES=await (await fetch('/api/curves')).json();}
-async function loadModels(){const m=await (await fetch('/api/models')).json();MODELS=m.models;TECHLABELS=m.techniques;$('#sgModels').textContent=MODELS.length;}
-async function loadExperiments(){const e=await (await fetch('/api/experiments')).json();EXPERIMENTS=e.experiments;VERSIONS=e.versions;$('#expBadge').textContent=EXPERIMENTS.length;$('#sgExp').textContent=EXPERIMENTS.length;}
+async function loadModels(){const m=await (await fetch('/api/models')).json();MODELS=m.models;TECHLABELS=m.techniques;}
+async function loadExperiments(){const e=await (await fetch('/api/experiments')).json();EXPERIMENTS=e.experiments;VERSIONS=e.versions;$('#expBadge').textContent=EXPERIMENTS.length;}
 async function loadDatasets(){DATA=await (await fetch('/api/datasets')).json();}
-async function loadHardware(){const h=await (await fetch('/api/hardware')).json();$('#hwLabel').textContent=h.label;const i=h.info;
-  const acc=(i.gpu==='cuda'||i.gpu==='mps')?(i.gpu_name+(i.gpu_memory_gb?` (${i.gpu_memory_gb} GB)`:'')+(i.gpu_count>1?` ×${i.gpu_count}`:'')):'CPU-only';
-  $('#hwRail').innerHTML=`<b>${acc}</b><br>${i.cpu} · ${i.cpu_count} cores<br>${i.memory_gb?i.memory_gb+' GB':'? RAM'} · ${i.system} · py${i.python}${i.torch?' · torch '+i.torch:''}`;}
+async function loadHardware(){const h=await (await fetch('/api/hardware')).json();$('#hwLabel').textContent=h.label;}
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';

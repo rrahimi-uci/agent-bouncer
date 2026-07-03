@@ -161,8 +161,10 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
         m = compute_metrics(gold, [v.decision for v in verdicts], lat).to_dict()
         m["roc_auc"] = (m["recall"] + 1.0 - m["fpr_on_benign"]) / 2.0  # single-operating-point AUC
         metrics[bench] = m
-        print(f"  [{bench}] {getattr(guard, 'name', '?')}: F1={m['f1']:.3f} "
-              f"FPR={m['fpr_on_benign']:.3f} (dropped {leakage[bench]['dropped_leaked']} leaked)",
+        # format kept in sync with the Studio's live test-result parser (_TEST_RE)
+        print(f"  [{bench}] {getattr(guard, 'name', '?')}: F1={m['f1']:.3f} P={m['precision']:.3f} "
+              f"R={m['recall']:.3f} FPR={m['fpr_on_benign']:.3f} p90={m['latency_p90_ms']:.0f}ms "
+              f"thr={m['throughput_per_s']:.1f}/s (dropped {leakage[bench]['dropped_leaked']} leaked)",
               flush=True)
     return metrics, leakage
 
