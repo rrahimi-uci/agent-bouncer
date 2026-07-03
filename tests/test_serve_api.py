@@ -233,6 +233,13 @@ def test_build_endpoint_passes_holdout(monkeypatch):
     assert "--holdout 0.3" in " ".join(launched["c"][0])
 
 
+def test_build_endpoint_rejects_invalid_source_count():
+    r = client.post("/api/dataset/build", json={"strategy": "balanced", "name": "oops",
+                                                "sources": ["beavertails", "xstest"]})
+    assert r.status_code == 400
+    assert "needs exactly 1 source" in r.json()["detail"]
+
+
 def test_train_and_test_build_valid_launch(monkeypatch):
     launched = {}
 

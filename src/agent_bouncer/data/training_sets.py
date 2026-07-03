@@ -29,7 +29,7 @@ STRATEGIES: dict[str, dict] = {
     "mixed": {
         "label": "Mixed sources (diversity)",
         "desc": "Blend several datasets so the guard generalizes beyond one distribution.",
-        "min_sources": 2, "max_sources": 6,
+        "min_sources": 2, "max_sources": None,
     },
     "over_refusal_aware": {
         "label": "Over-refusal-aware",
@@ -44,6 +44,29 @@ STRATEGIES: dict[str, dict] = {
         "min_sources": 1, "max_sources": 4,
     },
 }
+
+
+def source_bounds_text(spec: dict) -> str:
+    """Human-friendly source-count note for a strategy spec."""
+    min_sources = int(spec["min_sources"])
+    max_sources = spec.get("max_sources")
+    if max_sources is None:
+        return f"{min_sources}+ sources"
+    if min_sources == max_sources:
+        return f"exactly {min_sources} source{'s' if min_sources != 1 else ''}"
+    return f"{min_sources}–{max_sources} sources"
+
+
+def validate_strategy_sources(strategy: str, sources: list[str]) -> None:
+    """Raise a clear error when a strategy gets the wrong number of sources."""
+    if strategy not in STRATEGIES:
+        raise ValueError(f"unknown strategy {strategy!r}; known: {sorted(STRATEGIES)}")
+    spec = STRATEGIES[strategy]
+    min_sources = int(spec["min_sources"])
+    max_sources = spec.get("max_sources")
+    n_sources = len(sources)
+    if n_sources < min_sources or (max_sources is not None and n_sources > max_sources):
+        raise ValueError(f"{strategy!r} needs {source_bounds_text(spec)}, got {n_sources}")
 
 
 def _balanced(records: list[dict], per_class: int, rng: random.Random) -> list[dict]:
@@ -73,13 +96,7 @@ def build_training_set(
     benchmark registry loader). Every source is split disjointly *before* pooling, so
     the returned train and test sets are guaranteed leakage-free.
     """
-    if strategy not in STRATEGIES:
-        raise ValueError(f"unknown strategy {strategy!r}; known: {sorted(STRATEGIES)}")
-    spec = STRATEGIES[strategy]
-    if not (spec["min_sources"] <= len(sources) <= spec["max_sources"]):
-        raise ValueError(
-            f"{strategy!r} needs {spec['min_sources']}–{spec['max_sources']} sources, got {len(sources)}"
-        )
+    validate_strategy_sources(strategy, sources)
 
     if loader is None:
         from agent_bouncer.evaluation.benchmarks import load_benchmark

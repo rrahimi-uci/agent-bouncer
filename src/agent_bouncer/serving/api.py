@@ -25,7 +25,7 @@ from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.core.schema import Surface, Verdict
 from agent_bouncer.data import read_jsonl
 from agent_bouncer.data.sampling import SAMPLING_STRATEGIES, SPLIT_STRATEGIES
-from agent_bouncer.data.training_sets import STRATEGIES, list_training_sets
+from agent_bouncer.data.training_sets import STRATEGIES, list_training_sets, validate_strategy_sources
 from agent_bouncer.evaluation.benchmarks import BENCHMARKS, GATED_BENCHMARKS
 from agent_bouncer.models.registry import TECHNIQUES, catalog, technique_matrix
 from agent_bouncer.tracking import experiments as X
@@ -557,6 +557,10 @@ async def start_eval(cfg: EvalConfig) -> dict:
 
 @app.post("/api/dataset/build")
 async def start_build(cfg: BuildConfig) -> dict:
+    try:
+        validate_strategy_sources(cfg.strategy, cfg.sources)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     cmd = [sys.executable, "scripts/data/build_dataset.py", "--strategy", cfg.strategy,
            "--name", cfg.name, "--per-class", str(cfg.per_class), "--sources", *cfg.sources]
     if cfg.holdout_ratio is not None:

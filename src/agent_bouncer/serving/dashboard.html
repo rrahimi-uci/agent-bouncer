@@ -159,7 +159,6 @@
     <div class="navlab">Studio</div>
     <nav class="nav" id="nav">
       <a data-view="overview"><span class="ic">📊</span> Overview</a>
-      <a data-view="workflow"><span class="ic">🧭</span> Workflow</a>
       <a data-view="benchmarks"><span class="ic">📚</span> Explore Benchmarks <span class="n" id="nBench">0</span></a>
       <a data-view="datasets"><span class="ic">🧪</span> Datasets Creation <span class="n" id="nSets">0</span></a>
       <a data-view="train"><span class="ic">⚙︎</span> Train &amp; Test <span class="n" id="trainBadge">idle</span></a>
@@ -184,50 +183,6 @@
         <div class="chartcard"><h3>Throughput (queries/sec) ↑</h3><p class="sub">Single-stream (1000 / mean latency)</p><div class="cbox"><canvas id="cThru"></canvas></div></div>
       </div>
       <p class="footer-note" id="methodNote"></p>
-    </section>
-
-    <!-- WORKFLOW (guided) -->
-    <section class="view" id="v-workflow">
-      <h2 class="vh">Guided workflow</h2><p class="vs">Benchmarks → sampling &amp; split → model + technique → train → test → save. Each step unlocks the next; invalid combinations are prevented.</p>
-      <div class="chartcard" style="margin:0">
-        <h3>① Benchmarks</h3><p class="sub">Pick one or more sources to train &amp; evaluate on</p>
-        <div id="wfSources" class="chips"></div>
-      </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="chartcard" style="margin:0">
-          <h3>② Sampling &amp; split</h3><p class="sub">How to draw and divide the data</p>
-          <div class="form">
-            <label>Composition<select id="wfStrategy" aria-label="Composition strategy"></select></label>
-            <label>Sampling<select id="wfSampling" aria-label="Sampling strategy"></select></label>
-            <div class="mnote" id="wfSampNote"></div>
-            <label>Split<select id="wfSplit" aria-label="Split strategy"></select></label>
-            <div class="frow">
-              <label id="wfRatioWrap">Test %<input id="wfRatio" type="number" min="5" max="50" step="5" value="30"></label>
-              <label id="wfKWrap" style="display:none">Folds (K)<input id="wfK" type="number" min="2" max="10" value="5"></label>
-              <label>Per class<input id="wfPerClass" type="number" value="120"></label>
-            </div>
-            <div class="mnote" id="wfSplitNote"></div>
-          </div>
-        </div>
-        <div class="chartcard" style="margin:0">
-          <h3>③ Model &amp; technique</h3><p class="sub">Only techniques the model supports are enabled</p>
-          <div class="form">
-            <label>Base model<select id="wfModel" aria-label="Base model"></select></label>
-            <label>Technique<div id="wfTech" class="chips"></div></label>
-            <label>Dataset name<input id="wfName" type="text" placeholder="my-run"></label>
-            <div class="mnote" id="wfModelNote"></div>
-          </div>
-        </div>
-      </div>
-      <div class="chartcard" style="margin-top:16px">
-        <div class="row-between"><h3>④ Run</h3><div id="wfSummary" class="sub"></div></div>
-        <div class="frow" style="margin:8px 0">
-          <button type="button" class="runbtn" id="wfBuildBtn">🧪 Build dataset</button>
-          <button type="button" class="runbtn" id="wfTrainBtn" disabled style="background:linear-gradient(135deg,#8b6dff,#6d8bff)">⚙︎ Train</button>
-          <button type="button" class="runbtn" id="wfTestBtn" disabled style="background:linear-gradient(135deg,#34d399,#22c39a)">🎯 Test</button>
-        </div>
-        <div class="console" id="wfConsole"><div class="empty" style="padding:26px"><div class="big">🧭</div>Configure steps ①–③, then Build → Train → Test.</div></div>
-      </div>
     </section>
 
     <!-- BENCHMARKS -->
@@ -280,7 +235,7 @@
 
     <!-- TRAIN & TEST -->
     <section class="view" id="v-train">
-      <h2 class="vh">Train &amp; Test</h2><p class="vs">① Train a base model on a <b>dataset you created</b> → a versioned checkpoint. ② Test it on the <b>benchmarks you choose</b> — any benchmark prompt found in the training data is <b>dropped &amp; reported</b>, so nothing leaks train → test.</p>
+      <h2 class="vh">Train &amp; Test</h2><p class="vs">① Train a base model on a dataset's <b>train</b> split (e.g. <code>train-1</code>) → a versioned checkpoint. ② Test it on that dataset's <b>held-out test</b> split (e.g. <code>test-1</code>) or on benchmarks — any prompt found in the training data is <b>dropped &amp; reported</b>, so nothing leaks train → test.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
           <h3>① Train on a created dataset</h3><p class="sub">Any registered SLM · SFT / GRPO / DPO</p>
@@ -321,7 +276,7 @@
       <h2 class="vh">Evaluate a saved model</h2><p class="vs">Score an already-trained model on benchmarks — no training. Leakage-guarded; results are per-benchmark and macro-averaged.</p>
       <div class="grid2">
         <div class="chartcard" style="margin:0">
-          <h3>① Saved model</h3><p class="sub">From the model store (train &amp; save one in the Workflow tab)</p>
+          <h3>① Saved model</h3><p class="sub">From the model store (train &amp; test one in Train &amp; Test to save it)</p>
           <div class="form">
             <label>Model<select id="evModel" aria-label="Saved model"></select></label>
             <div class="frow">
@@ -373,7 +328,7 @@ const ORDER=['keyword-baseline','encoder-distilbert','decoder-sft-0.6B','decoder
 const TECHLABELS_BADGE={sft:'b-sft',grpo:'b-rl',dpo:'b-dpo'};
 const BENCH_PAGE_SIZE=100;
 let CONFIG={},RESULTS={},CURVES={},MODELS=[],TECHLABELS={},EXPERIMENTS=[],VERSIONS={},DATA={strategies:[],sources:[],train_sets:[]},charts={};
-let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMode='set', benchQueryTimer=null;
+let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMode='set', benchQueryTimer=null, dsSources=new Set();
 
 Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
 Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
@@ -511,16 +466,39 @@ function scheduleBenchSearch(){clearTimeout(benchQueryTimer);benchQueryTimer=set
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 /* ---------- datasets ---------- */
+function datasetStrategySpec(){return DATA.strategies.find(x=>x.key===curStrat)||{};}
+function datasetSourceBoundsText(spec){
+  const min=Number(spec.min_sources||0),max=spec.max_sources;
+  if(max==null)return `${min}+ sources`;
+  if(min===max)return `exactly ${min} source${min===1?'':'s'}`;
+  return `${min}-${max} sources`;
+}
+function selectedDatasetSources(){return [...$$('#srcPick input:checked')].map(i=>i.value);}
+function datasetSelectionOk(spec,sources){
+  const min=Number(spec.min_sources||0),max=spec.max_sources,n=sources.length;
+  return n>=min&&(max==null||n<=max);
+}
+function syncDatasetSourceState(){
+  const chosen=selectedDatasetSources();dsSources=new Set(chosen);
+  $$('#srcPick label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+  const spec=datasetStrategySpec(),count=chosen.length,bounds=datasetSourceBoundsText(spec),ok=datasetSelectionOk(spec,chosen);
+  $('#srcHint').textContent=spec.label?`Choose ${bounds} for ${spec.label.toLowerCase()}.`:'Pick datasets to draw from';
+  $('#buildBtn').disabled=!curStrat||!ok;
+  let note=spec.desc?`${spec.desc} (needs ${bounds}).`:'';
+  if(count)note+=` Selected ${count} source${count===1?'':'s'}.`;
+  if(!ok)note+=` Choose ${bounds} before building.`;
+  $('#dsNote').textContent=note;
+}
 function renderDatasets(){
   $('#stratCards').innerHTML=DATA.strategies.map(s=>`<div class="stratcard" data-s="${s.key}"><div class="t">${s.label}</div><div class="d">${s.desc}</div></div>`).join('');
-  $$('#stratCards .stratcard').forEach(c=>c.onclick=()=>{curStrat=c.dataset.s;$$('#stratCards .stratcard').forEach(x=>x.classList.toggle('on',x===c));updateStratNote();});
+  $$('#stratCards .stratcard').forEach(c=>c.onclick=()=>{curStrat=c.dataset.s;$$('#stratCards .stratcard').forEach(x=>x.classList.toggle('on',x===c));syncDatasetSourceState();});
   if(!curStrat&&DATA.strategies[0]){curStrat=DATA.strategies[0].key;}
   $$('#stratCards .stratcard').forEach(c=>c.classList.toggle('on',c.dataset.s===curStrat));
-  $('#srcPick').innerHTML=DATA.sources.map(s=>`<label class="sel"><input type="checkbox" value="${s.name}" checked><span class="axd" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${AXIS[s.axis].c}"></span>${s.name}</label>`).join('');
-  $$('#srcPick label').forEach(l=>l.querySelector('input').onchange=e=>l.classList.toggle('sel',e.target.checked));
-  updateStratNote();renderSetsList();
+  if(!dsSources.size&&DATA.sources[0])dsSources=new Set([DATA.sources[0].name]);
+  $('#srcPick').innerHTML=DATA.sources.map(s=>`<label class="${dsSources.has(s.name)?'sel':''}"><input type="checkbox" value="${s.name}" ${dsSources.has(s.name)?'checked':''}><span class="axd" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${AXIS[s.axis].c}"></span>${s.name}</label>`).join('');
+  $$('#srcPick label').forEach(l=>l.querySelector('input').onchange=()=>syncDatasetSourceState());
+  syncDatasetSourceState();renderSetsList();
 }
-function updateStratNote(){const s=DATA.strategies.find(x=>x.key===curStrat)||{};$('#dsNote').textContent=`${s.desc||''} (needs ${s.min_sources}–${s.max_sources} source${s.max_sources>1?'s':''}).`;}
 function renderSetsList(){
   const ts=DATA.train_sets;$('#nSets').textContent=ts.length;
   $('#setsList').innerHTML=ts.length?`<table><thead><tr><th>Name</th><th>Strategy</th><th>Train</th><th>Test</th><th>Sources</th></tr></thead><tbody>`+
@@ -528,14 +506,17 @@ function renderSetsList(){
     :'<div class="empty"><div class="big">🗂️</div>None yet — build one on the left.</div>';
 }
 async function buildDataset(){
-  const sources=[...$$('#srcPick input:checked')].map(i=>i.value);
+  const sources=selectedDatasetSources(),spec=datasetStrategySpec();
   const name=$('#dsName').value.trim()||'my-trainset';
   if(!curStrat||!sources.length){toast('Pick a strategy and at least one source.');return;}
+  if(!datasetSelectionOk(spec,sources)){toast(`${curStrat} needs ${datasetSourceBoundsText(spec)}; selected ${sources.length}.`);syncDatasetSourceState();return;}
   const btn=$('#buildBtn');btn.disabled=true;btn.textContent='● Building…';
   const con=$('#buildConsole');con.style.display='block';con.innerHTML='';
   let resp;try{resp=await fetch('/api/dataset/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:curStrat,name,sources,per_class:Number($('#dsPerClass').value)||200})});}
   catch(e){toast('build failed to start');btn.disabled=false;btn.textContent='🧪  Build training set';return;}
-  const {run_id}=await resp.json();
+  let payload={};try{payload=await resp.json();}catch(e){}
+  if(!resp.ok){toast(payload.detail||'build failed');btn.disabled=false;btn.textContent='🧪  Build training set';syncDatasetSourceState();return;}
+  const {run_id}=payload;
   streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Build training set';await loadDatasets();renderDatasets();fillTrainData();toast('✓ Training set built');});
 }
 
@@ -595,7 +576,14 @@ async function runTest(){
   let resp;try{resp=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
   catch(e){toast('test failed to start');btn.disabled=false;btn.textContent='🧪  Test model';return;}
   const {run_id}=await resp.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';await loadExperiments();renderExperiments();toast('✓ Test complete — experiment recorded');});
+  let evalExp=null;
+  streamRun(run_id,con,e=>{if(e.type==='experiment')evalExp=e.exp_id;},async()=>{
+    btn.disabled=false;btn.textContent='🧪  Test model';$('#trainBadge').textContent='done';
+    // persist the tested model to the store so it shows up in the Evaluate tab
+    try{await fetch('/api/saved_models',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({train_exp:exp,eval_exp:evalExp,test_set:body.test_set||null,benchmarks:body.benchmarks||[]})});}catch(e){}
+    await loadExperiments();await loadSaved();renderExperiments();renderEvaluate();
+    toast('✓ Test complete — recorded & saved to model store');});
 }
 
 /* ---------- experiments ---------- */
@@ -643,68 +631,14 @@ function drawAUC(){const bs=Object.keys(CURVES),gset=new Set();bs.forEach(b=>Obj
   destroy('cAuc');charts.cAuc=new Chart($('#cAuc'),{type:'bar',data:{labels:bs,datasets:gs.map((g,i)=>({label:gLabel(g),data:bs.map(b=>CURVES[b][g]?.auc??null),backgroundColor:PALETTE[i%8],borderRadius:5,maxBarThickness:24}))},options:{...barOpts(1),scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{beginAtZero:true,max:1,grid:{color:'#1c2439'}}}}});}
 function curveOpts(xl,yl){return{responsive:true,maintainAspectRatio:false,parsing:false,plugins:{legend:{position:'top',align:'start',labels:{boxWidth:20,usePointStyle:false}},tooltip:{callbacks:{label:c=>` ${xl} ${c.parsed.x.toFixed(2)}, ${yl} ${c.parsed.y.toFixed(2)}`}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:xl},grid:{color:'#1c2439'}},y:{type:'linear',min:0,max:1,title:{display:true,text:yl},grid:{color:'#1c2439'}}}};}
 
-/* ---------- guided workflow ---------- */
-let SAMPLING={sampling:[],split:[]}, MATRIX={}, SAVED=[], wfState={sources:new Set(),tech:null,name:null,trainExp:null,evalExp:null};
-async function loadSampling(){SAMPLING=await (await fetch('/api/sampling')).json();}
-async function loadMatrix(){const m=await (await fetch('/api/models')).json();MATRIX=m.matrix||{};}
+/* ---------- saved-model store (feeds the Evaluate tab) ---------- */
+let SAVED=[];
 async function loadSaved(){SAVED=(await (await fetch('/api/saved_models')).json()).models||[];}
-function renderWorkflow(){
-  const src=$('#wfSources');src.innerHTML=(DATA.sources||[]).map(s=>`<button type="button" class="chip" data-s="${s.name}">${s.name}</button>`).join('');
-  $$('#wfSources .chip').forEach(c=>c.onclick=()=>{c.classList.toggle('on');c.classList.contains('on')?wfState.sources.add(c.dataset.s):wfState.sources.delete(c.dataset.s);wfSummary();});
-  $('#wfStrategy').innerHTML=(DATA.strategies||[]).map(s=>`<option value="${s.key}">${s.label}</option>`).join('');
-  $('#wfSampling').innerHTML=SAMPLING.sampling.map(s=>`<option value="${s.key}">${s.label}</option>`).join('');
-  $('#wfSplit').innerHTML=SAMPLING.split.map(s=>`<option value="${s.key}">${s.label}</option>`).join('');
-  $('#wfModel').innerHTML=MODELS.map(m=>`<option value="${m.key}">${m.key} · ${m.params} ${m.gated?'🔒':''}</option>`).join('');
-  const sampNote=()=>{const s=SAMPLING.sampling.find(x=>x.key===$('#wfSampling').value)||{};$('#wfSampNote').textContent=s.desc||'';};
-  const splitToggle=()=>{const k=$('#wfSplit').value==='kfold';$('#wfKWrap').style.display=k?'':'none';$('#wfRatioWrap').style.display=k?'none':'';
-    const s=SAMPLING.split.find(x=>x.key===$('#wfSplit').value)||{};$('#wfSplitNote').textContent=s.desc||'';};
-  $('#wfSampling').onchange=sampNote;$('#wfSplit').onchange=splitToggle;$('#wfModel').onchange=renderWfTech;
-  sampNote();splitToggle();renderWfTech();wfSummary();
-}
-function renderWfTech(){const model=$('#wfModel').value,valid=MATRIX[model]||[];
-  $('#wfTech').innerHTML=Object.keys(TECHLABELS).map(t=>{const ok=valid.includes(t);
-    return `<button type="button" class="chip ${wfState.tech===t?'on':''}" data-t="${t}" ${ok?'':'disabled title="not supported by this model"'}>${t.toUpperCase()}</button>`;}).join('');
-  if(!valid.includes(wfState.tech))wfState.tech=valid[0]||null;
-  $$('#wfTech .chip').forEach(c=>{if(c.dataset.t===wfState.tech)c.classList.add('on');
-    c.onclick=()=>{if(c.disabled)return;wfState.tech=c.dataset.t;$$('#wfTech .chip').forEach(x=>x.classList.toggle('on',x===c));wfSummary();};});
-  const m=MODELS.find(x=>x.key===model)||{};$('#wfModelNote').innerHTML=(m.gated?'🔒 gated — needs HF_TOKEN. ':'')+(m.note||'')+` Valid: <b>${valid.map(t=>t.toUpperCase()).join(' · ')||'—'}</b>.`;
-}
-function wfSummary(){const s=[...wfState.sources];const split=$('#wfSplit')?.value==='kfold'?`${$('#wfK').value}-fold`:`${$('#wfRatio').value}% test`;
-  $('#wfSummary').textContent=`${s.length} benchmark(s) · ${$('#wfSampling')?.value||'—'} · ${split} · ${$('#wfModel')?.value||'—'}/${(wfState.tech||'—').toUpperCase()}`;}
-async function wfBuild(){
-  const sources=[...wfState.sources];if(!sources.length){toast('Pick at least one benchmark');return;}
-  const name=($('#wfName').value.trim()||('run-'+Date.now().toString(36)));wfState.name=name;$('#wfName').value=name;
-  const body={strategy:$('#wfStrategy').value,name,sources,per_class:Number($('#wfPerClass').value)||120,holdout_ratio:(Number($('#wfRatio').value)||30)/100};
-  const con=$('#wfConsole');con.innerHTML='';const btn=$('#wfBuildBtn');btn.disabled=true;btn.textContent='● Building…';
-  let r;try{r=await fetch('/api/dataset/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){toast('build failed');btn.disabled=false;btn.textContent='🧪 Build dataset';return;}
-  const {run_id}=await r.json();
-  streamRun(run_id,con,null,async()=>{btn.disabled=false;btn.textContent='🧪 Build dataset';$('#wfTrainBtn').disabled=false;await loadDatasets();toast('✓ Dataset built — now Train');});
-}
-async function wfTrain(){
-  if(!wfState.name){toast('Build the dataset first');return;}if(!wfState.tech){toast('Pick a technique');return;}
-  const body={model:$('#wfModel').value,technique:wfState.tech,train_data:`data/train_sets/${wfState.name}/train.jsonl`,params:{}};
-  const con=$('#wfConsole');con.innerHTML='';const btn=$('#wfTrainBtn');btn.disabled=true;btn.textContent='● Training…';
-  let r;try{r=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){toast('train failed');btn.disabled=false;btn.textContent='⚙︎ Train';return;}
-  const {run_id}=await r.json();
-  streamRun(run_id,con,e=>{if(e.type==='experiment')wfState.trainExp=e.exp_id;},async()=>{btn.disabled=false;btn.textContent='⚙︎ Train';$('#wfTestBtn').disabled=false;await loadExperiments();toast('✓ Trained — now Test');});
-}
-async function wfTest(){
-  if(!wfState.trainExp){toast('Train first');return;}
-  const body={exp:wfState.trainExp,benchmarks:[...wfState.sources],per_class:40,device:'cpu'};
-  const con=$('#wfConsole');con.innerHTML='';const btn=$('#wfTestBtn');btn.disabled=true;btn.textContent='● Testing…';
-  let r;try{r=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){toast('test failed');btn.disabled=false;btn.textContent='🎯 Test';return;}
-  const {run_id}=await r.json();
-  streamRun(run_id,con,e=>{if(e.type==='experiment')wfState.evalExp=e.exp_id;},async()=>{
-    btn.disabled=false;btn.textContent='🎯 Test';
-    try{const save=await (await fetch('/api/saved_models',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({train_exp:wfState.trainExp,eval_exp:wfState.evalExp,sampling:$('#wfSampling').value,split:$('#wfSplit').value,benchmarks:[...wfState.sources],test_ratio:(Number($('#wfRatio').value)||30)/100})})).json();
-      await loadExperiments();await loadSaved();renderEvaluate();renderExperiments();toast('✓ Tested & saved to model store ('+(save.saved||'')+')');}catch(e){toast('tested (save skipped)');}
-  });
-}
 /* ---------- evaluate (eval-only) ---------- */
 function renderEvaluate(){
   $('#evModel').innerHTML=SAVED.length?SAVED.map(m=>`<option value="${m.id}">${m.base_model} · ${m.technique} · ${(m.created||'').slice(0,10)}</option>`).join(''):'<option value="">— no saved models yet —</option>';
   $('#evBenchmarks').innerHTML=(DATA.sources||[]).map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
-  $('#evNote').textContent=SAVED.length?`${SAVED.length} saved model(s) available.`:'Train & save a model in the Workflow tab first.';
+  $('#evNote').textContent=SAVED.length?`${SAVED.length} saved model(s) available.`:'Train & test a model in Train & Test first (it is saved automatically).';
 }
 async function runEval(){
   const model_id=$('#evModel').value;if(!model_id){toast('No saved model selected');return;}
@@ -721,7 +655,7 @@ function drawEval(){const m=SAVED.find(x=>x.id===$('#evModel').value);destroy('c
 
 /* ---------- shell ---------- */
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-const VIEWS=['overview','workflow','benchmarks','datasets','train','evaluate','experiments','roc'];
+const VIEWS=['overview','benchmarks','datasets','train','evaluate','experiments','roc'];
 function viewUrl(v){
   if(v==='benchmarks')return curBench?benchUrl(curBench,{page:(window._benchMeta&&window._benchMeta.page)||1,...currentBenchFilters()}):'/benchmarks';
   return v==='overview'?'/':`/#${v}`;
@@ -729,7 +663,7 @@ function viewUrl(v){
 function switchView(v,{skipUrl=false}={}){$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
   if(!skipUrl){const next=viewUrl(v),cur=location.pathname+location.search+location.hash;if(cur!==next)history.replaceState(null,'',next);}
   if(v==='benchmarks'&&!curBench&&(CONFIG.benchmarks||[]).length)selectBenchmark(CONFIG.benchmarks[0].name,{page:1,replaceHistory:true});
-  if(v==='workflow')renderWorkflow();if(v==='evaluate'){renderEvaluate();drawEval();}
+  if(v==='evaluate'){renderEvaluate();drawEval();}
   if(v==='datasets')renderDatasets();if(v==='experiments')renderExperiments();if(v==='roc')renderROC();}
 async function syncRouteFromLocation(){
   const bench=parseBenchLocation();
@@ -761,13 +695,11 @@ async function loadHardware(){const h=await (await fetch('/api/hardware')).json(
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
-  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadSampling(),loadMatrix(),loadSaved()]);
+  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadSaved()]);
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
-  $('#wfBuildBtn').onclick=wfBuild;$('#wfTrainBtn').onclick=wfTrain;$('#wfTestBtn').onclick=wfTest;
   $('#evBtn').onclick=runEval;$('#evModel').onchange=drawEval;
-  ['wfRatio','wfK','wfStrategy','wfPerClass'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=wfSummary;});
   $('#sampleSearch').oninput=scheduleBenchSearch;
   $('#hazardFilter').onchange=applyBenchFilters;
   $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
