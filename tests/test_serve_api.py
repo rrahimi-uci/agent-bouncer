@@ -487,3 +487,28 @@ def test_train_rejects_bad_per_job_param(monkeypatch):
         {"model": "qwen3-0.6b", "technique": "dpo", "params": {"beta": 0.9}},   # 0.9 not accepted
     ], "train_data": "d"})
     assert r.status_code == 400 and "beta" in r.json()["detail"]
+
+
+def test_ensemble_optimize_finds_and_merges_best(monkeypatch, tmp_path):
+    rows = [[1, 1, 0.9, 10], [1, 0, 0.3, 10], [1, 1, 0.7, 10],
+            [0, 0, 0.1, 10], [0, 1, 0.6, 10], [0, 0, 0.2, 10]]
+    rows2 = [[1, 1, 0.8, 20], [1, 1, 0.6, 20], [1, 0, 0.4, 20],
+             [0, 0, 0.2, 20], [0, 0, 0.1, 20], [0, 0, 0.15, 20]]
+    rows3 = [[1, 1, 0.85, 5], [1, 1, 0.7, 5], [1, 1, 0.6, 5],
+             [0, 0, 0.1, 5], [0, 1, 0.55, 5], [0, 0, 0.2, 5]]
+    preds = {"g-a": {"b1": rows}, "g-b": {"b1": rows2}, "g-c": {"b1": rows3}}
+    monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
+    monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+    r = client.post("/api/ensemble/optimize", json={"objective": "f1"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["name"].startswith("ensemble-") and len(d["best"]["members"]) >= 2
+    assert d["candidates"] and d["n_evaluated"] > 0
+    import json
+    blob = json.loads((tmp_path / "results.json").read_text())
+    assert d["name"] in blob["results"]["b1"]          # winner merged onto the leaderboard
+
+
+def test_ensemble_optimize_needs_predictions(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
+    assert client.post("/api/ensemble/optimize", json={}).status_code == 400

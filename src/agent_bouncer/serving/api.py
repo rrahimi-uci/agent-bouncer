@@ -262,13 +262,44 @@ def build_ensemble(cfg: EnsembleConfig) -> dict:
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
-    name = (cfg.name or "").strip() or ("ensemble-" + cfg.strategy + "-" + str(len(cfg.members)))
-    name = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-") or "ensemble"
-    if not name.startswith("ensemble-"):  # keep leaderboard categorization intact
-        name = "ensemble-" + name
+    name = _ensemble_name(cfg.name, "ensemble-" + cfg.strategy + "-" + str(len(cfg.members)))
     _merge_scoreboard(name, per_bench)
     return {"name": name, "members": cfg.members, "strategy": cfg.strategy,
             "macro": macro_average(per_bench), "per_benchmark": per_bench}
+
+
+def _ensemble_name(raw: str | None, fallback: str) -> str:
+    """Sanitize a user name and keep the ``ensemble-`` prefix so the leaderboard groups it."""
+    name = re.sub(r"[^a-zA-Z0-9._-]+", "-", (raw or "").strip() or fallback).strip("-") or "ensemble"
+    return name if name.startswith("ensemble-") else "ensemble-" + name
+
+
+class EnsembleOptimizeConfig(BaseModel):
+    """Auto-search for the best ensemble over the dumped predictions."""
+    objective: str = "balanced"          # "balanced" | "f1" | "fpr"
+    fpr_cap: float = 0.2
+    name: str | None = None
+
+
+@app.post("/api/ensemble/optimize")
+def optimize_ensemble_endpoint(cfg: EnsembleOptimizeConfig) -> dict:
+    """Find the best ensemble by searching member subsets × strategies offline, merge the
+    winner into the scoreboard, and return it plus the top candidates."""
+    from agent_bouncer.evaluation.ensembles import load_predictions, optimize_ensemble
+
+    preds = load_predictions(str(PRED_DIR))
+    try:
+        result = optimize_ensemble(preds, objective=cfg.objective, fpr_cap=cfg.fpr_cap)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    best = result["best"]
+    name = _ensemble_name(cfg.name, "ensemble-optimized")
+    _merge_scoreboard(name, best["per_bench"])
+    return {"name": name, "objective": result["objective"], "n_evaluated": result["n_evaluated"],
+            "best": {"members": best["members"], "strategy": best["strategy"],
+                     "threshold": best["threshold"], "macro": best["macro"]},
+            "candidates": result["candidates"]}
 
 
 # ------------------------------------------------------- training / experiments API

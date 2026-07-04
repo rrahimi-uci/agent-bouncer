@@ -82,3 +82,41 @@ def test_load_and_available_members_roundtrip(tmp_path):
     assert set(preds) == {"guard-a", "guard-b"}
     assert available_members(str(tmp_path)) == ["guard-a", "guard-b"]
     assert available_members(str(tmp_path / "does-not-exist")) == []
+
+
+# --------------------------------------------------------- optimizer (auto best ensemble)
+from agent_bouncer.evaluation.ensembles import optimize_ensemble  # noqa: E402
+
+
+def test_optimize_finds_a_valid_best():
+    out = optimize_ensemble(_PREDS, objective="balanced", top_k=3)
+    best = out["best"]
+    assert len(best["members"]) >= 2
+    assert best["strategy"] in ("union", "intersection", "majority", "mean")
+    assert 0.0 <= best["macro"]["f1"] <= 1.0
+    assert len(out["candidates"]) <= 3 and out["n_evaluated"] > 0
+    # candidates are ranked (first is the best for the objective)
+    assert out["candidates"][0]["members"] == best["members"]
+
+
+def test_optimize_f1_objective_maximizes_f1():
+    out = optimize_ensemble(_PREDS, objective="f1")
+    f1s = [c["f1"] for c in out["candidates"]]
+    assert out["best"]["macro"]["f1"] >= max(f1s)   # best is the top-ranked
+    # majority over the 3 members recovers all unsafe with no over-block on this fixture
+    assert out["best"]["macro"]["f1"] == 1.0
+
+
+def test_optimize_balanced_respects_fpr_cap_when_possible():
+    out = optimize_ensemble(_PREDS, objective="balanced", fpr_cap=0.2)
+    assert out["best"]["macro"]["fpr_on_benign"] <= 0.2
+
+
+def test_optimize_needs_two_members():
+    with pytest.raises(ValueError, match="at least 2"):
+        optimize_ensemble({"only-one": _A})
+
+
+def test_optimize_rejects_bad_objective():
+    with pytest.raises(ValueError, match="unknown objective"):
+        optimize_ensemble(_PREDS, objective="nonsense")

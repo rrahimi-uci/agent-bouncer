@@ -348,7 +348,17 @@
           <label style="flex:1;min-width:160px;font-size:12px;color:var(--muted)">Name (optional)<br><input id="ensName" type="text" placeholder="ensemble-my-mix" style="margin-top:5px;width:100%"></label>
           <button type="button" class="runbtn" id="ensBuild" style="flex:0 0 auto;width:auto;padding:11px 18px;margin-top:0">⚗️ Build &amp; score</button>
         </div>
+        <div class="frow" style="align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:10px">
+          <label style="flex:0 0 auto;font-size:12px;color:var(--muted)">Auto-optimize objective<br>
+            <select id="ensObjective" style="margin-top:5px">
+              <option value="balanced">Balanced — best F1 within FPR ≤ 0.20</option>
+              <option value="f1">Max F1</option>
+              <option value="fpr">Least over-blocking (min FPR)</option>
+            </select></label>
+          <button type="button" class="ghostbtn" id="ensOptimize" style="flex:0 0 auto;padding:11px 16px">⚡ Auto-optimize (find best ensemble)</button>
+        </div>
         <p class="footer-note" id="ensNote"></p>
+        <div id="ensCandidates" style="margin-top:8px"></div>
       </div>
       <div class="grid2">
         <div class="chartcard" style="margin:0"><div class="row-between" style="margin-bottom:10px"><h3>ROC curves</h3><select id="rocPick" aria-label="benchmark"></select></div><div class="cbox tall"><canvas id="cRoc"></canvas></div></div>
@@ -856,6 +866,7 @@ function renderEnsembleBuilder(){
     $$('#ensMembers .jpill').forEach(b=>b.onclick=()=>{const k=b.dataset.m;ensPick.has(k)?ensPick.delete(k):ensPick.add(k);b.classList.toggle('on');updateEnsBtn();});
   }
   if($('#ensStrategy').options.length!==ENS_STRATS.length)$('#ensStrategy').innerHTML=ENS_STRATS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  const canOpt=ENS_MEMBERS.length>=2;const ob=$('#ensOptimize');if(ob)ob.disabled=!canOpt;
   syncEnsThresh();updateEnsBtn();
 }
 async function buildEnsemble(){
@@ -872,6 +883,29 @@ async function buildEnsemble(){
     toast('✓ Ensemble scored & added');
   }catch(e){toast('ensemble failed');}
   finally{btn.disabled=false;btn.textContent=orig;updateEnsBtn();}
+}
+async function optimizeEnsemble(){
+  const btn=$('#ensOptimize'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Searching…';
+  try{
+    const r=await fetch('/api/ensemble/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({objective:$('#ensObjective').value})});
+    let d={};try{d=await r.json();}catch(e){}
+    if(!r.ok){toast(d.detail||'optimize failed');return;}
+    await loadResults();renderLeaderboard();renderROC();
+    const b=d.best||{},M=b.macro||{};
+    // pre-fill the builder with the winning config so it's easy to tweak
+    ensPick=new Set(b.members||[]);$('#ensStrategy').value=b.strategy;if(b.threshold!=null)$('#ensThresh').value=b.threshold;
+    renderEnsembleBuilder();
+    $('#ensNote').innerHTML=`✓ Best (${d.objective}): <b>${d.name}</b> — ${b.strategy}${b.threshold!=null?' @ '+b.threshold:''} of [${(b.members||[]).map(lbLabel).join(', ')}] · F1 ${fmt(M.f1)} · AUC ${fmt(M.roc_auc)} · FPR ${fmt(M.fpr_on_benign)} · p50 ${M.latency_p50_ms!=null?Math.round(M.latency_p50_ms)+'ms':'—'} · searched ${d.n_evaluated} combos. Added to the leaderboard.`;
+    renderEnsCandidates(d.candidates);
+    toast('✓ Best ensemble found & added');
+  }catch(e){toast('optimize failed');}
+  finally{btn.disabled=false;btn.textContent=orig;}
+}
+function renderEnsCandidates(cands){
+  const el=$('#ensCandidates');if(!el)return;
+  if(!cands||!cands.length){el.innerHTML='';return;}
+  el.innerHTML='<div class="sub" style="margin:6px 0 4px">Top candidates</div><table><thead><tr><th>Ensemble</th><th>Strategy</th><th>F1 ↑</th><th>AUC ↑</th><th>FPR ↓</th><th>p50 ↓</th></tr></thead><tbody>'+
+    cands.map(c=>`<tr><td class="name">${(c.members||[]).map(lbLabel).join(' + ')}</td><td>${c.strategy}${c.threshold!=null?' @'+c.threshold:''}</td><td class="mono">${fmt(c.f1)}</td><td class="mono">${fmt(c.roc_auc)}</td><td class="mono">${fmt(c.fpr_on_benign)}</td><td class="mono">${c.latency_p50_ms!=null?Math.round(c.latency_p50_ms):'—'}</td></tr>`).join('')+'</tbody></table>';
 }
 
 /* ---------- roc ---------- */
@@ -935,7 +969,7 @@ async function init(){
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
   $('#lbSort').onchange=renderLeaderboard;$('#lbReport').onclick=generateReport;
-  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;
+  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;
   $('#tBenchAll').onclick=()=>{benchPick=new Set((CONFIG.benchmarks||[]).map(b=>b.name));renderTestBenchmarks();};
   $('#tBenchNone').onclick=()=>{benchPick=new Set();renderTestBenchmarks();};
   $('#sampleSearch').oninput=scheduleBenchSearch;
