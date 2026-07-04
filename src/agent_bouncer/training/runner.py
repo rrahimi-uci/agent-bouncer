@@ -313,7 +313,7 @@ def _warm_guard_for_parallel(guard) -> None:
 
 def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
                 train_recs: list[dict] | None = None, loader=None,
-                workers: int = 1) -> tuple[dict, dict]:
+                workers: int = 1, fuzzy_leakage: bool = False) -> tuple[dict, dict]:
     """Score a guard over benchmarks with leakage guards; returns (metrics, leakage).
 
     ``loader(bench)`` returns that benchmark's records (defaults to the balanced registry
@@ -332,7 +332,7 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
         recs = loader(bench)
         if not recs:
             raise ValueError(f"benchmark/test set {bench!r} is empty")
-        leaked = set(find_leakage(train_recs, recs)) if train_recs else set()
+        leaked = set(find_leakage(train_recs, recs, fuzzy=fuzzy_leakage)) if train_recs else set()
         clean = [r for r in recs if _norm(r.get("text")) not in leaked]
         leakage[bench] = {"n": len(recs), "dropped_leaked": len(recs) - len(clean)}
         n = len(clean)
@@ -406,7 +406,17 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
     model_key = train_exp["model_key"]
     arch = train_exp.get("params", {}).get("arch", "decoder")
     out_dir = train_exp["output_dir"]
-    train_recs = read_jsonl(train_exp["data"]["train"]) if os.path.exists(train_exp["data"]["train"]) else []
+    train_path = train_exp.get("data", {}).get("train", "")
+    train_available = bool(train_path) and os.path.exists(train_path)
+    train_recs = read_jsonl(train_path) if train_available else []
+    if not train_available or not train_recs:
+        train_available = False
+        # Never silently skip the leakage guard: if the model's training file is gone
+        # (e.g. deleted train set), say so loudly and record leakage_checked=False so the
+        # metrics are not mistaken for leakage-verified.
+        print("⚠️ ⚠️  LEAKAGE CHECK SKIPPED — training file not found: "
+              f"{train_path or '(unset)'}. Test metrics are NOT verified leakage-free; "
+              "re-run with the model's training set present to enforce the guard.", flush=True)
     test_recs: list[dict] | None = None
     test_name: str | None = None
     if test_set:
@@ -430,14 +440,15 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
         # test on a created dataset's held-out split (train on train-1 → test on test-1)
         benchmarks = [test_name or "test-set"]
         metrics, leakage = score_guard(guard, benchmarks, train_recs=train_recs,
-                                       loader=lambda b: test_recs or [], workers=worker_count)
+                                       loader=lambda b: test_recs or [], workers=worker_count,
+                                       fuzzy_leakage=True)
     else:
         from agent_bouncer.evaluation.benchmarks import BENCHMARKS, load_benchmark
         benchmarks = benchmarks or list(BENCHMARKS)
         metrics, leakage = score_guard(
             guard, benchmarks, per_class=per_class, train_recs=train_recs,
             loader=lambda b: load_benchmark(b, balanced=True, per_class=per_class),
-            workers=worker_count,
+            workers=worker_count, fuzzy_leakage=True,
         )
     macro = macro_average(metrics)
     exp = X.Experiment(
@@ -447,7 +458,7 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
         params={"train_exp": train_exp_id, "per_class": per_class, "device": device,
                 "test_set": test_set},
         data={"benchmarks": benchmarks, "test_set": test_set,
-              "leakage": leakage, "leakage_checked": True},
+              "leakage": leakage, "leakage_checked": train_available},
         output_dir=out_dir, hardware=hardware_info(), git_commit=X.git_commit(),
         metrics=metrics, metrics_summary=macro,
     )
@@ -531,7 +542,9 @@ def eval_only(
             technique=technique, created=created,
             params={"eval_only": True, "model_id": model_id, "path": path,
                     "per_class": per_class, "device": device},
-            data={"benchmarks": benchmarks, "leakage": leakage, "leakage_checked": True},
+            # eval-only has no reference to the model's training set, so leakage can't be
+            # verified here — record that honestly rather than implying a clean check.
+            data={"benchmarks": benchmarks, "leakage": leakage, "leakage_checked": False},
             output_dir=path, hardware=hardware_info(), git_commit=X.git_commit(),
             metrics=metrics, metrics_summary=macro,
         )
