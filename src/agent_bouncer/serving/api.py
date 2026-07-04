@@ -737,7 +737,9 @@ class TestConfig(BaseModel):
 
 _PARAM_FLAGS = {"epochs": "--epochs", "lr": "--lr", "batch_size": "--batch",
                 "max_steps": "--max-steps", "lora_r": "--lora-r", "lora_alpha": "--lora-alpha",
-                "max_seq_len": "--max-seq-len"}
+                "lora_dropout": "--lora-dropout", "max_seq_len": "--max-seq-len",
+                "max_length": "--max-length", "grad_accum": "--grad-accum", "beta": "--beta",
+                "num_generations": "--num-generations", "max_completion_len": "--max-completion-len"}
 
 
 def _param_flags(params: dict) -> list[str]:
@@ -750,13 +752,43 @@ def _param_flags(params: dict) -> list[str]:
     return flags
 
 
+@app.get("/api/hyperparams")
+def hyperparams() -> dict:
+    """Per (arch × technique) hyperparameter specs — recommended defaults + accepted values —
+    for the Studio's training settings panel (keyed ``"<arch>:<technique>"``)."""
+    from agent_bouncer.models.registry import get_base_model
+    from agent_bouncer.training.hyperparams import param_spec
+
+    archs = {get_base_model(m["key"]).arch for m in catalog()}
+    specs = {}
+    for arch in archs:
+        techs = ["sft"] if arch == "encoder" else ["sft", "grpo", "dpo"]
+        for tech in techs:
+            specs[f"{arch}:{tech}"] = param_spec(arch, tech)
+    return {"specs": specs}
+
+
 @app.post("/api/train")
 async def start_train(cfg: TrainConfig) -> dict:
     """Train one or many (model × technique) jobs — each on the same training set — as a
     sequential multi-step run."""
+    from agent_bouncer.models.registry import get_base_model
+    from agent_bouncer.training.hyperparams import validate_params
+
     jobs = cfg.jobs or ([{"model": cfg.model, "technique": cfg.technique}] if cfg.model else [])
     if not jobs:
         raise HTTPException(400, "no models selected to train")
+    # Reject invalid hyperparameters up front: every provided value must be accepted for
+    # the arch/technique of a job that uses it (so a run can't start with a bad setting).
+    for j in jobs:
+        try:
+            arch = get_base_model(j["model"]).arch
+        except Exception:  # noqa: BLE001 - unknown model is caught later by the trainer
+            continue
+        try:
+            validate_params(arch, j.get("technique", "sft"), cfg.params)
+        except ValueError as exc:
+            raise HTTPException(400, f"{j['model']} ({j.get('technique', 'sft')}): {exc}") from exc
     flags = _param_flags(cfg.params)
     cmds = [[sys.executable, "scripts/train/run_training.py", "--model", j["model"],
              "--technique", j.get("technique", "sft"), "--train-data", cfg.train_data, *flags]

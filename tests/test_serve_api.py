@@ -440,3 +440,26 @@ def test_report_runtime_error_stays_501_when_renderer_removes_temp(monkeypatch, 
     r = client.get("/api/report")
     assert r.status_code == 501
     assert "chrome unavailable" in r.json()["detail"]
+
+
+# --------------------------------------------------------- hyperparameter spec + validation
+def test_hyperparams_endpoint_returns_specs_per_combo():
+    d = client.get("/api/hyperparams").json()["specs"]
+    assert {"encoder:sft", "decoder:sft", "decoder:grpo", "decoder:dpo"} <= set(d)
+    enc = {p["name"] for p in d["encoder:sft"]}
+    assert "max_length" in enc and "lora_r" not in enc
+    # every select's recommended default is one of its accepted options
+    for spec in d.values():
+        for p in spec:
+            if p["kind"] == "select" and p["default"] is not None:
+                assert p["default"] in p["options"]
+
+
+def test_train_rejects_out_of_spec_hyperparameter(monkeypatch):
+    monkeypatch.setattr(api, "_launch", lambda cmds, **k: "rid")
+    ok = client.post("/api/train", json={"jobs": [{"model": "qwen3-0.6b", "technique": "sft"}],
+                                         "params": {"lora_r": 32}, "train_data": "d"})
+    assert ok.status_code == 200
+    bad = client.post("/api/train", json={"jobs": [{"model": "qwen3-0.6b", "technique": "sft"}],
+                                          "params": {"lora_r": 7}, "train_data": "d"})
+    assert bad.status_code == 400 and "not allowed" in bad.json()["detail"]

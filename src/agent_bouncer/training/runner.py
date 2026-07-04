@@ -169,8 +169,8 @@ def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
         cfg["arch"] = "encoder"
         cfg["data"] = {"train": train_data, "validation": params.get("validation", train_data)}
         cfg["train"] = {
-            "epochs": params.get("epochs", 2), "lr": params.get("lr", 2e-5),
-            "batch_size": params.get("batch_size", 16), "max_length": params.get("max_length", 128),
+            "epochs": params.get("epochs", 3), "lr": params.get("lr", 2e-5),
+            "batch_size": params.get("batch_size", 16), "max_length": params.get("max_length", 256),
         }
     else:
         cfg["arch"] = "decoder"

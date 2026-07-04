@@ -11,7 +11,9 @@ from agent_bouncer.training import runner
 
 def test_build_config_encoder():
     cfg = runner.build_config("distilbert", "sft", "tr.jsonl", "/o", {}, 42)
-    assert cfg["arch"] == "encoder" and cfg["train"]["epochs"] == 2 and cfg["data"]["train"] == "tr.jsonl"
+    # recommended defaults: 3 epochs, 256-token window (see training.hyperparams)
+    assert cfg["arch"] == "encoder" and cfg["train"]["epochs"] == 3
+    assert cfg["train"]["max_length"] == 256 and cfg["data"]["train"] == "tr.jsonl"
 
 
 def test_build_config_decoder_sft_and_grpo():

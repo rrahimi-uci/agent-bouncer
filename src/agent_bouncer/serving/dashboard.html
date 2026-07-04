@@ -141,6 +141,14 @@
   .jpill:hover{background:var(--panel2)}
   .jpill.on{background:rgba(76,141,255,.12);border-color:rgba(76,141,255,.45);color:var(--text)}
   .jpill:disabled{opacity:.4;cursor:not-allowed}.jpill:disabled:hover{background:var(--panel)}
+  /* hyperparameter settings panel */
+  .hp{margin:6px 0 10px}
+  .hpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .hpfield{display:flex;flex-direction:column;font-size:12px;color:var(--muted);margin:0}
+  .hpfield select,.hpfield input{width:100%;margin-top:4px}
+  .hplabel{font-weight:600;color:var(--text)}
+  .hprec{font-weight:500;color:var(--accent);font-size:10.5px;margin-left:4px}
+  .hphint{color:var(--faint);font-size:10px;margin-top:3px;line-height:1.35}
   .console{background:#070a11;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;height:280px;overflow:auto;
     font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.65}
   .console .l{color:var(--muted);white-space:pre-wrap;word-break:break-word}
@@ -264,11 +272,8 @@
             <label>Training set <span class="sub">(from Datasets Creation)</span><select id="tData" aria-label="Training set"></select></label>
             <label>Models &amp; techniques <span class="sub">(click to select — as many as you want)</span></label>
             <div id="trainJobs" class="jpick"></div>
-            <div class="frow">
-              <label>Epochs<input id="tEpochs" type="number" step="0.5" value="1"></label>
-              <label>Max steps<input id="tMaxSteps" type="number" placeholder="(bounded)"></label>
-              <label>LoRA r<input id="tLoraR" type="number" value="16"></label>
-            </div>
+            <label style="margin-bottom:4px">Hyperparameters <span class="sub">— recommended defaults, only accepted values</span></label>
+            <div id="hpPanel" class="hp"></div>
             <div class="mnote" id="tNote"></div>
             <button type="button" class="runbtn" id="trainBtn">⚙︎  Train selected (0)</button>
           </div>
@@ -571,8 +576,33 @@ function renderTestBenchmarks(){
 }
 function updateBenchCount(){const tot=(CONFIG.benchmarks||[]).length,n=benchPick?benchPick.size:0;
   const el=$('#tBenchCount');if(el)el.textContent=n===tot?`— all ${tot} selected`:`— ${n} of ${tot} selected`;}
+/* ---------- hyperparameter settings panel (spec-driven, validated) ---------- */
+let HP_SPECS={};
+async function loadHyperparams(){try{HP_SPECS=(await (await fetch('/api/hyperparams')).json()).specs||{};}catch(e){HP_SPECS={};}}
+function hpArch(modelKey){const m=MODELS.find(x=>x.key===modelKey);return m?m.arch:'decoder';}
+function selectedCombos(){const s=new Set();[...trainJobs].forEach(k=>{const[model,tech]=k.split('::');s.add(`${hpArch(model)}:${tech}`);});return [...s];}
+const hpFmt=v=>{if(v==null||v==='')return '';if(typeof v==='number'&&v!==0&&Math.abs(v)<1e-3)return v.toExponential();return String(v);};
+function renderHyperparams(){
+  const panel=$('#hpPanel');if(!panel)return;
+  const combos=selectedCombos();
+  if(!combos.length){panel.innerHTML='<div class="sub">Select a model × technique above to configure its hyperparameters — each field shows the recommended value and only accepts valid choices.</div>';return;}
+  const seen=new Set(),params=[];
+  combos.forEach(c=>(HP_SPECS[c]||[]).forEach(p=>{if(!seen.has(p.name)){seen.add(p.name);params.push(p);}}));
+  panel.innerHTML='<div class="hpgrid">'+params.map(p=>{
+    let ctrl;
+    if(p.kind==='select'){
+      ctrl=`<select data-hp="${p.name}">`+(p.options||[]).map(o=>`<option value="${o}"${o===p.default?' selected':''}>${hpFmt(o)}</option>`).join('')+'</select>';
+    }else{
+      ctrl=`<input data-hp="${p.name}" type="number"${p.min!=null?` min="${p.min}"`:''}${p.max!=null?` max="${p.max}"`:''}${p.step!=null?` step="${p.step}"`:''} value="${p.default==null?'':p.default}"${p.optional?' placeholder="(full run)"':''}>`;
+    }
+    const accepted=p.kind==='select'?`accepted: ${(p.options||[]).map(hpFmt).join(' · ')}`:`range ${p.min}–${p.max}${p.optional?' · empty = full run':''}`;
+    return `<label class="hpfield" title="${(p.help||'').replace(/"/g,'&quot;')}"><span class="hplabel">${p.label}<span class="hprec">rec ${hpFmt(p.default)}</span></span>${ctrl}<span class="hphint">${accepted}</span></label>`;
+  }).join('')+'</div>';
+}
+function getHyperparams(){const out={};$$('#hpPanel [data-hp]').forEach(el=>{const v=(el.value||'').trim();if(v!=='')out[el.dataset.hp]=Number(v);});return out;}
 function renderTrainControls(){
   renderTrainJobs();
+  renderHyperparams();
   renderTestBenchmarks();
   renderTestVersions();
   fillTrainData();fillTestData();
@@ -585,7 +615,7 @@ function renderTrainJobs(){
   // a gated model with no HF_TOKEN can't train — drop it from the selection & disable its pill
   combos.filter(c=>c.locked).forEach(c=>trainJobs.delete(c.key));
   $('#trainJobs').innerHTML=combos.map(c=>`<button type="button" class="jpill ${trainJobs.has(c.key)?'on':''}" data-j="${c.key}"${c.locked?' disabled title="needs HF_TOKEN (gated model)"':''}>${c.label}${c.gated?' 🔒':''}</button>`).join('');
-  $$('#trainJobs .jpill').forEach(b=>b.onclick=()=>{if(b.disabled)return;const k=b.dataset.j;trainJobs.has(k)?trainJobs.delete(k):trainJobs.add(k);b.classList.toggle('on');updateTrainBtn();});
+  $$('#trainJobs .jpill').forEach(b=>b.onclick=()=>{if(b.disabled)return;const k=b.dataset.j;trainJobs.has(k)?trainJobs.delete(k):trainJobs.add(k);b.classList.toggle('on');updateTrainBtn();renderHyperparams();});
   updateTrainBtn();
 }
 function updateTrainBtn(){$('#trainBtn').textContent=`⚙︎  Train selected (${trainJobs.size})`;
@@ -689,8 +719,7 @@ function streamRun(run_id,con,onEvt,onDone,startedAt){
 async function runTrain(){
   const jobs=[...trainJobs].map(k=>{const [model,technique]=k.split('::');return {model,technique};});
   if(!jobs.length){toast('Select at least one model × technique.');return;}
-  const params={};const grab=(id,k,n)=>{const v=$(id).value.trim();if(v!==''){params[k]=n?Number(v):v;}};
-  grab('#tEpochs','epochs',true);grab('#tMaxSteps','max_steps',true);grab('#tLoraR','lora_r',true);
+  const params=getHyperparams();
   const btn=$('#trainBtn');btn.disabled=true;btn.textContent=`● Training ${jobs.length}…`;$('#trainBadge').textContent='training';
   const con=$('#trainConsole');con.innerHTML='';
   let resp;try{resp=await fetch('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobs,train_data:$('#tData').value,params})});}
@@ -888,7 +917,7 @@ async function loadHardware(){const h=await (await fetch('/api/hardware')).json(
 async function init(){
   CONFIG=await (await fetch('/api/config')).json();
   const oa=CONFIG.openai_available;$('#openaiDot').className='dot '+(oa?'on':'off');$('#openaiPill').lastChild.textContent=oa?' OpenAI ready':' OpenAI off';
-  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware()]);
+  await Promise.all([loadResults(),loadModels(),loadExperiments(),loadDatasets(),loadHardware(),loadHyperparams()]);
   buildToolbar();renderTrainControls();renderDatasets();renderAll();
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;

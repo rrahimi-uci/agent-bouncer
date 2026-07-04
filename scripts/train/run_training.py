@@ -43,7 +43,13 @@ def main() -> None:
     ap.add_argument("--max-steps", type=int)
     ap.add_argument("--lora-r", type=int)
     ap.add_argument("--lora-alpha", type=int)
+    ap.add_argument("--lora-dropout", type=float)
     ap.add_argument("--max-seq-len", type=int)
+    ap.add_argument("--max-length", type=int, help="encoder input length")
+    ap.add_argument("--grad-accum", type=int)
+    ap.add_argument("--beta", type=float, help="DPO beta")
+    ap.add_argument("--num-generations", type=int, help="GRPO rollouts per step")
+    ap.add_argument("--max-completion-len", type=int, help="GRPO max completion tokens")
     ap.add_argument("--bf16", action="store_true")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
@@ -52,7 +58,10 @@ def main() -> None:
     params: dict = {}
     for arg, dest in [("epochs", "epochs"), ("lr", "lr"), ("batch", "batch_size"),
                       ("max_steps", "max_steps"), ("lora_r", "lora_r"), ("lora_alpha", "lora_alpha"),
-                      ("max_seq_len", "max_seq_len")]:
+                      ("lora_dropout", "lora_dropout"), ("max_seq_len", "max_seq_len"),
+                      ("max_length", "max_length"), ("grad_accum", "grad_accum"), ("beta", "beta"),
+                      ("num_generations", "num_generations"),
+                      ("max_completion_len", "max_completion_len")]:
         val = getattr(args, arg)
         if val is not None:
             params[dest] = val

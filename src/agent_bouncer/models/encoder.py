@@ -47,9 +47,13 @@ def aggregate_unsafe(
 class EncoderGuard:
     name = "encoder-guard"
 
-    def __init__(self, model_path: str, *, name: str | None = None, threshold: float = 0.5) -> None:
+    def __init__(self, model_path: str, *, name: str | None = None, threshold: float = 0.5,
+                 max_length: int = 256) -> None:
         self.model_path = model_path
         self.threshold = threshold
+        # Truncate inference inputs to the length the classifier was trained on (default 256,
+        # matching the training default) so train/inference see the same window.
+        self.max_length = max_length
         if name:
             self.name = name
         self._model = None
@@ -68,7 +72,7 @@ class EncoderGuard:
         if self._model is None:
             self._load()
         start = time.perf_counter()
-        inputs = self._tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        inputs = self._tokenizer(text, return_tensors="pt", truncation=True, max_length=self.max_length)
         with torch.no_grad():
             logits = self._model(**inputs).logits[0]
         probs = torch.softmax(logits, dim=-1).tolist()
