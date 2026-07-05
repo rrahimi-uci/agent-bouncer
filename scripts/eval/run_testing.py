@@ -39,12 +39,15 @@ def main() -> None:
     ap.add_argument("--device", default="cpu", choices=["cpu", "mps", "cuda"])
     ap.add_argument("--workers", type=int, default=0,
                     help="parallel prediction workers (0 = auto; encoder/cpu only by default)")
+    ap.add_argument("--merge-scoreboard", action="store_true",
+                    help="add the result to the benchmark scoreboard so it shows on the Leaderboard "
+                         "(benchmark runs only)")
     args = ap.parse_args()
 
     load_dotenv()
     exp = evaluate_and_record(args.exp, benchmarks=args.benchmarks, test_set=args.test_set,
                               per_class=args.per_class, device=args.device,
-                              workers=args.workers)
+                              workers=args.workers, merge_scoreboard=args.merge_scoreboard)
     print("EVAL_EXPERIMENT_ID=" + exp["id"])
 
 

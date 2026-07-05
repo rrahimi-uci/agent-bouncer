@@ -774,7 +774,9 @@ async function runTest(){
     for(let i=0;i<exps.length;i++){try{await fetch('/api/saved_models',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({train_exp:exps[i],eval_exp:evalExps[i]||null,test_set:body.test_set||null,benchmarks:body.benchmarks||[]})});}catch(e){}}
     await loadExperiments();renderTestVersions();renderExperiments();
-    btn.disabled=false;toast(`✓ Tested ${exps.length} version(s) — recorded & saved`);});
+    // benchmark-mode tests are merged into the scoreboard → refresh the Leaderboard too
+    if(testMode==='bench'){await loadResults();renderLeaderboard();renderROC();}
+    btn.disabled=false;toast(`✓ Tested ${exps.length} version(s) — recorded${testMode==='bench'?' · added to Leaderboard':''}`);});
 }
 
 /* ---------- experiments ---------- */

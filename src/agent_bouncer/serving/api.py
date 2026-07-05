@@ -854,7 +854,8 @@ async def start_test(cfg: TestConfig) -> dict:
         if cfg.test_set:                   # test on a created dataset's held-out split
             cmd += ["--test-set", cfg.test_set]
         elif cfg.benchmarks:
-            cmd += ["--benchmarks", *cfg.benchmarks]
+            # benchmark-mode results go onto the Leaderboard scoreboard automatically
+            cmd += ["--benchmarks", *cfg.benchmarks, "--merge-scoreboard"]
         cmds.append(cmd)
     return {"run_id": _launch(cmds, kind="test"), "steps": len(cmds)}
 

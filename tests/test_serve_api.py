@@ -512,3 +512,12 @@ def test_ensemble_optimize_finds_and_merges_best(monkeypatch, tmp_path):
 def test_ensemble_optimize_needs_predictions(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
     assert client.post("/api/ensemble/optimize", json={}).status_code == 400
+
+
+def test_test_endpoint_merges_benchmarks_but_not_testset(monkeypatch):
+    launched = {}
+    monkeypatch.setattr(api, "_launch", lambda cmds, **k: launched.update(c=cmds) or "r")
+    client.post("/api/test", json={"exp": "e1", "benchmarks": ["xstest"], "device": "cpu"})
+    assert "--merge-scoreboard" in " ".join(launched["c"][0])   # benchmark run → onto leaderboard
+    client.post("/api/test", json={"exp": "e1", "test_set": "data/x/test.jsonl", "device": "cpu"})
+    assert "--merge-scoreboard" not in " ".join(launched["c"][0])  # test-set run → not merged

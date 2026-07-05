@@ -475,8 +475,13 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
         metrics=metrics, metrics_summary=macro,
     )
     X.record(exp)
-    if merge_scoreboard and metrics:
-        _merge_scoreboard(model_key, train_exp.get("params", {}).get("params", ""), metrics)
+    # Merge into the benchmark scoreboard so the model shows on the Leaderboard — only for
+    # benchmark runs (a created-test-set produces a single "test-set" column that doesn't
+    # belong on the per-benchmark leaderboard). Named per model×technique so SFT/GRPO/DPO of
+    # the same base model are distinct rows.
+    if merge_scoreboard and metrics and test_set is None:
+        technique = train_exp.get("technique", "") or "sft"
+        _merge_scoreboard(f"{model_key}-{technique}", "", metrics)
     print(f"[test] recorded experiment {exp.id} (macro F1 {macro.get('f1')})", flush=True)
     return exp.to_dict()
 
