@@ -14,7 +14,24 @@ import shutil
 import subprocess
 import tempfile
 
-from agent_bouncer.evaluation.report import macro_average
+_METRIC_KEYS = ("precision", "recall", "f1", "roc_auc", "fpr_on_benign",
+                "latency_p50_ms", "latency_p90_ms", "throughput_per_s")
+
+
+def _macro_average(results: dict) -> dict[str, dict]:
+    """Per-guard mean of each metric across benchmarks, yielding ``None`` (not 0.0) for a
+    metric absent everywhere — so the PDF shows "—" and never highlights a fake 0.000 "best",
+    matching the dashboard's own aggregation."""
+    acc: dict[str, dict[str, list]] = {}
+    for guard_map in results.values():
+        for guard, m in guard_map.items():
+            g = acc.setdefault(guard, {k: [] for k in _METRIC_KEYS})
+            for k in _METRIC_KEYS:
+                if m.get(k) is not None:
+                    g[k].append(m[k])
+    return {guard: {k: (sum(v) / len(v) if v else None) for k, v in per.items()}
+            for guard, per in acc.items()}
+
 
 # Columns: (metric key, header, "hi"=higher-better | "lo"=lower-better, decimals).
 _COLUMNS = [
@@ -85,7 +102,7 @@ def build_html(blob: dict, sort: str = "f1", *, generated: str = "") -> str:
     """Build the standalone HTML leaderboard report from a benchmark_results blob."""
     results = blob.get("results", {})
     per_class = blob.get("per_class")
-    summary = macro_average(results)
+    summary = _macro_average(results)
     benches = sorted(results.keys())
 
     sort = sort if sort in _SORTABLE else "f1"

@@ -606,7 +606,7 @@ function renderHyperparams(){
       const cur=(p.name in vals)?vals[p.name]:p.default;
       let ctrl;
       if(p.kind==='select'){
-        ctrl=`<select data-job="${jk}" data-hp="${p.name}">`+(p.options||[]).map(o=>`<option value="${o}"${o===cur?' selected':''}>${hpFmt(o)}</option>`).join('')+'</select>';
+        ctrl=`<select data-job="${jk}" data-hp="${p.name}">`+(p.options||[]).map(o=>`<option value="${o}"${String(o)===String(cur)?' selected':''}>${hpFmt(o)}</option>`).join('')+'</select>';
       }else{
         ctrl=`<input data-job="${jk}" data-hp="${p.name}" type="number"${p.min!=null?` min="${p.min}"`:''}${p.max!=null?` max="${p.max}"`:''}${p.step!=null?` step="${p.step}"`:''} value="${cur==null?'':cur}"${p.optional?' placeholder="(full run)"':''}>`;
       }
@@ -871,7 +871,8 @@ function renderEnsembleBuilder(){
 }
 async function buildEnsemble(){
   const members=[...ensPick];if(members.length<2){toast('Pick at least two members');return;}
-  const strategy=$('#ensStrategy').value,threshold=Number($('#ensThresh').value)||0.5,name=$('#ensName').value.trim();
+  const tv=$('#ensThresh').value.trim(),threshold=tv===''?0.5:Number(tv);
+  const strategy=$('#ensStrategy').value,name=$('#ensName').value.trim();
   const btn=$('#ensBuild'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Scoring…';
   try{
     const r=await fetch('/api/ensemble',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({members,strategy,threshold,name:name||null})});

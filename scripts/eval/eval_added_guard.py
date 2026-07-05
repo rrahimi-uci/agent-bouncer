@@ -19,12 +19,12 @@ import os
 import tempfile
 
 from run_benchmarks import (  # noqa: E402
-    CACHE_DIR,
     REPORT_MD,
     RESULTS_JSON,
     dump_prediction_rows,
     evaluate_guard,
     prediction_rows,
+    resolve_bench_cache,
 )
 
 from agent_bouncer.data import read_jsonl
@@ -66,9 +66,9 @@ def main() -> None:
 
     scored: dict[str, dict] = {}
     for bench in results:
-        path = f"{CACHE_DIR}/{bench}.jsonl"
+        path = resolve_bench_cache(bench)
         if not os.path.exists(path):
-            print(f"!! no cached subset for {bench}; skipping")
+            print(f"!! no cached records for {bench}; skipping")
             continue
         records = read_jsonl(path)
         m, verdicts = evaluate_guard(guard, records, workers=1)

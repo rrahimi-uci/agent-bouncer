@@ -84,7 +84,8 @@ def run_dpo(config_path: str | Path) -> str:  # pragma: no cover - runs a real T
         train_dataset=Dataset.from_list(pairs),
         processing_class=tokenizer,
         peft_config=LoraConfig(
-            r=int(lora.get("r", 16)), lora_alpha=int(lora.get("alpha", 32)), task_type="CAUSAL_LM"
+            r=int(lora.get("r", 16)), lora_alpha=int(lora.get("alpha", 32)),
+            lora_dropout=float(lora.get("dropout", 0.05)), task_type="CAUSAL_LM"
         ),
         callbacks=[progress_callback()],
     )

@@ -52,6 +52,14 @@ CACHE_DIR = "data/benchmarks"
 RESULTS_JSON = "outputs/benchmark_results.json"
 REPORT_MD = "outputs/BENCHMARKS.md"
 
+
+def resolve_bench_cache(name: str) -> str:
+    """Path to a benchmark's cached records: the balanced subset if present, else the full
+    set (``data/benchmarks/full/``). Lets add-guard / prediction / curve steps still find the
+    data a ``--full`` run produced instead of silently scoring nothing."""
+    subset = f"{CACHE_DIR}/{name}.jsonl"
+    return subset if os.path.exists(subset) else f"{CACHE_DIR}/full/{name}.jsonl"
+
 # Canonical guard display order for the report.
 GUARD_ORDER = [
     "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",

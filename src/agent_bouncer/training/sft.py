@@ -84,7 +84,11 @@ def train_encoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real
         return tokenizer(batch["text"], truncation=True, max_length=max_len)
 
     train_ds = to_dataset(read_jsonl(cfg["data"]["train"])).map(tokenize, batched=True)
-    val_ds = to_dataset(read_jsonl(cfg["data"]["validation"])).map(tokenize, batched=True)
+    # Only evaluate during training if a DISTINCT validation set is provided — evaluating on
+    # the training file (the old default) produced inflated, misleading "eval" metrics.
+    val_path = cfg["data"].get("validation")
+    has_val = bool(val_path) and val_path != cfg["data"]["train"] and Path(val_path).exists()
+    val_ds = to_dataset(read_jsonl(val_path)).map(tokenize, batched=True) if has_val else None
 
     model = AutoModelForSequenceClassification.from_pretrained(
         base, num_labels=2, id2label=BINARY_ID2LABEL, label2id=BINARY_LABEL2ID
@@ -96,7 +100,7 @@ def train_encoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real
         per_device_train_batch_size=int(t.get("batch_size", 16)),
         per_device_eval_batch_size=64,
         learning_rate=float(t.get("lr", 2e-5)),
-        eval_strategy="epoch",
+        eval_strategy="epoch" if has_val else "no",
         save_strategy="no",
         logging_steps=20,
         report_to="none",
@@ -115,10 +119,11 @@ def train_encoder(cfg: dict[str, Any]) -> str:  # pragma: no cover - runs a real
         callbacks=[progress_callback()],
     )
     trainer.train()
-    metrics = trainer.evaluate()
+    metrics = trainer.evaluate() if has_val else {}
     trainer.save_model(out_dir)
     tokenizer.save_pretrained(out_dir)
-    print(f"[encoder] saved to {out_dir} | eval: {metrics}")
+    suffix = f" | eval: {metrics}" if metrics else " | (no held-out val set — eval skipped)"
+    print(f"[encoder] saved to {out_dir}{suffix}")
     return out_dir
 
 

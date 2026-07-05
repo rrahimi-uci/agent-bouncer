@@ -35,7 +35,7 @@ def test_merge_scoreboard_writes_results(tmp_path, monkeypatch):
 def test_load_guard_dispatch(monkeypatch):
     import agent_bouncer.models.decoder as D
     import agent_bouncer.models.encoder as E
-    monkeypatch.setattr(E, "EncoderGuard", lambda p, name: ("enc", p, name))
+    monkeypatch.setattr(E, "EncoderGuard", lambda p, name, max_length=256: ("enc", p, name))
     monkeypatch.setattr(D, "DecoderGuard", lambda p, mode, name, device: ("dec", mode, device))
     assert runner._load_guard("distilbert", "encoder", "/o", "sft", "cpu")[0] == "enc"
     assert runner._load_guard("qwen3-0.6b", "decoder", "/o", "grpo", "mps")[1] == "reasoning"
@@ -139,7 +139,7 @@ def test_evaluate_and_record_mocked(tmp_path, monkeypatch):
     monkeypatch.setattr(runner.X, "get", lambda i: train_exp)
     recorded = {}
     monkeypatch.setattr(runner.X, "record", lambda e: recorded.update(e.to_dict()))
-    monkeypatch.setattr(runner, "_load_guard", lambda *a: FakeGuard())
+    monkeypatch.setattr(runner, "_load_guard", lambda *a, **k: FakeGuard())
     monkeypatch.setattr(B, "load_benchmark",
                         lambda b, balanced=True, per_class=40: [{"text": "bad", "label": "unsafe"},
                                                                 {"text": "ok", "label": "safe"}])
@@ -173,7 +173,7 @@ def test_evaluate_on_created_test_set_drops_train_leakage(tmp_path, monkeypatch)
     monkeypatch.setattr(runner.X, "get", lambda i: train_exp)
     recorded = {}
     monkeypatch.setattr(runner.X, "record", lambda e: recorded.update(e.to_dict()))
-    monkeypatch.setattr(runner, "_load_guard", lambda *a: FakeGuard())
+    monkeypatch.setattr(runner, "_load_guard", lambda *a, **k: FakeGuard())
 
     exp = runner.evaluate_and_record("t1", test_set=str(test))
     assert exp["data"]["test_set"] == str(test)

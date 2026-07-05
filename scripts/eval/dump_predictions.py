@@ -78,10 +78,12 @@ def main() -> None:
     args = ap.parse_args()
 
     guard = build_guard(args.guard, args.device, path=args.path, arch=args.arch, mode=args.mode)
-    benches = sorted(f[:-6] for f in os.listdir(CACHE) if f.endswith(".jsonl"))
+    # Prefer the balanced subset; fall back to the full sets so a --full run still dumps preds.
+    src_dir = CACHE if any(f.endswith(".jsonl") for f in os.listdir(CACHE)) else f"{CACHE}/full"
+    benches = sorted(f[:-6] for f in os.listdir(src_dir) if f.endswith(".jsonl"))
     out: dict[str, list] = {}
     for bench in benches:
-        recs = read_jsonl(f"{CACHE}/{bench}.jsonl")
+        recs = read_jsonl(f"{src_dir}/{bench}.jsonl")
         texts = [r["text"] for r in recs]
         if args.workers > 1:
             with ThreadPoolExecutor(max_workers=args.workers) as ex:

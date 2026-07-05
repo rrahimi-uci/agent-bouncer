@@ -202,7 +202,8 @@ def main() -> None:
             for b, m in benches.items():
                 blob.setdefault("results", {}).setdefault(b, {})[name] = m
         fd, tmp = tempfile.mkstemp(dir="outputs", suffix=".tmp")
-        json.dump(blob, os.fdopen(fd, "w"), indent=2)
+        with os.fdopen(fd, "w") as fh:   # ensure flush+close before the atomic rename
+            json.dump(blob, fh, indent=2)
         os.replace(tmp, RESULTS)
         print(f"merged into scoreboard: ensembles={to_merge or []} members={sorted(members)}")
 

@@ -69,8 +69,8 @@ def param_spec(arch: str, technique: str) -> list[dict]:
                options=[64, 96, 128, 200], help="Length budget for the generated reasoning + verdict."),
             _p("lr", "Learning rate", "select", 1e-6, options=[5e-7, 1e-6, 2e-6],
                help="Low LR keeps RL stable."),
-            _p("max_seq_len", "Max sequence length", "select", 512, options=[256, 512, 768, 1024],
-               help="512 covers ~99% of typical prompts."),
+            _p("grad_accum", "Grad accumulation", "select", 1, options=[1, 2, 4, 8],
+               help="Effective batch = num_generations × accumulation."),
             *_lora(),
         ]
     if technique == "dpo":

@@ -57,3 +57,10 @@ def test_validate_optional_max_steps_empty_ok_but_bounded():
     assert validate_params("decoder", "sft", {"max_steps": 300}) == {"max_steps": 300}
     with pytest.raises(ValueError, match="above maximum"):
         validate_params("decoder", "sft", {"max_steps": 10_000_000})
+
+
+def test_grpo_spec_offers_grad_accum_not_dead_maxseqlen():
+    # TRL 1.7 GRPOConfig has no max_prompt_length, so max_seq_len was a no-op knob — dropped;
+    # grad_accum (which IS consumed) is offered instead.
+    names = {p["name"] for p in param_spec("decoder", "grpo")}
+    assert "grad_accum" in names and "max_seq_len" not in names

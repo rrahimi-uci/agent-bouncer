@@ -61,3 +61,13 @@ def test_sort_falls_back_to_f1_on_unknown_key():
     # should not raise on an unknown sort key
     html = lr.build_html(_blob(), sort="not-a-metric")
     assert "Model Leaderboard" in html
+
+
+def test_macro_average_yields_none_for_missing_metric():
+    # a metric absent everywhere must be None (→ "—"), not zero-filled (→ fake 0.000 "best")
+    results = {"b1": {"g": {"precision": .7, "recall": .6, "f1": .65, "fpr_on_benign": .1,
+                            "latency_p50_ms": 5, "latency_p90_ms": 9, "throughput_per_s": 100}}}
+    m = lr._macro_average(results)
+    assert m["g"]["roc_auc"] is None and m["g"]["f1"] == .65
+    html = lr.build_html({"results": results, "meta": {}})
+    assert "—" in html and "num best" in html   # renders em-dash, still highlights real bests

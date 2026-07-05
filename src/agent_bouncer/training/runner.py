@@ -167,7 +167,11 @@ def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
     cfg: dict = {"base_model": bm.hf_id, "output_dir": out_dir, "seed": seed}
     if bm.arch == "encoder":
         cfg["arch"] = "encoder"
-        cfg["data"] = {"train": train_data, "validation": params.get("validation", train_data)}
+        # Only attach a validation set if the user supplies a DISTINCT one — don't default it
+        # to the train file (that produced misleading, inflated in-training eval metrics).
+        cfg["data"] = {"train": train_data}
+        if params.get("validation"):
+            cfg["data"]["validation"] = params["validation"]
         cfg["train"] = {
             "epochs": params.get("epochs", 3), "lr": params.get("lr", 2e-5),
             "batch_size": params.get("batch_size", 16), "max_length": params.get("max_length", 256),
@@ -188,8 +192,13 @@ def build_config(model_key: str, technique: str, train_data: str, out_dir: str,
         if params.get("max_steps"):
             cfg["train"]["max_steps"] = int(params["max_steps"])
         if technique == "grpo":
-            cfg["grpo"] = {"num_generations": params.get("num_generations", 4),
-                           "batch_size": params.get("batch_size", 4),
+            ng = int(params.get("num_generations", 4))
+            cfg["grpo"] = {"num_generations": ng,
+                           # TRL requires generation_batch_size (= per-device batch × grad_accum)
+                           # to be a multiple of num_generations — tie the batch to num_generations
+                           # so any offered value (2/4/6/8) is always valid.
+                           "batch_size": ng,
+                           "grad_accum": params.get("grad_accum", 1),
                            "max_completion_len": params.get("max_completion_len", 96),
                            "steps": params.get("max_steps", 60), "lr": params.get("lr", 1e-6),
                            "log_steps": 2}
@@ -265,10 +274,12 @@ def train_and_record(model_key: str, technique: str, *, train_data: str,
 
 
 # ---------------------------------------------------------------------------- test
-def _load_guard(model_key: str, arch: str, out_dir: str, technique: str, device: str):
+def _load_guard(model_key: str, arch: str, out_dir: str, technique: str, device: str,
+                max_length: int = 256):
     if arch == "encoder":
         from agent_bouncer.models.encoder import EncoderGuard
-        return EncoderGuard(out_dir, name=model_key)
+        # match inference truncation to the window the model was trained on
+        return EncoderGuard(out_dir, name=model_key, max_length=max_length)
     from agent_bouncer.models.decoder import DecoderGuard
     mode = "reasoning" if technique == "grpo" else "sft"
     return DecoderGuard(out_dir, mode=mode, name=model_key, device=device)
@@ -290,17 +301,16 @@ def _norm(text: str | None) -> str:
 
 
 def _auto_test_workers(arch: str, device: str, requested: int) -> int:
-    """Worker-count policy for test scoring.
+    """Worker-count policy for test scoring. ``requested <= 0`` means auto.
 
-    Safety default: parallelize only encoder-on-CPU runs (decoder/mps/cuda stay single-stream).
-    ``requested <= 0`` means auto.
+    Auto is **single-stream** (1 worker) for every local guard: the recorded latency
+    (p50/p90) and throughput are documented as single-stream, and running torch inferences
+    concurrently on CPU inflates each per-sample timing under contention (making the fast
+    encoder look slower than it is, inconsistently with the single-stream decoder path).
+    A caller can still pass ``requested > 0`` to parallelize when it only wants faster
+    scoring and doesn't care about latency fidelity.
     """
-    if requested > 0:
-        return requested
-    if arch == "encoder" and device == "cpu":
-        cpu = os.cpu_count() or 4
-        return min(8, max(2, cpu // 2))
-    return 1
+    return requested if requested > 0 else 1
 
 
 def _warm_guard_for_parallel(guard) -> None:
@@ -428,7 +438,9 @@ def evaluate_and_record(train_exp_id: str, *, benchmarks: list[str] | None = Non
             raise ValueError(f"test set is empty: {test_set}")
 
     print(f"🔧 Loading guard {model_key} ({arch}) from {out_dir} on {device}", flush=True)
-    guard = _load_guard(model_key, arch, out_dir, train_exp.get("technique", "sft"), device)
+    enc_max_len = int(train_exp.get("params", {}).get("max_length", 256) or 256)
+    guard = _load_guard(model_key, arch, out_dir, train_exp.get("technique", "sft"), device,
+                        max_length=enc_max_len)
     worker_count = _auto_test_workers(arch, device, int(workers or 0))
     if int(workers or 0) > 1 and worker_count == 1:
         print("⚠️ Parallel workers disabled for this model/device (decoder or non-cpu run).", flush=True)

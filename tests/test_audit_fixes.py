@@ -85,3 +85,28 @@ def test_render_report_keeps_all_guards_via_append():
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# --- deep-review round 2 fixes ---
+def test_grpo_batch_is_divisible_by_num_generations():
+    # TRL requires generation_batch_size (batch × grad_accum) to be a multiple of
+    # num_generations; tying batch to num_generations makes every offered value valid.
+    from agent_bouncer.training.runner import build_config
+    for ng in (2, 4, 6, 8):
+        g = build_config("qwen3-0.6b", "grpo", "t", "/o", {"num_generations": ng}, 0)["grpo"]
+        assert g["num_generations"] == ng and g["batch_size"] == ng and "grad_accum" in g
+        assert (g["batch_size"] * g["grad_accum"]) % ng == 0
+
+
+def test_auto_test_workers_is_single_stream_by_default():
+    from agent_bouncer.training.runner import _auto_test_workers
+    assert _auto_test_workers("encoder", "cpu", 0) == 1   # honest single-stream latency
+    assert _auto_test_workers("decoder", "mps", 0) == 1
+    assert _auto_test_workers("encoder", "cpu", 4) == 4   # explicit request still honored
+
+
+def test_build_config_encoder_no_validation_by_default():
+    from agent_bouncer.training.runner import build_config
+    assert "validation" not in build_config("distilbert", "sft", "tr.jsonl", "/o", {}, 42)["data"]
+    cfg = build_config("distilbert", "sft", "tr.jsonl", "/o", {"validation": "val.jsonl"}, 42)
+    assert cfg["data"]["validation"] == "val.jsonl"

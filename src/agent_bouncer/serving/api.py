@@ -18,6 +18,7 @@ import os
 import re
 import signal
 import sys
+import threading
 import time
 import uuid
 from collections import Counter
@@ -214,22 +215,28 @@ def report(sort: str = "f1") -> FileResponse:
 PRED_DIR = ROOT / "outputs" / "predictions"
 
 
+#: Serialize scoreboard read-modify-write across concurrent API calls (sync endpoints run in
+#: a threadpool, so two ensemble builds could otherwise interleave and lose each other's cells).
+_SCOREBOARD_LOCK = threading.Lock()
+
+
 def _merge_scoreboard(name: str, per_bench: dict) -> None:
     """Graft an ensemble's per-benchmark metrics into the scoreboard, atomically."""
     import tempfile
 
-    blob = {"per_class": None, "meta": {}, "results": {}}
-    if RESULTS_JSON.exists():
-        try:
-            blob = json.loads(RESULTS_JSON.read_text())
-        except ValueError:
-            pass
-    for bench, metrics in per_bench.items():
-        blob.setdefault("results", {}).setdefault(bench, {})[name] = metrics
-    fd, tmp = tempfile.mkstemp(dir=str(RESULTS_JSON.parent), suffix=".tmp")
-    with os.fdopen(fd, "w") as fh:
-        json.dump(blob, fh, indent=2)
-    os.replace(tmp, RESULTS_JSON)
+    with _SCOREBOARD_LOCK:
+        blob = {"per_class": None, "meta": {}, "results": {}}
+        if RESULTS_JSON.exists():
+            try:
+                blob = json.loads(RESULTS_JSON.read_text())
+            except ValueError:
+                pass
+        for bench, metrics in per_bench.items():
+            blob.setdefault("results", {}).setdefault(bench, {})[name] = metrics
+        fd, tmp = tempfile.mkstemp(dir=str(RESULTS_JSON.parent), suffix=".tmp")
+        with os.fdopen(fd, "w") as fh:
+            json.dump(blob, fh, indent=2)
+        os.replace(tmp, RESULTS_JSON)
 
 
 @app.get("/api/ensemble/members")

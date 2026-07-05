@@ -71,6 +71,8 @@ def main() -> None:
     for bench, guard_map in results.items():
         curves[bench] = {}
         cache = f"{CACHE_DIR}/{bench}.jsonl"
+        if not os.path.exists(cache):
+            cache = f"{CACHE_DIR}/full/{bench}.jsonl"   # fall back to full sets (--full runs)
         recs = read_jsonl(cache) if os.path.exists(cache) else None
         labels = [r["label"] for r in recs] if recs else None
         for gname, m in guard_map.items():
