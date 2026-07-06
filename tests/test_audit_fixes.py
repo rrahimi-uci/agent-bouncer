@@ -38,6 +38,7 @@ def test_build_config_grpo_still_correct():
 
 # --- #1 + #12: GRPO scored in reasoning mode; 1.7B decoder labelled 1.7B ---
 def test_build_commands_grpo_uses_reasoning_mode_and_correct_params(monkeypatch):
+    pytest.importorskip("fastapi")  # serving.api needs the serve extra (absent in light CI)
     from agent_bouncer.serving import api
     monkeypatch.setattr(api.Path, "is_dir", lambda self: True)  # pretend checkpoints exist
     cfg = api.RunConfig(benchmarks=["xstest"],
