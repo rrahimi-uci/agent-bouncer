@@ -62,6 +62,28 @@ def test_train_and_record(tmp_path, monkeypatch, capsys):
     assert "✅ Trained distilbert" in out
 
 
+def test_train_and_record_fails_fast_on_missing_train_file(tmp_path, monkeypatch):
+    # AB-007: a missing training file must raise BEFORE the trainer runs / an experiment is recorded
+    # — never print "Trained ..." with n_train=0.
+    import agent_bouncer.training.sft as sft
+    called = {"train": False, "record": False}
+    monkeypatch.setattr(sft, "run_sft", lambda cfg_path: called.update(train=True))
+    monkeypatch.setattr(runner.X, "record", lambda e: called.update(record=True))
+    with pytest.raises(FileNotFoundError, match="training data not found"):
+        runner.train_and_record("distilbert", "sft", train_data=str(tmp_path / "nope.jsonl"))
+    assert called == {"train": False, "record": False}
+
+
+def test_train_and_record_fails_fast_on_empty_train_file(tmp_path, monkeypatch):
+    import agent_bouncer.training.sft as sft
+    monkeypatch.setattr(sft, "run_sft", lambda cfg_path: pytest.fail("trainer must not run"))
+    monkeypatch.setattr(runner.X, "record", lambda e: pytest.fail("must not record"))
+    empty = tmp_path / "empty.jsonl"
+    empty.write_text("")
+    with pytest.raises(ValueError, match="no rows"):
+        runner.train_and_record("distilbert", "sft", train_data=str(empty))
+
+
 def test_train_and_record_cleans_temp_config_when_trainer_fails(tmp_path, monkeypatch):
     import agent_bouncer.training.sft as sft
 
@@ -260,6 +282,10 @@ def test_benchmark_test_dumps_predictions_for_ensembling(tmp_path, monkeypatch):
     monkeypatch.setattr(B, "BENCHMARKS", {"beavertails": object()})
     runner.evaluate_and_record("t1", benchmarks=["beavertails"], per_class=2, merge_scoreboard=True)
     # the tested model is now a loadable ensemble member with per-sample rows
+    # ([y, u, score, latency_ms, sample_key] — the trailing key aligns members by prompt identity)
     preds = E.load_predictions(str(tmp_path / "preds"))
     assert "qwen3-0.6b-grpo" in preds
-    assert preds["qwen3-0.6b-grpo"]["beavertails"] == [[1, 1, 0.9, 1.0], [0, 0, 0.1, 1.0]]
+    assert preds["qwen3-0.6b-grpo"]["beavertails"] == [
+        [1, 1, 0.9, 1.0, E.sample_key("bad")],
+        [0, 0, 0.1, 1.0, E.sample_key("ok")],
+    ]

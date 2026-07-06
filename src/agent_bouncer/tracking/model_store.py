@@ -16,6 +16,7 @@ can point them at a temp directory.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sqlite3
@@ -65,11 +66,18 @@ class ModelStore:
         os.makedirs(root, exist_ok=True)
         if backend == "sqlite":
             self.db = os.path.join(root, "models.db")
-            with sqlite3.connect(self.db) as con:
+            with self._connect() as con, con:
                 con.execute(
                     "CREATE TABLE IF NOT EXISTS models "
                     "(id TEXT PRIMARY KEY, base_model TEXT, technique TEXT, created TEXT, data TEXT)"
                 )
+
+    def _connect(self):
+        """A SQLite connection that both commits its transaction (via the inner ``with con:``)
+        AND is CLOSED afterwards. Plain ``with sqlite3.connect() as con`` only manages the
+        transaction and leaks the connection object (ResourceWarning: unclosed database), so use
+        ``with self._connect() as con, con:`` at every call site."""
+        return contextlib.closing(sqlite3.connect(self.db))
 
     # -- public API ----------------------------------------------------------
 
@@ -88,7 +96,7 @@ class ModelStore:
         if rec.git_commit is None:
             rec.git_commit = git_commit()
         if self.backend == "sqlite":
-            with sqlite3.connect(self.db) as con:
+            with self._connect() as con, con:
                 con.execute(
                     "INSERT OR REPLACE INTO models(id, base_model, technique, created, data) "
                     "VALUES (?, ?, ?, ?, ?)",
@@ -101,13 +109,14 @@ class ModelStore:
 
     def get(self, model_id: str) -> ModelRecord | None:
         if self.backend == "sqlite":
-            with sqlite3.connect(self.db) as con:
+            with self._connect() as con, con:
                 row = con.execute("SELECT data FROM models WHERE id = ?", (model_id,)).fetchone()
             return ModelRecord(**json.loads(row[0])) if row else None
         path = os.path.join(self.root, f"{model_id}.json")
         if not os.path.exists(path):
             return None
-        return ModelRecord(**json.load(open(path)))
+        with open(path) as fh:
+            return ModelRecord(**json.load(fh))
 
     def list(self, *, base_model: str | None = None,
              technique: str | None = None) -> list[ModelRecord]:
@@ -123,7 +132,7 @@ class ModelStore:
                 args.append(technique)
             if conds:
                 q += " WHERE " + " AND ".join(conds)
-            with sqlite3.connect(self.db) as con:
+            with self._connect() as con, con:
                 rows = con.execute(q, args).fetchall()
             recs = [ModelRecord(**json.loads(r[0])) for r in rows]
         else:
@@ -131,7 +140,8 @@ class ModelStore:
             for f in os.listdir(self.root):
                 if not f.endswith(".json"):
                     continue
-                rec = ModelRecord(**json.load(open(os.path.join(self.root, f))))
+                with open(os.path.join(self.root, f)) as fh:
+                    rec = ModelRecord(**json.load(fh))
                 if base_model and rec.base_model != base_model:
                     continue
                 if technique and rec.technique != technique:
@@ -142,7 +152,7 @@ class ModelStore:
     def delete(self, model_id: str) -> bool:
         """Delete a record; returns True if something was removed."""
         if self.backend == "sqlite":
-            with sqlite3.connect(self.db) as con:
+            with self._connect() as con, con:
                 cur = con.execute("DELETE FROM models WHERE id = ?", (model_id,))
             return cur.rowcount > 0
         path = os.path.join(self.root, f"{model_id}.json")

@@ -222,6 +222,17 @@ def test_test_endpoint_uses_created_test_set(monkeypatch):
     assert "--workers 0" in cmd
 
 
+def test_test_endpoint_without_benchmarks_still_merges(monkeypatch):
+    # AB-001: benchmark mode = "no test_set"; omitting benchmarks means "all benchmarks", which must
+    # STILL merge to the leaderboard (+ dump predictions + rebuild curves), not silently do nothing.
+    launched = {}
+    monkeypatch.setattr(api, "_launch", lambda cmds, **kw: launched.setdefault("c", cmds) or "r")
+    client.post("/api/test", json={"exp": "e1", "device": "cpu"})  # no test_set, no benchmarks
+    cmds = [" ".join(c) for c in launched["c"]]
+    assert "--merge-scoreboard" in cmds[0] and "--test-set" not in cmds[0]
+    assert any("compute_curves.py" in c for c in cmds)  # curves rebuilt after the merge
+
+
 def test_train_endpoint_trains_many_model_technique_jobs(monkeypatch):
     launched = {}
 
@@ -370,6 +381,7 @@ def test_ensemble_build_scores_and_merges(monkeypatch, tmp_path):
     preds = {"guard-a": {"b1": rows}, "guard-b": {"b1": rows2}}
     monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
     monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+    monkeypatch.setattr(api, "CURVES_JSON", tmp_path / "curves.json")  # keep resync off real outputs/
 
     assert set(client.get("/api/ensemble/members").json()["members"]) == {"guard-a", "guard-b"}
     r = client.post("/api/ensemble", json={"members": ["guard-a", "guard-b"],
@@ -400,10 +412,12 @@ def test_optimize_all_builds_one_ensemble_per_objective_from_small_models(monkey
              "openai-gpt-4o-mini": {"b1": rows_b}}
     monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
     monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+    monkeypatch.setattr(api, "CURVES_JSON", tmp_path / "curves.json")  # keep resync off real outputs/
 
     r = client.post("/api/ensemble/optimize_all", json={"scope": "small"})
     assert r.status_code == 200
     d = r.json()
+    assert d["curves_stale"] is False   # AB-005: resync actually ran (returns a real status)
     names = {e["name"] for e in d["built"]}
     assert names == {"ensemble-best-balanced", "ensemble-best-f1", "ensemble-best-fpr"}
     # composed from small models only — the GPT baseline is excluded from the pool + members
@@ -417,6 +431,13 @@ def test_optimize_all_builds_one_ensemble_per_objective_from_small_models(monkey
     assert set(blob["ensembles"]) == names
     assert blob["ensembles"]["ensemble-best-f1"]["members"]
     assert blob["ensembles"]["ensemble-best-f1"]["objective"] == "f1"
+
+
+def test_optimize_scope_typo_is_rejected(monkeypatch, tmp_path):
+    # AB-002: an invalid scope (typo) must 422, not silently broaden the pool to all guards
+    monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
+    assert client.post("/api/ensemble/optimize_all", json={"scope": "smal"}).status_code == 422
+    assert client.post("/api/ensemble/optimize", json={"scope": "SMALL"}).status_code == 422
 
 
 def test_report_404_when_no_results(monkeypatch, tmp_path):
@@ -528,6 +549,7 @@ def test_ensemble_optimize_finds_and_merges_best(monkeypatch, tmp_path):
     preds = {"g-a": {"b1": rows}, "g-b": {"b1": rows2}, "g-c": {"b1": rows3}}
     monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
     monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+    monkeypatch.setattr(api, "CURVES_JSON", tmp_path / "curves.json")  # keep resync off real outputs/
     r = client.post("/api/ensemble/optimize", json={"objective": "f1"})
     assert r.status_code == 200
     d = r.json()

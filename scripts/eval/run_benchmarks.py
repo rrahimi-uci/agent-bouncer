@@ -153,12 +153,17 @@ def evaluate_guard(guard, records: list[dict], *, workers: int = 1):
 
 
 def prediction_rows(records: list[dict], verdicts: list) -> list[list]:
-    """Per-sample ``[y, u, score, latency_ms]`` rows aligned to the benchmark subset."""
+    """Per-sample ``[y, u, score, latency_ms, sample_key]`` rows aligned to the benchmark subset.
+    The trailing sample key lets the ensemble evaluator align members by prompt identity rather
+    than by list position (safe across differing leakage-filtered subsets)."""
+    from agent_bouncer.evaluation.ensembles import sample_key
+
     rows = []
     for r, v in zip(records, verdicts, strict=True):
         y = 1 if r["label"] == "unsafe" else 0
         u = 1 if v.decision == Decision.UNSAFE else 0
-        rows.append([y, u, round(float(v.score), 4), round(float(v.latency_ms or 0.0), 3)])
+        rows.append([y, u, round(float(v.score), 4), round(float(v.latency_ms or 0.0), 3),
+                     sample_key(r["text"])])
     return rows
 
 

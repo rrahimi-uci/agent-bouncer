@@ -15,6 +15,7 @@ Sample order matches the cached benchmark subset, so members align by index.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from collections.abc import Sequence
@@ -25,6 +26,41 @@ from agent_bouncer.evaluation.metrics import compute_metrics
 from agent_bouncer.models.ensemble import STRATEGIES, combine
 
 PRED_DIR = "outputs/predictions"
+
+
+def sample_key(text: str) -> str:
+    """Stable identity for a benchmark sample (normalized-text hash). Dumped as the 5th element of
+    each prediction row so ensemble members are aligned by the ACTUAL prompt, not by list position —
+    positional alignment silently corrupts metrics when two guards were scored on different
+    leakage-filtered subsets of the same benchmark (same length, different rows)."""
+    norm = " ".join((text or "").lower().split())
+    return hashlib.sha1(norm.encode("utf-8")).hexdigest()[:12]
+
+
+def _align_rows(rows: list[list]) -> list[list] | None:
+    """Align member prediction-row lists to a common sample order, or return ``None`` if they can't
+    be safely aligned (caller skips that benchmark).
+
+    - When EVERY member dumped a per-row key (5th element), align by the INTERSECTION of keys — this
+      is correct even if members were scored on different subsets/orders of the same benchmark.
+    - For legacy dumps without keys, fall back to positional alignment but require equal length AND
+      identical gold columns across members (a cheap guard against silent misalignment)."""
+    if not rows or any(len(member) == 0 for member in rows):
+        return None
+    if all(len(r) > 4 for member in rows for r in member):          # keyed dumps → align by identity
+        by_key = [{r[4]: r for r in member} for member in rows]
+        common = set(by_key[0]).intersection(*by_key[1:])
+        if not common:
+            return None
+        order = sorted(common)
+        return [[d[k] for k in order] for d in by_key]
+    n = len(rows[0])                                                # legacy positional fallback
+    if any(len(r) != n for r in rows):
+        return None
+    for i in range(n):                                             # gold columns must match
+        if any(member[i][0] != rows[0][i][0] for member in rows[1:]):
+            return None
+    return rows
 
 
 def load_predictions(pred_dir: str = PRED_DIR) -> dict[str, dict]:
@@ -83,10 +119,10 @@ def evaluate_ensemble(
 
     out: dict[str, dict] = {}
     for bench in sorted(benches):
-        rows = [preds[m][bench] for m in members]
-        n = len(rows[0])
-        if any(len(r) != n for r in rows):  # misaligned dumps — skip this benchmark
+        rows = _align_rows([preds[m][bench] for m in members])
+        if rows is None:  # members can't be safely aligned on this benchmark — skip it
             continue
+        n = len(rows[0])
         gold, pred, lat, scores = [], [], [], []
         for i in range(n):
             gold.append(Decision.UNSAFE if rows[0][i][0] == 1 else Decision.SAFE)

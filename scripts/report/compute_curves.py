@@ -87,15 +87,17 @@ def _from_predictions(rows: list) -> dict:
     }
 
 
-def main() -> None:
-    argparse.ArgumentParser(description=__doc__).parse_args()
-
-    if not os.path.exists(RESULTS_JSON):
-        raise SystemExit(f"{RESULTS_JSON} not found — run the benchmark suite first")
-    blob = json.load(open(RESULTS_JSON))
+def regenerate(results_json: str = RESULTS_JSON, out: str = OUT,
+               pred_dir: str | None = None, *, quiet: bool = False) -> dict:
+    """Derive curves + roc_auc from ``results_json`` (+ dumped predictions), write ``out``, and
+    merge roc_auc back into ``results_json``. Importable (no argparse/argv) so the server can call
+    it directly for a resync. Raises ``FileNotFoundError`` if the scoreboard is missing."""
+    if not os.path.exists(results_json):
+        raise FileNotFoundError(f"{results_json} not found — run the benchmark suite first")
+    blob = json.load(open(results_json))
     results = blob["results"]
     all_meta = blob.get("meta", {})
-    preds = load_predictions()             # {guard: {bench: rows}}
+    preds = load_predictions(pred_dir) if pred_dir else load_predictions()  # {guard: {bench: rows}}
 
     curves: dict[str, dict] = {}
     for bench, guard_map in results.items():
@@ -110,17 +112,28 @@ def main() -> None:
                 entry = _derive_point(m, all_meta.get(bench))
             curves[bench][gname] = entry
             m["roc_auc"] = entry["auc"]     # keep the scoreboard identical to the curve
-            print(f"  [{bench}] {gname}: AUC={entry['auc']:.3f} ({entry['kind']}, n={entry['n']})")
+            if not quiet:
+                print(f"  [{bench}] {gname}: AUC={entry['auc']:.3f} ({entry['kind']}, n={entry['n']})")
 
-    os.makedirs("outputs", exist_ok=True)
-    with open(OUT, "w") as fh:
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w") as fh:
         json.dump(curves, fh, indent=2)
     # merge roc_auc back into the results file (atomic)
-    fd, tmp = tempfile.mkstemp(dir="outputs", suffix=".tmp")
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(results_json) or ".", suffix=".tmp")
     with os.fdopen(fd, "w") as fh:
         json.dump(blob, fh, indent=2)
-    os.replace(tmp, RESULTS_JSON)
-    print(f"\nwrote {OUT} and merged roc_auc into {RESULTS_JSON}")
+    os.replace(tmp, results_json)
+    if not quiet:
+        print(f"\nwrote {out} and merged roc_auc into {results_json}")
+    return curves
+
+
+def main() -> None:
+    argparse.ArgumentParser(description=__doc__).parse_args()
+    try:
+        regenerate()
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 if __name__ == "__main__":

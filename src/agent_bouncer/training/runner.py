@@ -232,7 +232,13 @@ def train_and_record(model_key: str, technique: str, *, train_data: str,
     cfg = build_config(model_key, technique, train_data, out_dir, params, seed)
 
     # Read the training set once — reused for the console banner and the experiment record.
-    recs = read_jsonl(train_data) if os.path.exists(train_data) else []
+    # Fail FAST before the trainer/banner: "training succeeded" must never be reported for a
+    # missing file, an empty file, or a file with zero valid rows.
+    if not os.path.exists(train_data):
+        raise FileNotFoundError(f"training data not found: {train_data!r}")
+    recs = read_jsonl(train_data)
+    if not recs:
+        raise ValueError(f"training set has no rows: {train_data!r}")
     n_train = len(recs)
     ds = dataset_name(train_data)
     name = descriptive_name(model_key, technique, ds)   # <model>-<params>-<technique>-<dataset>
@@ -409,10 +415,11 @@ def score_guard(guard, benchmarks: list[str], *, per_class: int = 40,
         )
         metrics[bench] = m
         if predictions_out is not None:
+            from agent_bouncer.evaluation.ensembles import sample_key
             predictions_out[bench] = [
-                [1 if g == Decision.UNSAFE else 0, 1 if v.decision == Decision.UNSAFE else 0,
-                 round(float(v.score), 4), round(float(v.latency_ms or 0.0), 3)]
-                for g, v in zip(gold, verdicts, strict=True)
+                [1 if r["label"] == "unsafe" else 0, 1 if v.decision == Decision.UNSAFE else 0,
+                 round(float(v.score), 4), round(float(v.latency_ms or 0.0), 3), sample_key(r["text"])]
+                for r, v in zip(clean, verdicts, strict=True)
             ]
         # format kept in sync with the Workbench's live test-result parser (_TEST_RE)
         print(f"  [{bench}] {getattr(guard, 'name', '?')}: F1={m['f1']:.3f} P={m['precision']:.3f} "

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import signal
@@ -24,6 +25,7 @@ import uuid
 from collections import Counter
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from agent_bouncer.core.guard import KeywordGuard
 from agent_bouncer.core.schema import Surface, Verdict
@@ -249,19 +251,31 @@ def _merge_scoreboard(name: str, per_bench: dict, meta: dict | None = None) -> N
 _ENSEMBLE_OBJECTIVES = ("balanced", "f1", "fpr")
 
 
-def _resync_curves() -> None:
-    """Best-effort: re-derive curves.json + roc_auc after an ensemble merge so the ROC/PR view
-    and the leaderboard stay in lockstep (ensembles otherwise appear on the board with no curve).
+def _load_compute_curves():
+    """Import scripts/report/compute_curves.py as a module (it isn't on the package path)."""
+    import importlib.util
+    path = ROOT / "scripts" / "report" / "compute_curves.py"
+    spec = importlib.util.spec_from_file_location("compute_curves", str(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
-    Skipped when ``RESULTS_JSON`` is patched away from the real artifact (tests) so it never
-    touches on-disk outputs during unit tests."""
-    if RESULTS_JSON != ROOT / "outputs" / "benchmark_results.json":
-        return
+
+def _resync_curves() -> bool:
+    """Re-derive curves.json + roc_auc after an ensemble merge so the ROC/PR view and the
+    leaderboard stay in lockstep (ensembles otherwise appear on the board with no curve).
+
+    Calls ``compute_curves.regenerate()`` DIRECTLY (not via runpy) — the old runpy path let
+    compute_curves' argparse consume the uvicorn worker's ``sys.argv`` and silently SystemExit,
+    so the resync never actually ran in production. Returns True on success, False on failure
+    (logged, never raised — curves are a view and must not fail an ensemble build)."""
     try:
-        import runpy
-        runpy.run_path(str(ROOT / "scripts" / "report" / "compute_curves.py"), run_name="__main__")
-    except (Exception, SystemExit):  # noqa: BLE001 - curves are a view; never fail a build on this
-        pass
+        _load_compute_curves().regenerate(str(RESULTS_JSON), str(CURVES_JSON),
+                                          str(PRED_DIR), quiet=True)
+        return True
+    except Exception as exc:  # noqa: BLE001 - view resync is best-effort; report, don't crash
+        logging.getLogger(__name__).warning("curve resync failed: %s", exc)
+        return False
 
 
 def _small_model_pool(preds: dict) -> list[str]:
@@ -305,9 +319,10 @@ def build_ensemble(cfg: EnsembleConfig) -> dict:
         "members": cfg.members, "strategy": cfg.strategy,
         "threshold": cfg.threshold, "objective": None,
     })
-    _resync_curves()
+    curves_ok = _resync_curves()
     return {"name": name, "members": cfg.members, "strategy": cfg.strategy,
-            "macro": macro_average(per_bench), "per_benchmark": per_bench}
+            "macro": macro_average(per_bench), "per_benchmark": per_bench,
+            "curves_stale": not curves_ok}
 
 
 def _ensemble_name(raw: str | None, fallback: str) -> str:
@@ -321,7 +336,9 @@ class EnsembleOptimizeConfig(BaseModel):
     objective: str = "balanced"          # "balanced" | "f1" | "fpr"
     fpr_cap: float = 0.2
     name: str | None = None
-    scope: str = "small"                 # "small" (trained small models only) | "all"
+    # closed set: an unknown value (typo) is rejected with 422 rather than silently broadening
+    # the search to ALL guards (incl. paid OpenAI baselines) and persisting a mislabeled ensemble.
+    scope: Literal["small", "all"] = "small"
 
 
 def _optimize_pool(preds: dict, scope: str) -> list[str] | None:
@@ -348,17 +365,17 @@ def optimize_ensemble_endpoint(cfg: EnsembleOptimizeConfig) -> dict:
         "members": best["members"], "strategy": best["strategy"],
         "threshold": best["threshold"], "objective": result["objective"], "scope": cfg.scope,
     })
-    _resync_curves()
+    curves_ok = _resync_curves()
     return {"name": name, "objective": result["objective"], "n_evaluated": result["n_evaluated"],
             "best": {"members": best["members"], "strategy": best["strategy"],
                      "threshold": best["threshold"], "macro": best["macro"]},
-            "candidates": result["candidates"]}
+            "candidates": result["candidates"], "curves_stale": not curves_ok}
 
 
 class EnsembleOptimizeAllConfig(BaseModel):
     """Build one optimized ensemble per objective (balanced / f1 / fpr) in one shot."""
     fpr_cap: float = 0.2
-    scope: str = "small"                 # compose from trained small models only (default)
+    scope: Literal["small", "all"] = "small"   # compose from trained small models only (default)
 
 
 @app.post("/api/ensemble/optimize_all")
@@ -388,9 +405,9 @@ def optimize_all_ensembles(cfg: EnsembleOptimizeAllConfig) -> dict:
     if not built:
         raise HTTPException(400, "; ".join(f"{o}: {m}" for o, m in errors.items())
                             or "no scorable ensembles from the available predictions")
-    _resync_curves()
+    curves_ok = _resync_curves()
     return {"built": built, "scope": cfg.scope, "errors": errors,
-            "pool": pool if pool is not None else sorted(preds)}
+            "pool": pool if pool is not None else sorted(preds), "curves_stale": not curves_ok}
 
 
 # ------------------------------------------------------- training / experiments API
@@ -937,9 +954,13 @@ async def start_test(cfg: TestConfig) -> dict:
                "--workers", str(cfg.workers)]
         if cfg.test_set:                   # test on a created dataset's held-out split
             cmd += ["--test-set", cfg.test_set]
-        elif cfg.benchmarks:
-            # benchmark-mode results go onto the Leaderboard scoreboard automatically
-            cmd += ["--benchmarks", *cfg.benchmarks, "--merge-scoreboard"]
+        else:
+            # benchmark mode (any run without a created test set) — results go onto the Leaderboard
+            # scoreboard automatically. An empty `benchmarks` means "all benchmarks" in run_testing,
+            # so it must STILL merge; otherwise a full benchmark eval would silently never persist.
+            cmd += ["--merge-scoreboard"]
+            if cfg.benchmarks:
+                cmd += ["--benchmarks", *cfg.benchmarks]
         cmds.append(cmd)
     # After bench-mode tests merged new cells, re-derive curves.json + roc_auc so the ROC/PR view
     # stays in lockstep with the leaderboard (no-op for created-test-set runs — nothing merged).

@@ -11,6 +11,18 @@ import random
 from collections.abc import Iterable, Sequence
 
 
+def holdout_count(n: int, ratio: float) -> int:
+    """Number of held-out (test) rows for ``n`` records at ``ratio``.
+
+    Guarantees at least ONE held-out row whenever a non-zero ratio is requested and there are at
+    least two rows to split — so a requested split never silently returns an empty test set — while
+    always leaving at least one training row. For the usual larger inputs this is exactly
+    ``int(n * ratio)`` (the ``max``/``min`` clamps are no-ops)."""
+    if n < 2 or ratio <= 0:
+        return 0
+    return min(n - 1, max(1, int(n * ratio)))
+
+
 def _key(rec: dict) -> str:
     """Normalized text key used for overlap detection (case/space-insensitive)."""
     return " ".join((rec.get("text") or "").lower().split())
@@ -132,7 +144,7 @@ def train_test_split(
         raise ValueError("test_ratio must be in (0, 1)")
     uniq = dedup(records) if deduplicate else list(records)
     random.Random(seed).shuffle(uniq)
-    n_test = int(len(uniq) * test_ratio)
+    n_test = holdout_count(len(uniq), test_ratio)
     test, train = uniq[:n_test], uniq[n_test:]
     assert_no_leakage(train, test)
     return train, test

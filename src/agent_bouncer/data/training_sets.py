@@ -167,16 +167,30 @@ def build_training_set(
         aug_n = per_source_pc
 
     # over-refusal augmentation: add extra benign prompts to TRAIN only, excluding anything
-    # already in train/test so the split stays leakage-free.
+    # already in train/test so the split stays leakage-free. Record what actually happened so a
+    # dataset labeled "over_refusal_aware" can never silently contain zero augmentation.
+    aug: dict = {}
     if strategy == "over_refusal_aware":
+        aug = {"augmentation_requested": True, "augmentation_source": "xstest",
+               "augmentation_available": 0, "augmentation_added": 0, "augmentation_error": None}
         try:
             from agent_bouncer.data.split import _key
             seen = {_key(r) for r in train} | {_key(r) for r in test}
             extra = [r for r in loader("xstest") if r["label"] == "safe" and _key(r) not in seen]
             rng.shuffle(extra)
-            train += extra[:aug_n]
-        except Exception:  # noqa: BLE001 - augmentation is best-effort
-            pass
+            added = extra[:aug_n]
+            train += added
+            aug["augmentation_available"] = len(extra)
+            aug["augmentation_added"] = len(added)
+        except Exception as exc:  # noqa: BLE001 - augmentation is best-effort, but never silent
+            aug["augmentation_error"] = f"{type(exc).__name__}: {exc}"
+        if not aug["augmentation_added"]:
+            import warnings
+            warnings.warn(
+                f"over_refusal_aware set {name!r} added 0 XSTest prompts "
+                f"({aug['augmentation_error'] or 'none available after de-dup'})",
+                stacklevel=2,
+            )
 
     rng.shuffle(train)
     rng.shuffle(test)
@@ -197,6 +211,7 @@ def build_training_set(
         "train_path": os.path.join(out, "train.jsonl"),
         "test_path": os.path.join(out, "test.jsonl"),
         "leakage_checked": True,
+        **aug,
         "preview": train[:12],
     }
     with open(os.path.join(out, "meta.json"), "w") as fh:

@@ -1,10 +1,30 @@
 import pytest
 
-from agent_bouncer.data.split import assert_no_leakage, dedup, find_leakage, train_test_split
+from agent_bouncer.data.split import (
+    assert_no_leakage,
+    dedup,
+    find_leakage,
+    holdout_count,
+    train_test_split,
+)
 
 
 def _recs(texts, label="safe"):
     return [{"text": t, "label": label} for t in texts]
+
+
+# --------------------------------------------------------- AB-008: tiny-split contract
+def test_holdout_count_guarantees_nonempty_split_when_possible():
+    assert holdout_count(2, 0.2) == 1     # was int(2*0.2)=0 → empty test set
+    assert holdout_count(1, 0.2) == 0     # a single row can't split into two non-empty parts
+    assert holdout_count(0, 0.5) == 0
+    assert holdout_count(100, 0.2) == 20  # unchanged for the usual larger inputs
+    assert holdout_count(10, 0.99) == 9   # always leaves at least one training row
+
+
+def test_train_test_split_tiny_data_yields_nonempty_test():
+    tr, te = train_test_split(_recs(["a"], "safe") + _recs(["b"], "unsafe"), test_ratio=0.2)
+    assert len(tr) == 1 and len(te) == 1  # both non-empty (was train=2, test=0)
 
 
 def test_dedup_keeps_first_normalized_occurrence():

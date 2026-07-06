@@ -20,7 +20,7 @@ import random
 from collections import defaultdict
 from collections.abc import Sequence
 
-from agent_bouncer.data.split import assert_no_leakage, dedup
+from agent_bouncer.data.split import assert_no_leakage, dedup, holdout_count
 
 #: Sampling strategies surfaced to the UI/CLI.
 SAMPLING_STRATEGIES: dict[str, dict] = {
@@ -105,14 +105,14 @@ def ratio_split(records: Sequence[dict], *, test_ratio: float = 0.3, key: str = 
     if not stratified:
         pool = list(pool)
         rng.shuffle(pool)
-        n_test = int(len(pool) * test_ratio)
+        n_test = holdout_count(len(pool), test_ratio)
         test, train = pool[:n_test], pool[n_test:]
     else:
         train, test = [], []
         for recs in _group_by(pool, key).values():
             recs = list(recs)
             rng.shuffle(recs)
-            n_test = int(len(recs) * test_ratio)
+            n_test = holdout_count(len(recs), test_ratio)
             test += recs[:n_test]
             train += recs[n_test:]
         rng.shuffle(train)

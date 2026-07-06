@@ -11,6 +11,34 @@ def _fake_loader(n_safe=80, n_unsafe=80):
     return loader
 
 
+# --------------------------------------------------------- AB-006: augmentation is observable
+def test_over_refusal_records_augmentation_added(tmp_path, monkeypatch):
+    monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
+    m = TS.build_training_set("over_refusal_aware", ["beavertails"], name="ora", per_class=20,
+                              loader=_fake_loader())
+    assert m["augmentation_requested"] is True
+    assert m["augmentation_source"] == "xstest"
+    assert m["augmentation_added"] > 0 and m["augmentation_error"] is None
+
+
+def test_over_refusal_surfaces_augmentation_failure(tmp_path, monkeypatch):
+    # if the XSTest source fails, the dataset must NOT silently claim over_refusal_aware with zero
+    # augmentation — the failure is recorded in meta and a warning is emitted.
+    monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
+
+    def loader(src):
+        if src == "xstest":
+            raise RuntimeError("xstest unavailable")
+        return _fake_loader()(src)
+
+    with pytest.warns(UserWarning, match="added 0 XSTest"):
+        m = TS.build_training_set("over_refusal_aware", ["beavertails"], name="ora2",
+                                  per_class=20, loader=loader)
+    assert m["augmentation_requested"] is True
+    assert m["augmentation_added"] == 0
+    assert "xstest unavailable" in m["augmentation_error"]
+
+
 def test_strategies_catalog():
     assert {"balanced", "mixed", "over_refusal_aware", "red_team"} <= set(TS.STRATEGIES)
     for s in TS.STRATEGIES.values():

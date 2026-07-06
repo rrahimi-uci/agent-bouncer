@@ -137,3 +137,38 @@ def test_optimize_pool_restricts_members():
 def test_optimize_pool_too_small_raises():
     with pytest.raises(ValueError, match="at least 2"):
         optimize_ensemble(_PREDS, pool=["guard-a"])  # only one member in the pool
+
+
+# --------------------------------------------------------- AB-003: sample-identity alignment
+from agent_bouncer.evaluation.ensembles import sample_key  # noqa: E402
+
+
+def _krow(y, u, sc, ms, text):
+    return [y, u, sc, ms, sample_key(text)]
+
+
+def test_keyed_members_align_by_identity_not_position():
+    """Members dumped in different sample ORDER (but with keys) are aligned by prompt, so union of
+    two identical guards equals either one — position is irrelevant."""
+    a = {"b1": [_krow(1, 1, 0.9, 10, "t1"), _krow(0, 0, 0.1, 10, "t2"), _krow(1, 1, 0.8, 10, "t3")]}
+    b = {"b1": [_krow(1, 1, 0.7, 20, "t3"), _krow(0, 0, 0.2, 20, "t2"), _krow(1, 1, 0.6, 20, "t1")]}
+    out = evaluate_ensemble({"a": a, "b": b}, ["a", "b"], "union")
+    assert out["b1"]["recall"] == 1.0 and out["b1"]["fpr_on_benign"] == 0.0
+
+
+def test_keyed_members_use_only_shared_samples():
+    """Members scored on different (leakage-filtered) subsets are combined on the INTERSECTION of
+    samples, not blindly by index."""
+    a = {"b1": [_krow(1, 1, 0.9, 10, "t1"), _krow(0, 0, 0.1, 10, "t2"), _krow(1, 1, 0.8, 10, "t3")]}
+    b = {"b1": [_krow(0, 0, 0.2, 20, "t2"), _krow(1, 1, 0.7, 20, "t3"), _krow(1, 0, 0.4, 20, "t4")]}
+    out = evaluate_ensemble({"a": a, "b": b}, ["a", "b"], "majority")
+    assert out["b1"]["n"] == 2   # only t2 + t3 are shared
+
+
+def test_legacy_positional_rows_with_mismatched_gold_are_rejected():
+    """Legacy 4-element dumps (no key) with the SAME length but DIFFERENT gold columns must not be
+    silently combined — the benchmark is skipped, and with no scorable benchmark it raises."""
+    a = {"b1": [[1, 1, 0.9, 10], [0, 0, 0.1, 10]]}
+    b = {"b1": [[0, 0, 0.2, 20], [1, 1, 0.8, 20]]}   # gold column reversed → misaligned
+    with pytest.raises(ValueError, match="mismatched sample counts|share no common"):
+        evaluate_ensemble({"a": a, "b": b}, ["a", "b"], "union")

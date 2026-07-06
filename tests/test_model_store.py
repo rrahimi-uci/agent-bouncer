@@ -18,6 +18,25 @@ def store(request, tmp_path):
     return ModelStore(backend=request.param, root=str(tmp_path / "store"))
 
 
+@pytest.mark.parametrize("backend", ["sqlite", "fs"])
+def test_backend_closes_handles_no_resourcewarning(backend, tmp_path, recwarn):
+    # AB-004: `with sqlite3.connect() as con` manages only the transaction (not the connection),
+    # and `json.load(open(...))` leaks a file handle — both raise ResourceWarning. Every store op
+    # must close its handle.
+    import gc
+    import warnings
+    warnings.simplefilter("always", ResourceWarning)
+    store = ModelStore(backend=backend, root=str(tmp_path / "s"))
+    mid = store.save(_rec())
+    store.get(mid)
+    store.list()
+    store.delete(mid)
+    gc.collect()  # force finalizers so any leaked handle would warn now
+    leaks = [w for w in recwarn.list if issubclass(w.category, ResourceWarning)
+             and ("unclosed" in str(w.message))]
+    assert not leaks, [str(w.message) for w in leaks]
+
+
 def test_default_backend_saves_to_filesystem(tmp_path):
     import os
     root = tmp_path / "s"
