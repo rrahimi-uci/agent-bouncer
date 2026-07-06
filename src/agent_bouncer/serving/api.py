@@ -136,7 +136,7 @@ GUARD_CATALOG = [
      "params": "api", "kind": "openai"},
     {"name": "openai-gpt-4o-mini", "label": "GPT-4o-mini", "technique": "LLM judge",
      "params": "api", "kind": "openai"},
-    {"name": "openai-gpt-5-mini", "label": "GPT-5-mini", "technique": "reasoning judge",
+    {"name": "openai-gpt-5.4-mini", "label": "GPT-5.4-mini", "technique": "reasoning judge",
      "params": "api", "kind": "openai"},
     {"name": "openai-gpt-5.2-low", "label": "GPT-5.2 (low reasoning)", "technique": "reasoning judge",
      "params": "api", "kind": "openai"},

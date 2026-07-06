@@ -38,7 +38,7 @@ CANON_ORDER = [
     "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",
     "decoder-sft-0.6B", "decoder-sft-1.7B", "decoder-grpo-0.6B",
     "openai-moderation", "openai-gpt-4o-mini",
-    "openai-gpt-5-mini", "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
+    "openai-gpt-5.4-mini", "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
 ]
 
 

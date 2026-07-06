@@ -56,7 +56,7 @@ _LABELS = {
     "encoder-modernbert-large": "Encoder 395M",
     "decoder-sft-0.6B": "Decoder-SFT 0.6B", "decoder-sft-1.7B": "Decoder-SFT 1.7B",
     "decoder-grpo-0.6B": "Decoder-GRPO", "openai-moderation": "OpenAI-Mod",
-    "openai-gpt-4o-mini": "GPT-4o-mini", "openai-gpt-5-mini": "GPT-5-mini",
+    "openai-gpt-4o-mini": "GPT-4o-mini", "openai-gpt-5.4-mini": "GPT-5.4-mini",
 }
 
 

@@ -308,7 +308,7 @@
             </div>
             <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test selected (0)</button>
             <button type="button" class="ghostbtn" id="testAllBtn" style="width:100%;margin-top:8px;padding:10px">⚡ Test ALL trained models on all benchmarks <span class="sub">→ Leaderboard + ensemble members</span></button>
-            <button type="button" class="ghostbtn" id="gptBaselineBtn" style="width:100%;margin-top:8px;padding:10px">🛰 Run frontier baselines on benchmarks <span class="sub">GPT-5-mini · GPT-4o-mini · Moderation → Leaderboard</span></button>
+            <button type="button" class="ghostbtn" id="gptBaselineBtn" style="width:100%;margin-top:8px;padding:10px">🛰 Run frontier baselines on benchmarks <span class="sub">GPT-5.4-mini · GPT-4o-mini · Moderation → Leaderboard</span></button>
           </div>
         </div>
       </div>
@@ -392,7 +392,7 @@ let curBench=null, sampleFilter='all', curStrat=null, cmpPick=new Set(), testMod
 Chart.defaults.color='#93a1bd';Chart.defaults.font.family="ui-sans-serif,system-ui,Inter,sans-serif";Chart.defaults.font.size=12;
 Chart.defaults.borderColor='#232c44';Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=8;Chart.defaults.plugins.legend.labels.padding=14;
 
-const gLabel=n=>({'keyword-baseline':'Keyword','encoder-distilbert':'Encoder 66M','encoder-modernbert-large':'Encoder 395M','decoder-sft-0.6B':'Decoder-SFT 0.6B','decoder-sft-1.7B':'Decoder-SFT 1.7B','decoder-grpo-0.6B':'Decoder-GRPO','openai-moderation':'OpenAI-Mod','openai-gpt-4o-mini':'GPT-4o-mini','openai-gpt-5-mini':'GPT-5-mini','openai-gpt-5.2-low':'GPT-5.2 low','openai-gpt-5.2-medium':'GPT-5.2 medium','openai-gpt-5.2-high':'GPT-5.2 high'}[n]||n);
+const gLabel=n=>({'keyword-baseline':'Keyword','encoder-distilbert':'Encoder 66M','encoder-modernbert-large':'Encoder 395M','decoder-sft-0.6B':'Decoder-SFT 0.6B','decoder-sft-1.7B':'Decoder-SFT 1.7B','decoder-grpo-0.6B':'Decoder-GRPO','openai-moderation':'OpenAI-Mod','openai-gpt-4o-mini':'GPT-4o-mini','openai-gpt-5.4-mini':'GPT-5.4-mini','openai-gpt-5.2-low':'GPT-5.2 low','openai-gpt-5.2-medium':'GPT-5.2 medium','openai-gpt-5.2-high':'GPT-5.2 high'}[n]||n);
 const guardsIn=()=>{const s=new Set();for(const b in RESULTS.results||{})for(const g in RESULTS.results[b])s.add(g);return ORDER.filter(x=>s.has(x)).concat([...s].filter(x=>!ORDER.includes(x)));};
 const benchesIn=()=>Object.keys(RESULTS.results||{});
 function macro(){const out={};for(const b in RESULTS.results||{})for(const g in RESULTS.results[b]){const m=RESULTS.results[b][g];(out[g]=out[g]||{});for(const k of ['precision','recall','f1','roc_auc','fpr_on_benign','latency_p50_ms','latency_p90_ms','throughput_per_s']){(out[g][k]=out[g][k]||[]);if(m[k]!=null)out[g][k].push(m[k]);}}
@@ -679,7 +679,7 @@ async function runGptBaselines(){
   if(!CONFIG.openai_available){toast('OpenAI not configured — set OPENAI_API_KEY in .env.');return;}
   const benches=(benchPick&&benchPick.size?[...benchPick]:(CONFIG.benchmarks||[]).map(b=>b.name));
   if(!benches.length){toast('No benchmarks available.');return;}
-  const guards=['openai-moderation','openai-gpt-4o-mini','openai-gpt-5-mini'];
+  const guards=['openai-moderation','openai-gpt-4o-mini','openai-gpt-5.4-mini'];
   const pc=$('#tPerClass').value===''?40:Number($('#tPerClass').value);
   if(!confirm(`Score frontier baselines on ${benches.length} benchmark(s) at ${pc}/class?\n\n${guards.map(g=>gLabel(g)).join(' · ')}\n\nThese call the OpenAI API — you'll be billed per request. Results land on the Leaderboard.`))return;
   setTestMode('bench');benchPick=new Set(benches);renderTestBenchmarks();
@@ -692,7 +692,7 @@ async function runGptBaselines(){
   if(!resp.ok){toast(payload.detail||'baseline run failed');btn.disabled=false;btn.textContent='🛰 Run frontier baselines on benchmarks';return;}
   streamRun(payload.run_id,con,null,async()=>{
     await loadResults();renderLeaderboard();renderROC();await loadEnsembleMembers();renderEnsembleBuilder();
-    btn.disabled=false;btn.innerHTML='🛰 Run frontier baselines on benchmarks <span class="sub">GPT-5-mini · GPT-4o-mini · Moderation → Leaderboard</span>';
+    btn.disabled=false;btn.innerHTML='🛰 Run frontier baselines on benchmarks <span class="sub">GPT-5.4-mini · GPT-4o-mini · Moderation → Leaderboard</span>';
     toast('✓ Frontier baselines scored — added to Leaderboard');});
 }
 function fillTestData(){
