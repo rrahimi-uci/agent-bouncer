@@ -363,6 +363,7 @@
               <option value="fpr">Least over-blocking (min FPR)</option>
             </select></label>
           <button type="button" class="ghostbtn" id="ensOptimize" style="flex:0 0 auto;padding:11px 16px">⚡ Auto-optimize (find best ensemble)</button>
+          <button type="button" class="ghostbtn" id="ensOptimizeAll" style="flex:0 0 auto;padding:11px 16px">🎛 Optimize all objectives <span class="sub">balanced · F1 · min-FPR, from small models</span></button>
         </div>
         <p class="footer-note" id="ensNote"></p>
         <div id="ensCandidates" style="margin-top:8px"></div>
@@ -857,10 +858,15 @@ async function showExpDetail(id){const e=await (await fetch('/api/experiment/'+i
 const LB_METRICS=[['precision','Precision','hi'],['recall','Recall','hi'],['f1','F1','hi'],['roc_auc','AUC','hi'],['latency_p50_ms','p50 ms','lo'],['latency_p90_ms','p90 ms','lo']];
 const CAT_ORDER=['Small models','GPT baselines','Ensembles'];
 const lbCat=g=>g.startsWith('ensemble-')?'Ensembles':g.startsWith('openai-')?'GPT baselines':'Small models';
+const OBJ_LABEL={balanced:'balanced',f1:'max-F1',fpr:'min-FPR'};
 function lbLabel(g){const k=gLabel(g);if(k!==g)return k;let m;
   if(m=g.match(/^openai-gpt-([\d.]+)-(low|medium|high)$/))return `GPT-${m[1]} ${m[2]}`;
+  if(m=g.match(/^ensemble-best-(balanced|f1|fpr)$/))return `Optimized · ${OBJ_LABEL[m[1]]}`;
   if(g.startsWith('ensemble-'))return 'Ensemble · '+g.slice(9);
   return g;}
+function ensComposition(g){const e=(RESULTS.ensembles||{})[g];if(!e||!e.members)return '';
+  const who=e.members.map(lbLabel).join(' + '),how=e.strategy?` · ${e.strategy}${e.threshold!=null&&e.strategy==='mean'?' @'+e.threshold:''}`:'';
+  return `<div class="sub" style="font-weight:400;font-size:10.5px;margin-top:2px;color:var(--muted)">${who}${how}</div>`;}
 function lbParams(g){const P={'keyword-baseline':'0','encoder-distilbert':'66M','encoder-modernbert-large':'395M','modernbert-large':'395M','decoder-sft-0.6B':'0.6B','decoder-grpo-0.6B':'0.6B','decoder-sft-1.7B':'1.7B'};
   if(P[g])return P[g];if(g.startsWith('openai-'))return 'api';
   const m=g.match(/([\d.]+[BM]|\d+M)/);return m?m[1]:'—';}
@@ -882,7 +888,7 @@ function renderLeaderboard(){
     const rs=rows.filter(r=>lbCat(r.g)===cat).sort((x,y)=>dir*(((x[sort]??(lo?1e12:-1e12)))-((y[sort]??(lo?1e12:-1e12)))));
     if(!rs.length)return;
     html+=`<tbody><tr class="lbcat"><td colspan="${LB_METRICS.length+3}">${cat} · ${rs.length}</td></tr>`+
-      rs.map(r=>`<tr><td class="name">${lbLabel(r.g)}</td><td class="mono" style="color:var(--muted)">${lbParams(r.g)}</td>`+LB_METRICS.map(([k,,hl])=>cell(r,k,hl)).join('')+`<td class="mono" style="color:var(--muted)">${nFmt(r)}</td></tr>`).join('')+`</tbody>`;
+      rs.map(r=>`<tr><td class="name">${lbLabel(r.g)}${cat==='Ensembles'?ensComposition(r.g):''}</td><td class="mono" style="color:var(--muted)">${lbParams(r.g)}</td>`+LB_METRICS.map(([k,,hl])=>cell(r,k,hl)).join('')+`<td class="mono" style="color:var(--muted)">${nFmt(r)}</td></tr>`).join('')+`</tbody>`;
   });
   html+='</table>';$('#lbTable').innerHTML=html;
   $('#lbNote').innerHTML=`Macro-averaged over ${benchesIn().length} benchmark(s). Best per column highlighted. `+
@@ -956,6 +962,24 @@ async function optimizeEnsemble(){
   }catch(e){toast('optimize failed');}
   finally{btn.disabled=false;btn.textContent=orig;}
 }
+async function optimizeAllEnsembles(){
+  const btn=$('#ensOptimizeAll'),orig=btn.innerHTML;btn.disabled=true;btn.textContent='⏳ Optimizing all objectives…';
+  try{
+    const r=await fetch('/api/ensemble/optimize_all',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope:'small'})});
+    let d={};try{d=await r.json();}catch(e){}
+    if(!r.ok){toast(d.detail||'optimize failed');$('#ensNote').innerHTML=`⚠️ ${d.detail||'Could not build optimized ensembles — test at least 2 small models on the benchmarks first.'}`;return;}
+    await loadResults();renderLeaderboard();renderROC();await loadEnsembleMembers();renderEnsembleBuilder();
+    const OBJ={balanced:'Balanced',f1:'Max F1',fpr:'Min over-block'};
+    const rows=(d.built||[]).map(e=>{const M=e.macro||{};
+      return `<tr><td class="name">${OBJ[e.objective]||e.objective}</td><td>${(e.members||[]).map(lbLabel).join(' + ')}</td><td>${e.strategy}${e.threshold!=null?' @'+e.threshold:''}</td><td class="mono">${fmt(M.f1)}</td><td class="mono">${fmt(M.roc_auc)}</td><td class="mono">${fmt(M.fpr_on_benign)}</td><td class="mono">${M.latency_p50_ms!=null?Math.round(M.latency_p50_ms)+'ms':'—'}</td></tr>`;}).join('');
+    $('#ensCandidates').innerHTML='<div class="sub" style="margin:6px 0 4px">Optimized ensembles per objective (small models) — added to the leaderboard</div>'+
+      '<table><thead><tr><th>Objective</th><th>Composed of</th><th>Strategy</th><th>F1 ↑</th><th>AUC ↑</th><th>FPR ↓</th><th>p50 ↓</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    const pool=(d.pool||[]).map(lbLabel).join(', ');
+    $('#ensNote').innerHTML=`✓ Built <b>${(d.built||[]).length}</b> optimized ensemble(s) — one per objective, composed from small models [${pool}]. Added to the leaderboard (category <b>Ensembles</b>).`;
+    toast('✓ Optimized ensembles added to leaderboard');
+  }catch(e){toast('optimize failed');}
+  finally{btn.disabled=false;btn.innerHTML=orig;}
+}
 function renderEnsCandidates(cands){
   const el=$('#ensCandidates');if(!el)return;
   if(!cands||!cands.length){el.innerHTML='';return;}
@@ -1024,7 +1048,7 @@ async function init(){
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
   $('#lbSort').onchange=renderLeaderboard;$('#lbReport').onclick=generateReport;
-  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;
+  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;$('#ensOptimizeAll').onclick=optimizeAllEnsembles;
   $('#tBenchAll').onclick=()=>{benchPick=new Set((CONFIG.benchmarks||[]).map(b=>b.name));renderTestBenchmarks();};
   $('#tBenchNone').onclick=()=>{benchPick=new Set();renderTestBenchmarks();};
   $('#tVersAll').onclick=()=>selectAllVersions(true);$('#tVersNone').onclick=()=>selectAllVersions(false);

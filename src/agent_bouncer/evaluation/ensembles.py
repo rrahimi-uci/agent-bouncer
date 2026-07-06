@@ -143,23 +143,27 @@ def optimize_ensemble(
     min_members: int = 2,
     max_members: int | None = None,
     top_k: int = 5,
+    pool: Sequence[str] | None = None,
 ) -> dict:
     """Search member subsets × strategies for the best ensemble, scored offline.
 
     ``objective`` — ``"balanced"`` (best macro-F1 with FPR@benign ≤ ``fpr_cap``),
-    ``"f1"`` (best macro-F1), or ``"fpr"`` (least over-blocking). Returns the winning
-    config + macro/per-benchmark metrics and the top-``top_k`` candidates. The search is
-    bounded (``_MAX_CANDIDATES``) so it stays responsive.
+    ``"f1"`` (best macro-F1), or ``"fpr"`` (least over-blocking). ``pool`` restricts the
+    candidate members (e.g. the small models only); defaults to every guard with predictions.
+    Returns the winning config + macro/per-benchmark metrics and the top-``top_k`` candidates.
+    The search is bounded (``_MAX_CANDIDATES``) so it stays responsive.
     """
     import itertools
 
     if objective not in ("balanced", "f1", "fpr"):
         raise ValueError(f"unknown objective {objective!r}; choose balanced, f1, or fpr")
-    names = sorted(preds)
+    allowed = set(pool) if pool is not None else None
+    names = sorted(n for n in preds if allowed is None or n in allowed)
     if len(names) < min_members:
         raise ValueError(
             f"need at least {min_members} guards with dumped predictions to build an ensemble; "
-            f"have {len(names)} — run the benchmark suite first"
+            f"have {len(names)}{' in the selected pool' if allowed is not None else ''} — "
+            "test more models on the benchmarks first"
         )
     hi = min(max_members or len(names), len(names))
     subsets = [list(c) for r in range(min_members, hi + 1) for c in itertools.combinations(names, r)]

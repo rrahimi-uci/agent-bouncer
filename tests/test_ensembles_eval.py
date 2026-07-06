@@ -120,3 +120,17 @@ def test_optimize_needs_two_members():
 def test_optimize_rejects_bad_objective():
     with pytest.raises(ValueError, match="unknown objective"):
         optimize_ensemble(_PREDS, objective="nonsense")
+
+
+def test_optimize_pool_restricts_members():
+    """`pool` confines the search to the given members (e.g. small models only), so the winning
+    ensemble never includes an excluded guard."""
+    preds = {**_PREDS, "openai-x": _B}  # a "GPT baseline" that must be excluded
+    out = optimize_ensemble(preds, objective="f1", pool=["guard-a", "guard-b", "guard-c"])
+    assert set(out["best"]["members"]).issubset({"guard-a", "guard-b", "guard-c"})
+    assert "openai-x" not in out["best"]["members"]
+
+
+def test_optimize_pool_too_small_raises():
+    with pytest.raises(ValueError, match="at least 2"):
+        optimize_ensemble(_PREDS, pool=["guard-a"])  # only one member in the pool

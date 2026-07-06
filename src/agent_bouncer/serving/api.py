@@ -222,8 +222,10 @@ PRED_DIR = ROOT / "outputs" / "predictions"
 _SCOREBOARD_LOCK = threading.Lock()
 
 
-def _merge_scoreboard(name: str, per_bench: dict) -> None:
-    """Graft an ensemble's per-benchmark metrics into the scoreboard, atomically."""
+def _merge_scoreboard(name: str, per_bench: dict, meta: dict | None = None) -> None:
+    """Graft an ensemble's per-benchmark metrics into the scoreboard, atomically. ``meta``
+    (members / strategy / objective / threshold) is stored under ``blob['ensembles'][name]`` so
+    the leaderboard can show what each ensemble is composed of."""
     import tempfile
 
     with _SCOREBOARD_LOCK:
@@ -235,10 +237,37 @@ def _merge_scoreboard(name: str, per_bench: dict) -> None:
                 pass
         for bench, metrics in per_bench.items():
             blob.setdefault("results", {}).setdefault(bench, {})[name] = metrics
+        if meta is not None:
+            blob.setdefault("ensembles", {})[name] = meta
         fd, tmp = tempfile.mkstemp(dir=str(RESULTS_JSON.parent), suffix=".tmp")
         with os.fdopen(fd, "w") as fh:
             json.dump(blob, fh, indent=2)
         os.replace(tmp, RESULTS_JSON)
+
+
+#: Objectives the "optimize all" action builds one small-model ensemble for.
+_ENSEMBLE_OBJECTIVES = ("balanced", "f1", "fpr")
+
+
+def _resync_curves() -> None:
+    """Best-effort: re-derive curves.json + roc_auc after an ensemble merge so the ROC/PR view
+    and the leaderboard stay in lockstep (ensembles otherwise appear on the board with no curve).
+
+    Skipped when ``RESULTS_JSON`` is patched away from the real artifact (tests) so it never
+    touches on-disk outputs during unit tests."""
+    if RESULTS_JSON != ROOT / "outputs" / "benchmark_results.json":
+        return
+    try:
+        import runpy
+        runpy.run_path(str(ROOT / "scripts" / "report" / "compute_curves.py"), run_name="__main__")
+    except (Exception, SystemExit):  # noqa: BLE001 - curves are a view; never fail a build on this
+        pass
+
+
+def _small_model_pool(preds: dict) -> list[str]:
+    """Candidate members that are trained small models — excludes the GPT baselines and any
+    existing ensemble rows, so an optimized ensemble is composed of small models only."""
+    return [n for n in preds if not n.startswith(("openai-", "ensemble-"))]
 
 
 @app.get("/api/ensemble/members")
@@ -272,7 +301,11 @@ def build_ensemble(cfg: EnsembleConfig) -> dict:
         raise HTTPException(400, str(exc)) from exc
 
     name = _ensemble_name(cfg.name, "ensemble-" + cfg.strategy + "-" + str(len(cfg.members)))
-    _merge_scoreboard(name, per_bench)
+    _merge_scoreboard(name, per_bench, meta={
+        "members": cfg.members, "strategy": cfg.strategy,
+        "threshold": cfg.threshold, "objective": None,
+    })
+    _resync_curves()
     return {"name": name, "members": cfg.members, "strategy": cfg.strategy,
             "macro": macro_average(per_bench), "per_benchmark": per_bench}
 
@@ -288,6 +321,12 @@ class EnsembleOptimizeConfig(BaseModel):
     objective: str = "balanced"          # "balanced" | "f1" | "fpr"
     fpr_cap: float = 0.2
     name: str | None = None
+    scope: str = "small"                 # "small" (trained small models only) | "all"
+
+
+def _optimize_pool(preds: dict, scope: str) -> list[str] | None:
+    """Member pool for the optimizer: small models only (default) or all guards."""
+    return _small_model_pool(preds) if scope == "small" else None
 
 
 @app.post("/api/ensemble/optimize")
@@ -298,17 +337,60 @@ def optimize_ensemble_endpoint(cfg: EnsembleOptimizeConfig) -> dict:
 
     preds = load_predictions(str(PRED_DIR))
     try:
-        result = optimize_ensemble(preds, objective=cfg.objective, fpr_cap=cfg.fpr_cap)
+        result = optimize_ensemble(preds, objective=cfg.objective, fpr_cap=cfg.fpr_cap,
+                                   pool=_optimize_pool(preds, cfg.scope))
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
     best = result["best"]
-    name = _ensemble_name(cfg.name, "ensemble-optimized")
-    _merge_scoreboard(name, best["per_bench"])
+    name = _ensemble_name(cfg.name, f"ensemble-best-{cfg.objective}")
+    _merge_scoreboard(name, best["per_bench"], meta={
+        "members": best["members"], "strategy": best["strategy"],
+        "threshold": best["threshold"], "objective": result["objective"], "scope": cfg.scope,
+    })
+    _resync_curves()
     return {"name": name, "objective": result["objective"], "n_evaluated": result["n_evaluated"],
             "best": {"members": best["members"], "strategy": best["strategy"],
                      "threshold": best["threshold"], "macro": best["macro"]},
             "candidates": result["candidates"]}
+
+
+class EnsembleOptimizeAllConfig(BaseModel):
+    """Build one optimized ensemble per objective (balanced / f1 / fpr) in one shot."""
+    fpr_cap: float = 0.2
+    scope: str = "small"                 # compose from trained small models only (default)
+
+
+@app.post("/api/ensemble/optimize_all")
+def optimize_all_ensembles(cfg: EnsembleOptimizeAllConfig) -> dict:
+    """For EACH objective, search the (small-model) pool for the best ensemble and merge it as a
+    distinct ``ensemble-best-<objective>`` leaderboard row — so the board shows the optimized
+    ensemble for every objective alongside the small models and GPT baselines it's built from."""
+    from agent_bouncer.evaluation.ensembles import load_predictions, optimize_ensemble
+
+    preds = load_predictions(str(PRED_DIR))
+    pool = _optimize_pool(preds, cfg.scope)
+    built, errors = [], {}
+    for obj in _ENSEMBLE_OBJECTIVES:
+        try:
+            result = optimize_ensemble(preds, objective=obj, fpr_cap=cfg.fpr_cap, pool=pool)
+        except ValueError as exc:
+            errors[obj] = str(exc)
+            continue
+        best = result["best"]
+        name = f"ensemble-best-{obj}"
+        meta = {"members": best["members"], "strategy": best["strategy"],
+                "threshold": best["threshold"], "objective": obj, "scope": cfg.scope}
+        _merge_scoreboard(name, best["per_bench"], meta=meta)
+        built.append({"name": name, "objective": obj, "members": best["members"],
+                      "strategy": best["strategy"], "threshold": best["threshold"],
+                      "macro": best["macro"], "n_evaluated": result["n_evaluated"]})
+    if not built:
+        raise HTTPException(400, "; ".join(f"{o}: {m}" for o, m in errors.items())
+                            or "no scorable ensembles from the available predictions")
+    _resync_curves()
+    return {"built": built, "scope": cfg.scope, "errors": errors,
+            "pool": pool if pool is not None else sorted(preds)}
 
 
 # ------------------------------------------------------- training / experiments API

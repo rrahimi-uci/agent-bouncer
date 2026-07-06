@@ -68,6 +68,9 @@ def _category(guard: str) -> str:
     return "Small models"
 
 
+_OBJ_LABEL = {"balanced": "balanced", "f1": "max-F1", "fpr": "min-FPR"}
+
+
 def _label(guard: str) -> str:
     if guard in _LABELS:
         return _LABELS[guard]
@@ -75,6 +78,9 @@ def _label(guard: str) -> str:
     m = re.match(r"^openai-gpt-([\d.]+)-(low|medium|high)$", guard)
     if m:
         return f"GPT-{m.group(1)} {m.group(2)}"
+    m = re.match(r"^ensemble-best-(balanced|f1|fpr)$", guard)
+    if m:
+        return f"Optimized · {_OBJ_LABEL[m.group(1)]}"
     if guard.startswith("ensemble-"):
         return "Ensemble · " + guard[len("ensemble-"):]
     return guard
@@ -98,9 +104,21 @@ def _fmt(value: float | None, decimals: int) -> str:
     return f"{value:.{decimals}f}"
 
 
+def _composition(guard: str, ensembles: dict) -> str:
+    """A '· composed of: A + B · strategy' sub-line for an ensemble row (empty otherwise)."""
+    e = ensembles.get(guard)
+    if not e or not e.get("members"):
+        return ""
+    who = " + ".join(_label(m) for m in e["members"])
+    how = f" · {e['strategy']}" if e.get("strategy") else ""
+    return (f'<div style="font-size:9.5px;color:#8a97b0;font-weight:400;margin-top:1px">'
+            f'{html.escape(who + how)}</div>')
+
+
 def build_html(blob: dict, sort: str = "f1", *, generated: str = "") -> str:
     """Build the standalone HTML leaderboard report from a benchmark_results blob."""
     results = blob.get("results", {})
+    ensembles = blob.get("ensembles", {})
     per_class = blob.get("per_class")
     summary = _macro_average(results)
     benches = sorted(results.keys())
@@ -138,7 +156,7 @@ def build_html(blob: dict, sort: str = "f1", *, generated: str = "") -> str:
                 cls = "num best" if is_best else "num"
                 cells.append(f'<td class="{cls}">{_fmt(v, dp)}</td>')
             rows_html.append(
-                f'<tr><td class="name">{html.escape(_label(g))}</td>'
+                f'<tr><td class="name">{html.escape(_label(g))}{_composition(g, ensembles)}</td>'
                 f'<td class="num muted">{html.escape(_params(g))}</td>{"".join(cells)}</tr>'
             )
 

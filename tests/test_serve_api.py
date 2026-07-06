@@ -390,6 +390,35 @@ def test_ensemble_build_bad_member_is_400(monkeypatch, tmp_path):
     assert r.status_code == 400 and "predictions" in r.json()["detail"]
 
 
+def test_optimize_all_builds_one_ensemble_per_objective_from_small_models(monkeypatch, tmp_path):
+    # two small models + one GPT baseline; the optimizer must compose from small models ONLY
+    rows_a = [[1, 1, 0.9, 10], [1, 0, 0.3, 10], [1, 1, 0.7, 10],
+              [0, 0, 0.1, 10], [0, 1, 0.6, 10], [0, 0, 0.2, 10]]
+    rows_b = [[1, 1, 0.8, 20], [1, 1, 0.6, 20], [1, 0, 0.4, 20],
+              [0, 0, 0.2, 20], [0, 0, 0.1, 20], [0, 0, 0.15, 20]]
+    preds = {"qwen3-0.6b-sft": {"b1": rows_a}, "smollm2-1.7b-sft": {"b1": rows_b},
+             "openai-gpt-4o-mini": {"b1": rows_b}}
+    monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
+    monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+
+    r = client.post("/api/ensemble/optimize_all", json={"scope": "small"})
+    assert r.status_code == 200
+    d = r.json()
+    names = {e["name"] for e in d["built"]}
+    assert names == {"ensemble-best-balanced", "ensemble-best-f1", "ensemble-best-fpr"}
+    # composed from small models only — the GPT baseline is excluded from the pool + members
+    assert "openai-gpt-4o-mini" not in d["pool"]
+    for e in d["built"]:
+        assert "openai-gpt-4o-mini" not in e["members"]
+        assert set(e["members"]).issubset({"qwen3-0.6b-sft", "smollm2-1.7b-sft"})
+    # each optimized ensemble is merged with its composition metadata for the leaderboard
+    import json
+    blob = json.loads((tmp_path / "results.json").read_text())
+    assert set(blob["ensembles"]) == names
+    assert blob["ensembles"]["ensemble-best-f1"]["members"]
+    assert blob["ensembles"]["ensemble-best-f1"]["objective"] == "f1"
+
+
 def test_report_404_when_no_results(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "missing.json")
     assert client.get("/api/report").status_code == 404
