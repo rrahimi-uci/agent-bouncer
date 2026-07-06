@@ -410,6 +410,49 @@ def optimize_all_ensembles(cfg: EnsembleOptimizeAllConfig) -> dict:
             "pool": pool if pool is not None else sorted(preds), "curves_stale": not curves_ok}
 
 
+class CascadeConfig(BaseModel):
+    """Two-stage recall→precision cascade. Stages are auto-picked from the pool when omitted."""
+    stage1: str | None = None            # high-recall gate (auto: highest recall)
+    stage2: str | None = None            # high-precision filter (auto: highest precision)
+    scope: Literal["small", "all"] = "small"
+    name: str | None = None
+
+
+@app.post("/api/ensemble/cascade")
+def build_cascade(cfg: CascadeConfig) -> dict:
+    """Build a recall→precision cascade, merge it onto the leaderboard, and return its metrics +
+    composition. With no stages given, picks the highest-recall model as the gate and the
+    highest-precision model as the filter (from the small-model pool by default)."""
+    from agent_bouncer.evaluation.ensembles import (
+        evaluate_cascade,
+        load_predictions,
+        macro_average,
+        optimize_cascade,
+    )
+
+    preds = load_predictions(str(PRED_DIR))
+    try:
+        if cfg.stage1 and cfg.stage2:
+            s1, s2 = cfg.stage1, cfg.stage2
+            per_bench = evaluate_cascade(preds, s1, s2)
+            macro, extra = macro_average(per_bench), {}
+        else:
+            res = optimize_cascade(preds, pool=_optimize_pool(preds, cfg.scope))
+            s1, s2, per_bench, macro = res["stage1"], res["stage2"], res["per_bench"], res["macro"]
+            extra = {"stage1_recall": res["stage1_recall"], "stage2_precision": res["stage2_precision"]}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    name = _ensemble_name(cfg.name, "ensemble-cascade")
+    _merge_scoreboard(name, per_bench, meta={
+        "members": [s1, s2], "strategy": "cascade",
+        "stage1": s1, "stage2": s2, "objective": None,
+    })
+    curves_ok = _resync_curves()
+    return {"name": name, "stage1": s1, "stage2": s2, "macro": macro,
+            "curves_stale": not curves_ok, **extra}
+
+
 # ------------------------------------------------------- training / experiments API
 @app.get("/api/models")
 def models() -> dict:

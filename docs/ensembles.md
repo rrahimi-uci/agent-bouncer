@@ -103,3 +103,14 @@ Under the hood this is the same pure [`combine()`](../src/agent_bouncer/models/e
 | `majority` | a **strict majority** flag | balance the two |
 | `mean` | the **mean** of member scores ≥ threshold | soft vote (tunable) |
 | `weighted` | the **weighted mean** of scores ≥ threshold | upweight stronger members |
+
+### Recall→precision cascade
+
+A **cascade** chains two models instead of voting: a **high-recall gate** flags every candidate, then
+a **high-precision filter** runs *only on the flagged inputs* and makes the final call
+(`unsafe = gate AND filter`). Because the (slower, stronger) filter is skipped for everything the gate
+clears, the cascade's average latency is `gate + flag-rate × filter` — far below running both on every
+input — while precision rises toward the filter's. The Workbench's **⛓ Recall→precision cascade**
+button auto-picks the highest-recall small model as the gate and the highest-precision one as the
+filter, scores the pair offline, and adds an **`Cascade · recall→precision`** row to the leaderboard so
+you can compare its P / R / F1 / AUC / p50 / p90 directly against the GPT baselines.

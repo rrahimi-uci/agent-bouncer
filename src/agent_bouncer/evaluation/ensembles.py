@@ -171,6 +171,83 @@ def macro_average(per_bench: dict[str, dict]) -> dict[str, float]:
     return {k: round(sum(per_bench[b][k] for b in per_bench) / len(per_bench), 4) for k in _MACRO_KEYS}
 
 
+def _member_macro(preds: dict, name: str) -> dict:
+    """Macro-averaged metrics for a single guard from its own dumped predictions."""
+    per: dict[str, dict] = {}
+    for bench, rows in preds.get(name, {}).items():
+        if not rows:
+            continue
+        gold = [Decision.UNSAFE if r[0] == 1 else Decision.SAFE for r in rows]
+        pred = [Decision.UNSAFE if r[1] == 1 else Decision.SAFE for r in rows]
+        m = compute_metrics(gold, pred, [r[3] for r in rows]).to_dict()
+        m["roc_auc"] = _auc(gold, [r[2] for r in rows], m)
+        per[bench] = m
+    return macro_average(per)
+
+
+def evaluate_cascade(preds: dict[str, dict], stage1: str, stage2: str) -> dict[str, dict]:
+    """Score a two-stage cascade: a high-recall GATE (``stage1``) flags candidates, then a
+    high-precision FILTER (``stage2``) runs ONLY on the flagged ones. Final unsafe = stage1 AND
+    stage2 (so precision rises), and per-sample latency = stage1 + (stage2 only when stage1 flags) —
+    so average latency is far below running both models on every input, which is what lets a pair of
+    small models rival a frontier model's quality at a fraction of the cost.
+
+    Returns ``{benchmark: metrics_dict}`` (incl. ``roc_auc``). Raises ``ValueError`` on bad input."""
+    for m in (stage1, stage2):
+        if m not in preds:
+            raise ValueError(f"no dumped predictions for {m!r} — test it on the benchmarks first")
+    if stage1 == stage2:
+        raise ValueError("a cascade needs two different models (a recall gate + a precision filter)")
+
+    benches = set(preds[stage1]).intersection(preds[stage2])
+    if not benches:
+        raise ValueError("the gate and filter share no common benchmark")
+
+    out: dict[str, dict] = {}
+    for bench in sorted(benches):
+        rows = _align_rows([preds[stage1][bench], preds[stage2][bench]])
+        if rows is None:
+            continue
+        r1, r2 = rows
+        gold, pred, lat, scores = [], [], [], []
+        for a, b in zip(r1, r2, strict=True):
+            gold.append(Decision.UNSAFE if a[0] == 1 else Decision.SAFE)
+            gate_flags = bool(a[1])
+            # final decision + score are the intersection (both must flag); non-gated inputs never
+            # reach the filter, so their score short-circuits to the gate's (min == intersection).
+            unsafe, sc = combine([(gate_flags, a[2]), (bool(b[1]), b[2])], "intersection")
+            pred.append(Decision.UNSAFE if unsafe else Decision.SAFE)
+            scores.append(sc)
+            lat.append(a[3] + (b[3] if gate_flags else 0.0))  # filter runs only on flagged inputs
+        metrics = compute_metrics(gold, pred, lat).to_dict()
+        metrics["roc_auc"] = _auc(gold, scores, metrics)
+        out[bench] = metrics
+    if not out:
+        raise ValueError("gate and filter have mismatched samples on every shared benchmark")
+    return out
+
+
+def optimize_cascade(preds: dict[str, dict], *, pool: Sequence[str] | None = None) -> dict:
+    """Build the natural recall→precision cascade: pick the highest-recall model as the gate and the
+    highest-precision (different) model as the filter, from ``pool`` (default every guard)."""
+    allowed = set(pool) if pool is not None else None
+    names = sorted(n for n in preds if allowed is None or n in allowed)
+    if len(names) < 2:
+        raise ValueError(
+            f"need at least 2 models with dumped predictions to build a cascade; have {len(names)}"
+            f"{' in the selected pool' if allowed is not None else ''} — test more models first"
+        )
+    macro = {n: _member_macro(preds, n) for n in names}
+    stage1 = max(names, key=lambda n: macro[n].get("recall") or 0.0)          # gate: max recall
+    stage2 = max((n for n in names if n != stage1),                            # filter: max precision
+                 key=lambda n: macro[n].get("precision") or 0.0)
+    per_bench = evaluate_cascade(preds, stage1, stage2)
+    return {"stage1": stage1, "stage2": stage2, "per_bench": per_bench,
+            "macro": macro_average(per_bench),
+            "stage1_recall": macro[stage1].get("recall"),
+            "stage2_precision": macro[stage2].get("precision")}
+
+
 # Strategies that ignore the threshold (no sweep needed).
 _HARD_STRATEGIES = ("union", "intersection", "majority")
 _MAX_CANDIDATES = 2500  # keep the search responsive (a few seconds, offline)

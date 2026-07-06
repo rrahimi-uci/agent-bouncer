@@ -81,6 +81,8 @@ def _label(guard: str) -> str:
     m = re.match(r"^ensemble-best-(balanced|f1|fpr)$", guard)
     if m:
         return f"Optimized · {_OBJ_LABEL[m.group(1)]}"
+    if guard.startswith("ensemble-cascade"):
+        return "Cascade · recall→precision"
     if guard.startswith("ensemble-"):
         return "Ensemble · " + guard[len("ensemble-"):]
     return guard
@@ -109,10 +111,13 @@ def _composition(guard: str, ensembles: dict) -> str:
     e = ensembles.get(guard)
     if not e or not e.get("members"):
         return ""
-    who = " + ".join(_label(m) for m in e["members"])
-    how = f" · {e['strategy']}" if e.get("strategy") else ""
+    if e.get("strategy") == "cascade" and e.get("stage1") and e.get("stage2"):
+        text = f"{_label(e['stage1'])} → {_label(e['stage2'])}"
+    else:
+        text = " + ".join(_label(m) for m in e["members"])
+        text += f" · {e['strategy']}" if e.get("strategy") else ""
     return (f'<div style="font-size:9.5px;color:#8a97b0;font-weight:400;margin-top:1px">'
-            f'{html.escape(who + how)}</div>')
+            f'{html.escape(text)}</div>')
 
 
 def build_html(blob: dict, sort: str = "f1", *, generated: str = "") -> str:

@@ -364,6 +364,7 @@
             </select></label>
           <button type="button" class="ghostbtn" id="ensOptimize" style="flex:0 0 auto;padding:11px 16px">⚡ Auto-optimize (find best ensemble)</button>
           <button type="button" class="ghostbtn" id="ensOptimizeAll" style="flex:0 0 auto;padding:11px 16px">🎛 Optimize all objectives <span class="sub">balanced · F1 · min-FPR, from small models</span></button>
+          <button type="button" class="ghostbtn" id="ensCascade" style="flex:0 0 auto;padding:11px 16px">⛓ Recall→precision cascade <span class="sub">high-recall gate → high-precision filter</span></button>
         </div>
         <p class="footer-note" id="ensNote"></p>
         <div id="ensCandidates" style="margin-top:8px"></div>
@@ -862,11 +863,14 @@ const OBJ_LABEL={balanced:'balanced',f1:'max-F1',fpr:'min-FPR'};
 function lbLabel(g){const k=gLabel(g);if(k!==g)return k;let m;
   if(m=g.match(/^openai-gpt-([\d.]+)-(low|medium|high)$/))return `GPT-${m[1]} ${m[2]}`;
   if(m=g.match(/^ensemble-best-(balanced|f1|fpr)$/))return `Optimized · ${OBJ_LABEL[m[1]]}`;
+  if(g==='ensemble-cascade'||g.startsWith('ensemble-cascade'))return 'Cascade · recall→precision';
   if(g.startsWith('ensemble-'))return 'Ensemble · '+g.slice(9);
   return g;}
 function ensComposition(g){const e=(RESULTS.ensembles||{})[g];if(!e||!e.members)return '';
-  const who=e.members.map(lbLabel).join(' + '),how=e.strategy?` · ${e.strategy}${e.threshold!=null&&e.strategy==='mean'?' @'+e.threshold:''}`:'';
-  return `<div class="sub" style="font-weight:400;font-size:10.5px;margin-top:2px;color:var(--muted)">${who}${how}</div>`;}
+  let who;
+  if(e.strategy==='cascade'&&e.stage1&&e.stage2)who=`${lbLabel(e.stage1)} → ${lbLabel(e.stage2)}`;
+  else who=e.members.map(lbLabel).join(' + ')+(e.strategy?` · ${e.strategy}${e.threshold!=null&&e.strategy==='mean'?' @'+e.threshold:''}`:'');
+  return `<div class="sub" style="font-weight:400;font-size:10.5px;margin-top:2px;color:var(--muted)">${who}</div>`;}
 function lbParams(g){const P={'keyword-baseline':'0','encoder-distilbert':'66M','encoder-modernbert-large':'395M','modernbert-large':'395M','decoder-sft-0.6B':'0.6B','decoder-grpo-0.6B':'0.6B','decoder-sft-1.7B':'1.7B'};
   if(P[g])return P[g];if(g.startsWith('openai-'))return 'api';
   const m=g.match(/([\d.]+[BM]|\d+M)/);return m?m[1]:'—';}
@@ -962,6 +966,24 @@ async function optimizeEnsemble(){
   }catch(e){toast('optimize failed');}
   finally{btn.disabled=false;btn.textContent=orig;}
 }
+async function buildCascade(){
+  const btn=$('#ensCascade'),orig=btn.innerHTML;btn.disabled=true;btn.textContent='⏳ Building cascade…';
+  try{
+    const r=await fetch('/api/ensemble/cascade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope:'small'})});
+    let d={};try{d=await r.json();}catch(e){}
+    if(!r.ok){toast(d.detail||'cascade failed');$('#ensNote').innerHTML=`⚠️ ${d.detail||'Could not build a cascade — test at least 2 small models on the benchmarks first.'}`;return;}
+    await loadResults();renderLeaderboard();renderROC();await loadEnsembleMembers();renderEnsembleBuilder();
+    const M=d.macro||{};
+    $('#ensCandidates').innerHTML='<div class="sub" style="margin:6px 0 4px">Recall→precision cascade (small models) — added to the leaderboard</div>'+
+      '<table><thead><tr><th>Stage</th><th>Model</th><th>Role</th></tr></thead><tbody>'+
+      `<tr><td>1 · gate</td><td class="name">${lbLabel(d.stage1)}</td><td>highest recall${d.stage1_recall!=null?' ('+fmt(d.stage1_recall)+')':''}</td></tr>`+
+      `<tr><td>2 · filter</td><td class="name">${lbLabel(d.stage2)}</td><td>highest precision${d.stage2_precision!=null?' ('+fmt(d.stage2_precision)+')':''}</td></tr>`+
+      '</tbody></table>';
+    $('#ensNote').innerHTML=`✓ Cascade <b>${lbLabel(d.stage1)} → ${lbLabel(d.stage2)}</b> — P ${fmt(M.precision)} · R ${fmt(M.recall)} · F1 ${fmt(M.f1)} · AUC ${fmt(M.roc_auc)} · FPR ${fmt(M.fpr_on_benign)} · p50 ${M.latency_p50_ms!=null?Math.round(M.latency_p50_ms)+'ms':'—'} · p90 ${M.latency_p90_ms!=null?Math.round(M.latency_p90_ms)+'ms':'—'}. The filter runs only on gate-flagged inputs, so latency stays low — compare it to the GPT baselines on the leaderboard.`;
+    toast('✓ Cascade added to leaderboard');
+  }catch(e){toast('cascade failed');}
+  finally{btn.disabled=false;btn.innerHTML=orig;}
+}
 async function optimizeAllEnsembles(){
   const btn=$('#ensOptimizeAll'),orig=btn.innerHTML;btn.disabled=true;btn.textContent='⏳ Optimizing all objectives…';
   try{
@@ -1048,7 +1070,7 @@ async function init(){
   $$('#nav a').forEach(a=>a.onclick=e=>{e.preventDefault();switchView(a.dataset.view);});
   $('#trainBtn').onclick=runTrain;$('#testBtn').onclick=runTest;$('#buildBtn').onclick=buildDataset;
   $('#lbSort').onchange=renderLeaderboard;$('#lbReport').onclick=generateReport;
-  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;$('#ensOptimizeAll').onclick=optimizeAllEnsembles;
+  $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;$('#ensOptimizeAll').onclick=optimizeAllEnsembles;$('#ensCascade').onclick=buildCascade;
   $('#tBenchAll').onclick=()=>{benchPick=new Set((CONFIG.benchmarks||[]).map(b=>b.name));renderTestBenchmarks();};
   $('#tBenchNone').onclick=()=>{benchPick=new Set();renderTestBenchmarks();};
   $('#tVersAll').onclick=()=>selectAllVersions(true);$('#tVersNone').onclick=()=>selectAllVersions(false);

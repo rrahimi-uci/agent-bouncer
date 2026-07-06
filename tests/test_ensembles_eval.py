@@ -193,6 +193,53 @@ def test_duplicate_occurrences_align_across_reordered_members():
         evaluate_ensemble({"a": a, "b": b}, ["a", "b"], "union")
 
 
+# --------------------------------------------------------- recall→precision cascade
+from agent_bouncer.evaluation.ensembles import evaluate_cascade, optimize_cascade  # noqa: E402
+
+
+def test_cascade_decision_is_gate_and_filter():
+    """Final unsafe = gate AND filter, so the cascade takes the gate's recall and the filter's
+    precision. Gate flags t1,t2,t3; filter flags only t1 → cascade flags only t1."""
+    gate = {"b": [_krow(1, 1, 0.9, 100, "t1"), _krow(1, 1, 0.8, 100, "t2"),
+                  _krow(0, 1, 0.6, 100, "t3"), _krow(0, 0, 0.2, 100, "t4")]}
+    filt = {"b": [_krow(1, 1, 0.95, 500, "t1"), _krow(1, 0, 0.3, 500, "t2"),
+                  _krow(0, 0, 0.1, 500, "t3"), _krow(0, 0, 0.1, 500, "t4")]}
+    m = evaluate_cascade({"g": gate, "f": filt}, "g", "f")["b"]
+    assert m["precision"] == 1.0 and m["recall"] == 0.5 and m["fpr_on_benign"] == 0.0
+
+
+def test_cascade_latency_runs_filter_only_on_gate_flagged():
+    """The filter's latency is charged ONLY to inputs the gate flagged — t4 (gate-safe) costs the
+    gate's 100ms alone, so the cascade is cheaper than running both on everything."""
+    gate = {"b": [_krow(1, 1, 0.9, 100, "t1"), _krow(0, 0, 0.2, 100, "t4")]}   # t4 not flagged
+    filt = {"b": [_krow(1, 1, 0.95, 500, "t1"), _krow(0, 0, 0.1, 500, "t4")]}
+    m = evaluate_cascade({"g": gate, "f": filt}, "g", "f")["b"]
+    # per-sample latency: t1 = 100+500 = 600 (flagged), t4 = 100 (filter skipped). If the filter had
+    # run on t4 too, p50 would be 600; it's 350, proving the skip.
+    assert m["latency_p50_ms"] == 350.0
+
+
+def test_cascade_rejects_same_model():
+    g = {"b": [_krow(1, 1, 0.9, 10, "t1")]}
+    with pytest.raises(ValueError, match="two different models"):
+        evaluate_cascade({"g": g}, "g", "g")
+
+
+def test_optimize_cascade_picks_recall_gate_and_precision_filter():
+    """Gate = highest-recall model; filter = highest-precision (different) model."""
+    high_recall = {"b": [_krow(1, 1, 0.9, 10, "t1"), _krow(1, 1, 0.8, 10, "t2"),
+                         _krow(0, 1, 0.6, 10, "t3")]}                     # recall 1.0, precision .67
+    high_prec = {"b": [_krow(1, 1, 0.9, 10, "t1"), _krow(1, 0, 0.3, 10, "t2"),
+                       _krow(0, 0, 0.1, 10, "t3")]}                       # recall .5, precision 1.0
+    res = optimize_cascade({"recall_m": high_recall, "prec_m": high_prec})
+    assert res["stage1"] == "recall_m" and res["stage2"] == "prec_m"
+
+
+def test_optimize_cascade_needs_two_models():
+    with pytest.raises(ValueError, match="at least 2"):
+        optimize_cascade({"only": {"b": [_krow(1, 1, 0.9, 10, "t1")]}})
+
+
 # --------------------------------------------------------- AB-011: eval_tuned keyed alignment
 def test_eval_tuned_aligns_reordered_keyed_members():
     from eval_ensembles import eval_tuned

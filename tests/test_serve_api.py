@@ -438,6 +438,35 @@ def test_optimize_scope_typo_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "PRED_DIR", tmp_path / "empty")
     assert client.post("/api/ensemble/optimize_all", json={"scope": "smal"}).status_code == 422
     assert client.post("/api/ensemble/optimize", json={"scope": "SMALL"}).status_code == 422
+    assert client.post("/api/ensemble/cascade", json={"scope": "nope"}).status_code == 422
+
+
+def test_cascade_auto_picks_recall_gate_and_precision_filter(monkeypatch, tmp_path):
+    from agent_bouncer.evaluation.ensembles import sample_key
+
+    def kr(y, u, sc, ms, t):
+        return [y, u, sc, ms, sample_key(t)]
+
+    # qwen = high recall (flags t1,t2,t3), smollm = high precision (flags only t1)
+    preds = {
+        "qwen3-0.6b-sft": {"b": [kr(1, 1, .9, 100, "t1"), kr(1, 1, .8, 100, "t2"),
+                                 kr(0, 1, .6, 100, "t3"), kr(0, 0, .2, 100, "t4")]},
+        "smollm2-1.7b-sft": {"b": [kr(1, 1, .95, 500, "t1"), kr(1, 0, .3, 500, "t2"),
+                                   kr(0, 0, .1, 500, "t3"), kr(0, 0, .1, 500, "t4")]},
+    }
+    monkeypatch.setattr(api, "PRED_DIR", _write_preds(tmp_path, preds))
+    monkeypatch.setattr(api, "RESULTS_JSON", tmp_path / "results.json")
+    monkeypatch.setattr(api, "CURVES_JSON", tmp_path / "curves.json")
+
+    r = client.post("/api/ensemble/cascade", json={"scope": "small"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["stage1"] == "qwen3-0.6b-sft" and d["stage2"] == "smollm2-1.7b-sft"
+    assert d["macro"]["precision"] == 1.0 and d["curves_stale"] is False
+    import json
+    blob = json.loads((tmp_path / "results.json").read_text())
+    meta = blob["ensembles"]["ensemble-cascade"]
+    assert meta["strategy"] == "cascade" and meta["stage1"] == "qwen3-0.6b-sft"
 
 
 def test_report_404_when_no_results(monkeypatch, tmp_path):
