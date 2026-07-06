@@ -521,3 +521,19 @@ def test_test_endpoint_merges_benchmarks_but_not_testset(monkeypatch):
     assert "--merge-scoreboard" in " ".join(launched["c"][0])   # benchmark run → onto leaderboard
     client.post("/api/test", json={"exp": "e1", "test_set": "data/x/test.jsonl", "device": "cpu"})
     assert "--merge-scoreboard" not in " ".join(launched["c"][0])  # test-set run → not merged
+
+
+def test_report_501_when_renderer_unavailable(monkeypatch, tmp_path):
+    import json
+    rj = tmp_path / "r.json"
+    rj.write_text(json.dumps({"per_class": 10, "meta": {}, "results": {"b1": {"keyword-baseline": {
+        "precision": .5, "recall": .5, "f1": .5, "roc_auc": .5, "fpr_on_benign": .1,
+        "latency_p50_ms": 1, "latency_p90_ms": 2, "throughput_per_s": 1}}}}))
+    monkeypatch.setattr(api, "RESULTS_JSON", rj)
+    from agent_bouncer.serving import leaderboard_report
+
+    def boom(html, out, **k):
+        raise RuntimeError("no Chrome found")
+    monkeypatch.setattr(leaderboard_report, "render_pdf", boom)
+    r = client.get("/api/report")
+    assert r.status_code == 501 and "chrome" in r.json()["detail"].lower()

@@ -64,3 +64,19 @@ def test_grpo_spec_offers_grad_accum_not_dead_maxseqlen():
     # grad_accum (which IS consumed) is offered instead.
     names = {p["name"] for p in param_spec("decoder", "grpo")}
     assert "grad_accum" in names and "max_seq_len" not in names
+
+
+def test_validate_required_param_empty_raises():
+    with pytest.raises(ValueError, match="is required"):
+        validate_params("decoder", "sft", {"epochs": ""})       # epochs is not optional
+
+
+def test_validate_numeric_param_rejects_non_number_and_bounds():
+    with pytest.raises(ValueError, match="must be a number"):
+        validate_params("decoder", "grpo", {"max_steps": "abc"})   # int kind, unparseable
+    with pytest.raises(ValueError, match="below minimum"):
+        validate_params("decoder", "grpo", {"max_steps": 0})       # min is 1
+    with pytest.raises(ValueError, match="above maximum"):
+        validate_params("decoder", "grpo", {"max_steps": 10_000_000})
+    # a valid in-range int is coerced to int
+    assert validate_params("decoder", "grpo", {"max_steps": 150.0}) == {"max_steps": 150}
