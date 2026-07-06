@@ -283,7 +283,12 @@
         <div class="chartcard" style="margin:0">
           <h3>② Test</h3><p class="sub">🔒 Leakage-guarded — prompts seen in a model's training set are auto-dropped &amp; reported</p>
           <div class="form">
-            <label>Trained versions <span class="sub">(select one or more)</span></label>
+            <label>Trained versions <span class="sub">(select one or more)</span>
+              <span style="float:right;font-weight:400">
+                <button type="button" class="ghostbtn" id="tVersAll" style="padding:3px 9px;font-size:11px">Select all</button>
+                <button type="button" class="ghostbtn" id="tVersNone" style="padding:3px 9px;font-size:11px">Clear</button>
+              </span>
+            </label>
             <div id="tVersions" class="jpick"></div>
             <label>Test on</label>
             <div class="seg" id="testModeSeg"><button type="button" data-m="set" class="on">Created test set</button><button type="button" data-m="bench">Benchmarks</button></div>
@@ -302,6 +307,7 @@
               <label>Device<select id="tDevice"><option>cpu</option><option>mps</option></select></label>
             </div>
             <button type="button" class="runbtn" id="testBtn" style="background:linear-gradient(135deg,#34d399,#22c39a)">🧪  Test selected (0)</button>
+            <button type="button" class="ghostbtn" id="testAllBtn" style="width:100%;margin-top:8px;padding:10px">⚡ Test ALL trained models on all benchmarks <span class="sub">→ Leaderboard + ensemble members</span></button>
           </div>
         </div>
       </div>
@@ -655,6 +661,19 @@ function renderTestVersions(){
   updateTestBtn();
 }
 function updateTestBtn(){$('#testBtn').textContent=`🧪  Test selected (${testVersions.size})`;}
+function allVersionIds(){const ids=[];Object.values(VERSIONS).forEach(l=>l.forEach(v=>ids.push(v.id)));return ids;}
+function selectAllVersions(all){testVersions=new Set(all?allVersionIds():[]);renderTestVersions();}
+async function testAllOnBenchmarks(){
+  const ids=allVersionIds();
+  if(!ids.length){toast('No trained models yet — train some first.');return;}
+  const benches=(CONFIG.benchmarks||[]).map(b=>b.name);
+  if(!benches.length){toast('No benchmarks available.');return;}
+  const pc=$('#tPerClass').value===''?40:Number($('#tPerClass').value);
+  if(!confirm(`Test all ${ids.length} trained model(s) on ${benches.length} benchmark(s) at ${pc}/class?\n\nEach model runs in turn — decoders generate token-by-token, so on CPU this can take a while. All results land on the Leaderboard and become ensemble members. Set Device = mps and a small per-class to speed it up.`))return;
+  testVersions=new Set(ids);benchPick=new Set(benches);
+  setTestMode('bench');renderTestVersions();renderTestBenchmarks();
+  runTest();
+}
 function fillTestData(){
   const sets=(DATA.train_sets||[]).filter(t=>t.test_path&&t.n_test);
   $('#tTestSet').innerHTML=sets.length
@@ -981,6 +1000,8 @@ async function init(){
   $('#ensStrategy').onchange=syncEnsThresh;$('#ensBuild').onclick=buildEnsemble;$('#ensOptimize').onclick=optimizeEnsemble;
   $('#tBenchAll').onclick=()=>{benchPick=new Set((CONFIG.benchmarks||[]).map(b=>b.name));renderTestBenchmarks();};
   $('#tBenchNone').onclick=()=>{benchPick=new Set();renderTestBenchmarks();};
+  $('#tVersAll').onclick=()=>selectAllVersions(true);$('#tVersNone').onclick=()=>selectAllVersions(false);
+  $('#testAllBtn').onclick=testAllOnBenchmarks;
   $('#sampleSearch').oninput=scheduleBenchSearch;
   $('#hazardFilter').onchange=applyBenchFilters;
   $('#clearBenchFilters').onclick=()=>{$('#sampleSearch').value='';setLabelFilter('all');$('#hazardFilter').value='all';applyBenchFilters();};
