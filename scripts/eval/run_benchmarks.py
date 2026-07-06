@@ -65,7 +65,7 @@ GUARD_ORDER = [
     "keyword-baseline", "encoder-distilbert", "encoder-modernbert-large",
     "decoder-sft-0.6B", "decoder-sft-1.7B", "decoder-grpo-0.6B",
     "openai-moderation", "openai-gpt-4o-mini",
-    "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
+    "openai-gpt-5-mini", "openai-gpt-5.2-low", "openai-gpt-5.2-medium", "openai-gpt-5.2-high",
 ]
 
 # Guard display order + parameter counts for the report.
@@ -221,6 +221,11 @@ def build_guards(args) -> list[tuple[str, object, int]]:
             reasoning = OpenAIChatGuard(args.reasoning_model, reasoning_effort=effort)
             guards.append((reasoning.name, reasoning, args.workers))
             GUARD_PARAMS.setdefault(reasoning.name, "api")
+        # Extra frontier baselines (e.g. gpt-5-mini) — one judge each, default reasoning budget.
+        for extra in args.baseline_models:
+            g = OpenAIChatGuard(extra)
+            guards.append((g.name, g, args.workers))
+            GUARD_PARAMS.setdefault(g.name, "api")
     else:
         print("!! OpenAI guards skipped (no key or --no-openai)")
 
@@ -239,6 +244,8 @@ def main() -> None:
     ap.add_argument("--reasoning-model", default="gpt-5.2")
     ap.add_argument("--reasoning-efforts", nargs="*", default=["low", "medium", "high"],
                     help="reasoning_effort tiers to score for the reasoning model (default: all three)")
+    ap.add_argument("--baseline-models", nargs="*", default=["gpt-5-mini"],
+                    help="extra frontier chat/judge baselines to score (default: gpt-5-mini)")
     ap.add_argument("--workers", type=int, default=8, help="concurrency for API guards")
     ap.add_argument("--no-openai", action="store_true")
     ap.add_argument("--skip-decoder", action="store_true",
