@@ -17,26 +17,27 @@ def test_over_refusal_records_augmentation_added(tmp_path, monkeypatch):
     m = TS.build_training_set("over_refusal_aware", ["beavertails"], name="ora", per_class=20,
                               loader=_fake_loader())
     assert m["augmentation_requested"] is True
-    assert m["augmentation_source"] == "xstest"
+    # over-refusal negatives come from OR-Bench, never the XSTest eval set
+    assert m["augmentation_source"] == "or_bench"
     assert m["augmentation_added"] > 0 and m["augmentation_error"] is None
 
 
 def test_over_refusal_surfaces_augmentation_failure(tmp_path, monkeypatch):
-    # if the XSTest source fails, the dataset must NOT silently claim over_refusal_aware with zero
-    # augmentation — the failure is recorded in meta and a warning is emitted.
+    # if the over-refusal source fails, the dataset must NOT silently claim over_refusal_aware with
+    # zero augmentation — the failure is recorded in meta and a warning is emitted.
     monkeypatch.setattr(TS, "OUT_DIR", str(tmp_path))
 
     def loader(src):
-        if src == "xstest":
-            raise RuntimeError("xstest unavailable")
+        if src == "or_bench":
+            raise RuntimeError("or_bench unavailable")
         return _fake_loader()(src)
 
-    with pytest.warns(UserWarning, match="added 0 XSTest"):
+    with pytest.warns(UserWarning, match="added 0 over-refusal"):
         m = TS.build_training_set("over_refusal_aware", ["beavertails"], name="ora2",
                                   per_class=20, loader=loader)
     assert m["augmentation_requested"] is True
     assert m["augmentation_added"] == 0
-    assert "xstest unavailable" in m["augmentation_error"]
+    assert "or_bench unavailable" in m["augmentation_error"]
 
 
 def test_strategies_catalog():

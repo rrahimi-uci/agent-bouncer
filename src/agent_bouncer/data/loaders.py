@@ -108,6 +108,13 @@ def _is_true(value: object) -> bool:
 
 
 # ------------------------------------------------------------------ normalizers
+def normalize_or_bench(row: dict, text_field: str = "prompt", source: str = "or_bench") -> dict | None:
+    """OR-Bench prompts are benign-but-scary requests models wrongly over-refuse → all label SAFE.
+    Used ONLY as over-refusal *training* negatives (XSTest stays strictly the eval set)."""
+    text = _text(row, text_field)
+    return _record(text, Decision.SAFE, Hazard.NONE, source) if text else None
+
+
 def normalize_beavertails(row: dict, text_field: str = "prompt", source: str = "beavertails") -> dict | None:
     text = _text(row, text_field)
     if not text:
@@ -255,6 +262,7 @@ _NORMALIZERS = {
     "wildguardmix": normalize_wildguard,
     "aegis": normalize_aegis,
     "xstest": normalize_xstest,
+    "or_bench": normalize_or_bench,
     "prompt_injections": normalize_prompt_injection,
     "jailbreak_classification": normalize_jailbreak_classification,
     "openai_moderation": normalize_openai_moderation,
@@ -354,6 +362,25 @@ def load_xstest(split: str = "prompts", text_field: str = "prompt") -> list[dict
     return unify_to_taxonomy(ds, "xstest", text_field=text_field)
 
 
+def load_or_bench(config: str = "or-bench-80k", limit: int = 4000, text_field: str = "prompt") -> list[dict]:
+    """OR-Bench (bench-llm/or-bench) — benign over-refusal prompts, for TRAINING the guard not to
+    over-block. Streamed + capped at ``limit`` (the full set is 80k). Distinct from the XSTest eval
+    set, so using it as an over-refusal training source never leaks into the headline FPR@benign."""
+    import os as _os
+
+    from datasets import load_dataset
+    ds = load_dataset("bench-llm/or-bench", config, split="train", streaming=True,
+                      token=_os.environ.get("HF_TOKEN"))
+    rows = []
+    for i, row in enumerate(ds):
+        if i >= limit:
+            break
+        rec = normalize_or_bench(row, text_field=text_field)
+        if rec is not None:
+            rows.append(rec)
+    return rows
+
+
 def load_prompt_injections(split: str = "test", text_field: str = "text") -> list[dict]:
     # deepset/prompt-injections — ungated prompt-injection detection benchmark.
     ds = _load_hf("deepset/prompt-injections", split)
@@ -397,6 +424,7 @@ LOADERS = {
     "beavertails": load_beavertails,
     "aegis": load_aegis,
     "xstest": load_xstest,
+    "or_bench": load_or_bench,
     "prompt_injections": load_prompt_injections,
     "jailbreak_classification": load_jailbreak_classification,
     "openai_moderation": load_openai_moderation,

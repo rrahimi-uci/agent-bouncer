@@ -103,11 +103,20 @@ def _balanced(records: list[dict], per_class: int, rng: random.Random) -> list[d
 #: Sources whose benchmark is scored on a *held-out* split — training must draw from the
 #: DISJOINT split, never the benchmark's, or a guard is scored on prompts it trained on.
 #: (BeaverTails: benchmark = 30k_test, so training pulls 30k_train.)
+#: Training-only sources that are NOT benchmark eval sets. Loaded from their own split so training
+#: never touches an eval set. ``or_bench`` supplies over-refusal negatives (XSTest stays eval-only).
 _TRAIN_SPLIT_LOADERS = {
     "beavertails": lambda: __import__(
         "agent_bouncer.data.loaders", fromlist=["load_beavertails"]
     ).load_beavertails(split="30k_train"),
+    "or_bench": lambda: __import__(
+        "agent_bouncer.data.loaders", fromlist=["load_or_bench"]
+    ).load_or_bench(),
 }
+
+#: Source of over-refusal (benign-but-scary) TRAINING negatives — deliberately NOT XSTest, which is
+#: the over-refusal EVAL set (training on it would inflate the headline fpr_on_benign).
+OVER_REFUSAL_SOURCE = "or_bench"
 
 
 def default_training_loader(src: str) -> list[dict]:
@@ -171,12 +180,12 @@ def build_training_set(
     # dataset labeled "over_refusal_aware" can never silently contain zero augmentation.
     aug: dict = {}
     if strategy == "over_refusal_aware":
-        aug = {"augmentation_requested": True, "augmentation_source": "xstest",
+        aug = {"augmentation_requested": True, "augmentation_source": OVER_REFUSAL_SOURCE,
                "augmentation_available": 0, "augmentation_added": 0, "augmentation_error": None}
         try:
             from agent_bouncer.data.split import _key
             seen = {_key(r) for r in train} | {_key(r) for r in test}
-            extra = [r for r in loader("xstest") if r["label"] == "safe" and _key(r) not in seen]
+            extra = [r for r in loader(OVER_REFUSAL_SOURCE) if r["label"] == "safe" and _key(r) not in seen]
             rng.shuffle(extra)
             added = extra[:aug_n]
             train += added
@@ -187,8 +196,8 @@ def build_training_set(
         if not aug["augmentation_added"]:
             import warnings
             warnings.warn(
-                f"over_refusal_aware set {name!r} added 0 XSTest prompts "
-                f"({aug['augmentation_error'] or 'none available after de-dup'})",
+                f"over_refusal_aware set {name!r} added 0 over-refusal prompts from "
+                f"{OVER_REFUSAL_SOURCE!r} ({aug['augmentation_error'] or 'none available after de-dup'})",
                 stacklevel=2,
             )
 
