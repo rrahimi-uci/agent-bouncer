@@ -452,6 +452,12 @@ def mcnemar(gold, pa, pb):
     if n == 0: return n10, n01, 1.0
     k = min(n10, n01); p = 2 * sum(math.comb(n, i) for i in range(k + 1)) / (2 ** n)
     return n10, n01, min(1.0, p)
+
+try:   # render tables as DataFrames in Jupyter; fall back to text elsewhere (e.g. headless exec)
+    from IPython.display import display as _display
+    def show(x): _display(x)
+except Exception:
+    def show(x): print(x.to_string() if hasattr(x, "to_string") else x)
 print("metrics/stats ready")""") )
 
 CELLS.append(md("## 9 · Evaluate the SmolLM3 guard (matched-n, per-axis P/R/F1 + latency)"))
@@ -483,7 +489,7 @@ def report(test_out, T, THR):
 per_bench, GOLD, PRED, STRATA, LAT = report(test_out, T, THR)
 df = pd.DataFrame(per_bench).T[["axis", "precision", "recall", "f1", "fpr", "p50_ms", "n"]]
 for c in ["precision", "recall", "f1", "fpr", "p50_ms"]: df[c] = df[c].astype(float).round(3)
-print(df.to_string())
+show(df)
 axis_f1 = {ax: float(np.mean([per_bench[b]["f1"] for b in per_bench if per_bench[b]["axis"] == ax]))
            for ax in ["guardrail", "red_team", "over_refusal"] if any(per_bench[b]["axis"] == ax for b in per_bench)}
 overall = prf(GOLD, PRED)
@@ -535,42 +541,102 @@ if OPENAI_KEY and not CFG.smoke:   # skip paid calls in smoke mode
 else:
     print("GPT baselines skipped (smoke mode or no OPENAI_API_KEY)")
 
+base_rows = []
 for name, d in BASELINES.items():
-    m = prf(gold_all, d["pred"]); print(f"  {name:14s} P={m['precision']:.3f} R={m['recall']:.3f} F1={m['f1']:.3f} FPR={m['fpr']:.3f}")""") )
+    m = prf(gold_all, d["pred"]); m["p50_ms"] = float(np.percentile(d["lat"], 50))
+    base_rows.append({"system": name, **{k: round(m[k], 3) for k in ["precision", "recall", "f1", "fpr", "p50_ms"]}})
+base_df = pd.DataFrame(base_rows).set_index("system")
+show(base_df)""") )
 
 CELLS.append(md("## 11 · Parity verdict — SmolLM3 vs each baseline (paired-bootstrap CI + McNemar)"))
-CELLS.append(code(r"""rows = []
+CELLS.append(code(r"""parity_stats = {}   # name -> (diff, lo, hi) for the forest plot
+rows = []
 for name, d in BASELINES.items():
     diff, lo, hi = paired_bootstrap_ci(gold_all, PRED, d["pred"], strata_all, B=(500 if CFG.smoke else 4000))
     _, _, pval = mcnemar(gold_all, PRED, d["pred"])
+    parity_stats[name] = (diff, lo, hi)
     verdict = ("beats" if lo > 0 else "non-inferior" if lo >= -0.03 else "trails")
     rows.append({"vs": name, "F1_diff (SmolLM3 - base)": round(diff, 3), "CI95": f"[{lo:.3f}, {hi:.3f}]",
                  "McNemar p": round(pval, 4), "verdict (delta=0.03)": verdict})
-print(pd.DataFrame(rows).to_string(index=False))
-print("\nRule: non-inferior iff CI lower >= -0.03; beats iff CI lower > 0.")
+show(pd.DataFrame(rows).set_index("vs"))
+print("Rule: non-inferior iff CI lower >= -0.03; beats iff CI lower > 0.")
 print("(Full 'matches' additionally requires FPR <= base and p50 <= base/3 — see the plan.)")""") )
 
-CELLS.append(md("## 12 · Plots & saved artifacts"))
+CELLS.append(md(r"""## 12 · Performance dashboard, leaderboard & saved artifacts
+
+The **leaderboard** ranks every system (SmolLM3 + baselines) on overall P/R/F1/FPR + p50 latency. The
+figure has four panels — **quality vs cost** (F1 against latency: up-and-left wins, the paper's headline),
+**F1 by axis**, **P/R/F1 per benchmark**, and a **parity forest** (F1 difference vs each baseline with 95%
+CIs and the −0.03 non-inferiority line) — plus a **calibration reliability curve**."""))
 CELLS.append(code(r"""import matplotlib.pyplot as plt
 os.makedirs("outputs/nb-smollm3-guard", exist_ok=True)
 
-fig, ax = plt.subplots(1, 2, figsize=(13, 4))
-ax[0].bar(list(df.index), df["f1"], color="#4c8dff"); ax[0].set_title("SmolLM3 guard — F1 per benchmark")
-ax[0].set_ylim(0, 1); ax[0].tick_params(axis="x", rotation=45)
-names = list(BASELINES); f1s = [prf(gold_all, BASELINES[n]["pred"])["f1"] for n in names] + [overall["f1"]]
-ax[1].bar(names + ["SmolLM3"], f1s, color=["#bbb"] * len(names) + ["#34d399"])
-ax[1].set_title("Overall F1 vs baselines"); ax[1].set_ylim(0, 1); ax[1].tick_params(axis="x", rotation=45)
+# --- unified leaderboard (overall, matched-n), sorted by F1 ---
+lead = base_df.copy()
+lead.loc["SmolLM3"] = [round(overall["precision"], 3), round(overall["recall"], 3), round(overall["f1"], 3),
+                       round(overall["fpr"], 3), round(float(np.percentile(LAT, 50)), 3)]
+lead = lead.sort_values("f1", ascending=False)
+print("=== leaderboard — overall, matched-n (positive class = unsafe) ==="); show(lead)
+
+fig, ax = plt.subplots(2, 2, figsize=(14, 10))
+
+# (1) quality vs cost — F1 against p50 latency (log). Up-and-left is better.
+a0 = ax[0, 0]
+for sys_ in lead.index:
+    x = lead.loc[sys_, "p50_ms"] or 0.5   # keyword ~instant -> nudge onto the log axis
+    y = lead.loc[sys_, "f1"]; star = (sys_ == "SmolLM3")
+    a0.scatter(x, y, s=260 if star else 90, marker=("*" if star else "o"),
+               color=("#e11d48" if star else "#4c8dff"), edgecolor="k", linewidth=0.5, zorder=3)
+    a0.annotate(sys_, (x, y), xytext=(6, 4), textcoords="offset points", fontsize=9)
+a0.set_xscale("log"); a0.set_xlabel("p50 latency (ms, log scale)"); a0.set_ylabel("overall F1")
+a0.set_title("Quality vs cost  (up-and-left is better)"); a0.grid(alpha=0.3)
+
+# (2) SmolLM3 F1 by axis
+a1 = ax[0, 1]; axl = list(axis_f1)
+a1.bar(axl, [axis_f1[a] for a in axl], color="#34d399"); a1.set_ylim(0, 1)
+a1.set_title("SmolLM3 — F1 by axis"); a1.set_ylabel("F1")
+for i, a in enumerate(axl): a1.text(i, axis_f1[a] + 0.02, f"{axis_f1[a]:.2f}", ha="center")
+
+# (3) SmolLM3 P/R/F1 per benchmark (grouped bars)
+a2 = ax[1, 0]; benches = list(df.index); xp = np.arange(len(benches)); w = 0.27
+for k, off, col in [("precision", -w, "#60a5fa"), ("recall", 0.0, "#f59e0b"), ("f1", w, "#34d399")]:
+    a2.bar(xp + off, df[k].values.astype(float), width=w, label=k, color=col)
+a2.set_xticks(xp); a2.set_xticklabels(benches, rotation=45, ha="right"); a2.set_ylim(0, 1)
+a2.legend(loc="lower right"); a2.set_title("SmolLM3 — P / R / F1 per benchmark")
+
+# (4) parity forest — F1(SmolLM3) - F1(baseline) with 95% CI
+a3 = ax[1, 1]; nm = list(parity_stats); yp = np.arange(len(nm))
+dd = [parity_stats[n][0] for n in nm]
+xerr = [[parity_stats[n][0] - parity_stats[n][1] for n in nm], [parity_stats[n][2] - parity_stats[n][0] for n in nm]]
+a3.errorbar(dd, yp, xerr=xerr, fmt="o", color="#4c8dff", capsize=4, zorder=3)
+a3.axvline(0, color="k", lw=1); a3.axvline(-0.03, color="#e11d48", ls="--", lw=1, label="non-inferiority (-0.03)")
+a3.set_yticks(yp); a3.set_yticklabels(nm); a3.set_xlabel("F1(SmolLM3) - F1(baseline)")
+a3.set_title("Parity — F1 difference +/- 95% CI"); a3.legend(fontsize=8)
 plt.tight_layout(); plt.savefig("outputs/nb-smollm3-guard/results.png", dpi=120); plt.show()
+
+# --- calibration reliability curve (pooled test, temperature-scaled) ---
+ts = np.concatenate([apply_temp(test_out[b]["score"], T) for b in test_out])
+tg = np.concatenate([test_out[b]["gold"] for b in test_out]).astype(float)
+edges = np.linspace(0, 1, 11); mids, emp = [], []
+for i in range(10):
+    m = (ts >= edges[i]) & (ts <= edges[i + 1] if i == 9 else ts < edges[i + 1])
+    if m.sum(): mids.append(float(ts[m].mean())); emp.append(float(tg[m].mean()))
+figc, ac = plt.subplots(figsize=(5, 5))
+ac.plot([0, 1], [0, 1], "k--", alpha=0.5, label="perfect"); ac.plot(mids, emp, "o-", color="#34d399", label="SmolLM3")
+ac.set_xlabel("predicted P(unsafe)"); ac.set_ylabel("empirical P(unsafe)"); ac.set_xlim(0, 1); ac.set_ylim(0, 1)
+ac.set_title(f"Calibration reliability (T={T:.2f})"); ac.legend(); ac.grid(alpha=0.3)
+plt.tight_layout(); plt.savefig("outputs/nb-smollm3-guard/calibration.png", dpi=120); plt.show()
 
 summary = {"model": CFG.model_id, "smoke": CFG.smoke, "device": DEVICE, "temperature": T, "threshold": THR,
            "overall": {k: round(float(v), 4) for k, v in overall.items()},
            "per_axis_f1": {k: round(float(v), 4) for k, v in axis_f1.items()},
            "per_benchmark": json.loads(df.to_json(orient="index")),
+           "leaderboard": json.loads(lead.to_json(orient="index")),
            "baselines": {n: prf(gold_all, BASELINES[n]["pred"]) for n in BASELINES}}
 with open("outputs/nb-smollm3-guard/summary.json", "w") as f: json.dump(summary, f, indent=2, default=float)
 try: model.save_pretrained("outputs/nb-smollm3-guard/adapter")
 except Exception as e: print("adapter save skipped:", e)
-print("saved -> outputs/nb-smollm3-guard/{summary.json, results.png, adapter/}")""") )
+print("saved -> outputs/nb-smollm3-guard/{summary.json, results.png, calibration.png, adapter/}")""") )
 
 CELLS.append(md(r"""## 13 · From smoke to real results
 
