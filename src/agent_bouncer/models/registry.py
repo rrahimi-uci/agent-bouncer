@@ -34,6 +34,13 @@ BASE_MODELS: dict[str, BaseModel] = {
         "qwen3-0.6b", "Qwen/Qwen3-0.6B", "Qwen3", "0.6B", "decoder"),
     "qwen3-1.7b": BaseModel(
         "qwen3-1.7b", "Qwen/Qwen3-1.7B", "Qwen3", "1.7B", "decoder"),
+    # --- focus models: the promising small guards we optimize for the paper ---
+    "qwen2.5-1.5b": BaseModel(
+        "qwen2.5-1.5b", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen2.5", "1.5B", "decoder",
+        note="True 1.5B instruct base — the paper's canonical '1.5B guard'."),
+    "smollm3-3b": BaseModel(
+        "smollm3-3b", "HuggingFaceTB/SmolLM3-3B", "SmolLM3", "3B", "decoder",
+        note="Strong small model (3B — above the strict 1.5B tier; note in the claim)."),
     # --- newly supported SLMs ---
     "deepseek-r1-1.5b": BaseModel(
         "deepseek-r1-1.5b", "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B", "DeepSeek-R1", "1.5B",
