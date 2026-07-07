@@ -13,6 +13,10 @@ from agent_bouncer.core.schema import Decision, Surface, Verdict
 from agent_bouncer.core.taxonomy import Hazard
 from agent_bouncer.models.decoder import parse_verdict
 
+#: Per-request timeout (seconds) + bounded retries for the OpenAI clients. A guard must never hang
+#: the whole eval on a stalled socket — a slow/stuck call fails fast and is handled per-sample.
+_REQUEST_TIMEOUT_S = 45.0
+
 # OpenAI moderation category -> our taxonomy.
 _MOD_CATEGORY_TO_HAZARD: dict[str, Hazard] = {
     "harassment": Hazard.HATE,
@@ -51,7 +55,7 @@ class OpenAIModerationGuard:
         if self._client is None:
             from openai import OpenAI
 
-            self._client = OpenAI()
+            self._client = OpenAI(timeout=_REQUEST_TIMEOUT_S, max_retries=2)
         return self._client
 
     def predict(self, text: str, *, surface: Surface = Surface.USER_PROMPT) -> Verdict:
@@ -147,7 +151,7 @@ class OpenAIChatGuard:
         if self._client is None:
             from openai import OpenAI
 
-            self._client = OpenAI()
+            self._client = OpenAI(timeout=_REQUEST_TIMEOUT_S, max_retries=2)
         kwargs = build_chat_kwargs(self.model, text, reasoning_effort=self.reasoning_effort)
         start = time.perf_counter()
         try:
