@@ -5,10 +5,11 @@
 Trains **SmolLM3-3B** into an LLM/agent safety guard and evaluates it against the mini judges, end to end,
 in one notebook. It implements [`../docs/smollm3-guard-plan.md`](../docs/smollm3-guard-plan.md).
 
-**This folder is standalone.** The matched-n benchmark subsets are bundled in
-[`data/benchmarks/`](data/benchmarks/) (seed 42, per_class=80) — copy or zip the `notebooks/` folder and the
-eval sets travel with it, no download needed. If the bundle is missing the notebook falls back to Hugging
-Face. The only network requirement is the one-time model download.
+**This folder is standalone.** The benchmark data is bundled in
+[`data/benchmarks/full/`](data/benchmarks/full/) — copy or zip the `notebooks/` folder and the eval sets
+travel with it, no download needed. The notebook builds class-balanced matched-n subsets from it (seed 42)
+and also uses it for the offline training fallback. If the bundle is missing the notebook falls back to
+Hugging Face. The only network requirement is the one-time model download.
 
 - **SMOKE mode** (auto when no CUDA): a tiny proxy model + tiny data + a few steps, so the whole pipeline
   runs in minutes on CPU/MPS to prove it works.

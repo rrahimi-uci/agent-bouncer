@@ -31,10 +31,11 @@ def copy_set(subdir: str) -> int:
 def main() -> None:
     if not SRC.exists():
         raise SystemExit(f"no benchmark cache at {SRC}")
-    n_eval = copy_set("")            # eval subsets  -> notebooks/data/benchmarks/*.jsonl
-    n_full = copy_set("full")        # offline train fallback -> notebooks/data/benchmarks/full/*.jsonl
+    # Bundle only the full sets; the notebook derives class-balanced matched-n eval subsets from them
+    # (and uses them for the offline train fallback), so shipping the pre-cut subsets too would be redundant.
+    n_full = copy_set("full")        # -> notebooks/data/benchmarks/full/*.jsonl
     total = sum(f.stat().st_size for f in DST.rglob("*.jsonl"))
-    print(f"bundled {n_eval} eval subsets + {n_full} full sets into {DST.relative_to(ROOT)} "
+    print(f"bundled {n_full} full benchmark sets into {(DST / 'full').relative_to(ROOT)} "
           f"({total/1e6:.1f} MB; safepyramid excluded)")
 
 

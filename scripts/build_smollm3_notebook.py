@@ -30,11 +30,11 @@ negatives, **JailbreakBench + XSTest held out (LOBO)**, leakage-safe splits, mat
 - **SMOKE** (CPU/MPS, the default when no CUDA): tiny data + few steps + a small proxy model so the whole
   pipeline runs in minutes to prove it works — flip to a GPU for real numbers.
 
-**Benchmarks travel with the notebook:** the matched-n subsets are bundled in `data/benchmarks/` next to
-this notebook (seed 42, per_class=80), so the `notebooks/` folder is self-contained — copy or zip it and
-the eval sets come along, no download needed. If the bundle is missing it downloads the same benchmarks
-from Hugging Face. Set `OPENAI_API_KEY` (and optionally `HF_TOKEN`) to include the GPT baselines; they're
-skipped cleanly if absent.""") )
+**Benchmarks travel with the notebook:** the benchmark data is bundled in `data/benchmarks/full/` next to
+this notebook, so the `notebooks/` folder is self-contained — copy or zip it and the eval sets come along,
+no download needed. The notebook builds class-balanced matched-n subsets from it (seed 42); if the bundle
+is missing it downloads the same benchmarks from Hugging Face. Set `OPENAI_API_KEY` (and optionally
+`HF_TOKEN`) to include the GPT baselines; they're skipped cleanly if absent.""") )
 
 CELLS.append(md("## 1 · Install dependencies"))
 CELLS.append(code(r"""# Idempotent; safe to re-run. On Colab this installs everything; locally it's a no-op if present.
@@ -113,8 +113,9 @@ print(f"OPENAI baselines: {'on' if OPENAI_KEY else 'off (no OPENAI_API_KEY)'}")"
 CELLS.append(md(r"""## 3 · Data
 
 One record schema `{text, label∈{safe,unsafe}, source}` (positive class = `unsafe`). The **eval sets** are
-the matched-n subsets bundled next to this notebook (`data/benchmarks/*.jsonl`, seed 42), else downloaded
-from Hugging Face. The **training mixture** is built from *disjoint* training splits (never the
+class-balanced matched-n subsets (seed 42) built from the benchmark data bundled next to this notebook
+(`data/benchmarks/full/`), else downloaded from Hugging Face. The **training mixture** is built from
+*disjoint* training splits (never the
 eval subsets), with **JailbreakBench** (red-team transfer) and **XSTest** (over-refusal) fully **held
 out** (LOBO). Every load is wrapped so a missing source degrades gracefully."""))
 CELLS.append(code(r"""from datasets import load_dataset
@@ -200,8 +201,10 @@ def load_eval_hf():
 raw_eval = {}
 if BENCH_DIR:
     for b in EVAL_BENCHES:
-        p = os.path.join(BENCH_DIR, f"{b}.jsonl")
+        p = os.path.join(BENCH_DIR, f"{b}.jsonl")                        # a pre-cut subset, if bundled
+        pf = os.path.join(FULL_DIR, f"{b}.jsonl") if FULL_DIR else None   # else derive from the full set
         if os.path.exists(p): raw_eval[b] = _read_jsonl(p)
+        elif pf and os.path.exists(pf): raw_eval[b] = _read_jsonl(pf)
     missing = [b for b in EVAL_BENCHES if b not in raw_eval]
     if missing:
         print("filling from HF:", missing)
