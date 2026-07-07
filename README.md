@@ -146,33 +146,42 @@ python scripts/eval/run_testing.py  --exp <experiment-id> --per-class 40 --devic
 
 ## Results
 
-> **Illustrative figures from a reference run** — the repo ships with an empty `outputs/`. Generate
-> your own with `make bench` (or the Workbench), then open the **Leaderboard** tab / export a PDF.
-> Numbers vary with hardware, sampling, and model versions.
+> **From a recent 7-benchmark run in this repo** (macro-averaged, one harness). The repo ships with an
+> empty `outputs/`, so regenerate your own with `make bench` (or the Workbench) and open the
+> **Leaderboard** tab / export a PDF. Numbers vary with hardware, sampling, and model versions.
+> ⚠️ **Mixed sample sizes this run:** small models + ensembles at **n≈108/benchmark**, the GPT
+> baselines at **n=20** — so cross-group F1 isn't strictly apples-to-apples (the leaderboard flags
+> exactly this). Re-run the baselines at the same per-class for a fair comparison.
 
-7-benchmark run, `per_class=100`, one harness. The reasoning judge is scored at **three effort
-tiers** (`openai-gpt-5.2-low` / `-medium` / `-high`); the row below is the `low` tier.
 `fpr_on_benign` (over-blocking) is the headline usability metric.
 
-| Guard | Params | macro-F1 | ROC-AUC | FPR@benign ↓ | p50 ms ↓ | p90 ms ↓ |
-|-------|-------:|---------:|--------:|-------------:|---------:|---------:|
-| keyword-baseline         | 0    | 0.113 | 0.538 | **0.000** | **0.0** | **0.1** |
-| **encoder (distilbert)** | 66M  | 0.579 | 0.703 | 0.288 | **9** | **14** |
-| decoder-SFT (Qwen3)      | 0.6B | 0.672 | 0.672 | 0.355 | 292 | 419 |
-| decoder-SFT (Qwen3)      | 1.7B | 0.636 | 0.673 | 0.285 | 343 | 593 |
-| decoder-GRPO (Qwen3, RL) | 0.6B | 0.673 | 0.667 | 0.377 | 298 | 413 |
-| openai-moderation        | api  | 0.577 | 0.678 | 0.170 | 203 | 298 |
-| openai-gpt-4o-mini       | api  | 0.794 | 0.796 | 0.266 | 744 | 1069 |
-| openai-gpt-5.4-mini      | api  | 0.812 | 0.812 | 0.201 | 900 | 1450 |
-| **openai-gpt-5.2 (low)** | api  | **0.804** | **0.823** | **0.184** | 1196 | 2030 |
+| Guard | Params | macro-F1 | ROC-AUC | FPR@benign ↓ | p50 ms ↓ | p90 ms ↓ | n |
+|-------|-------:|---------:|--------:|-------------:|---------:|---------:|--:|
+| *— small models —* | | | | | | | |
+| qwen3-1.7b (SFT)          | 1.7B | 0.682 | 0.743 | 0.135 | 311 | 444 | 108 |
+| qwen3-1.7b (GRPO, RL)     | 1.7B | 0.691 | 0.560 | 0.838 | 1459 | 3679 | 108 |
+| smollm2-1.7b (SFT)        | 1.7B | 0.513 | 0.664 | 0.123 | 361 | 593 | 108 |
+| *— GPT baselines (n=20) —* | | | | | | | |
+| openai-moderation        | api  | 0.641 | 0.721 | 0.129 | 251 | 493 | 20 |
+| openai-gpt-5.4-mini      | api  | 0.773 | 0.793 | 0.214 | 546 | 807 | 20 |
+| **openai-gpt-4o-mini**   | api  | **0.865** | **0.850** | 0.243 | 790 | 1184 | 20 |
+| *— ensembles (small models) —* | | | | | | | |
+| **ensemble · max-F1** (mean of 5) | — | **0.731** | 0.744 | 0.254 | 3239 | 5937 | 108 |
+| ensemble · balanced (union×2)     | — | 0.703 | 0.746 | 0.192 | 678 | 1024 | 108 |
+| ensemble · deferral (cheap→expert) | — | 0.707 | 0.685 | 0.396 | 927 | 1317 | 108 |
+| ensemble · cascade (recall→prec)  | — | 0.682 | 0.744 | 0.135 | 515 | 1028 | 108 |
+| ensemble · min-FPR (intersection) | — | 0.369 | 0.615 | **0.041** | 2340 | 2994 | 108 |
 
-- The **66M encoder ties OpenAI's Moderation API on macro-F1 (0.579 vs 0.577) at ~22× lower
-  latency** — the only guard here fast enough for a per-call gate.
-- **GPT-5.2 (low reasoning)** leads on quality (F1 0.804, AUC 0.823) *and* over-blocking
-  (lowest FPR of any capable guard) — but at ~130× the encoder's latency, not a per-call gate.
-- **Red-teaming (prompt-injection) is the hard axis** for every guard.
-- *Latency is device-dependent (captured per run):* encoder/keyword on **CPU**, decoders on
-  **Apple MPS**, OpenAI over the **API** — which is exactly why the Workbench records hardware.
+- **The optimized ensemble beats every single small model** — the `max-F1` mix (a soft-vote `mean`
+  of 5 small models) reaches **macro-F1 0.731** vs the best single small model's 0.691.
+- **Small models can hit frontier-level over-blocking.** The `cascade` and `min-FPR` ensembles cut
+  FPR@benign to **0.135 / 0.041** — at or below OpenAI Moderation's 0.129 — at local cost.
+- **RL/preference decoders over-block badly here** (`GRPO`/`DPO` FPR 0.77–0.99): they collapsed
+  toward "always unsafe," so the **SFT** decoders are the usable small models. That's a training
+  signal, not an ensembling one.
+- **Red-teaming (prompt-injection) is still the hard axis** for every guard.
+- *Latency is device-dependent (captured per run):* decoders on **Apple MPS**, OpenAI over the
+  **API** — which is exactly why the Workbench records hardware.
 - **One honest number per cell** *(hardened in a correctness audit)*: every metric reproduces from
   the raw per-sample dumps, **ROC-AUC is one definition for all rows**, benchmark prompts found in a
   model's training set are dropped at test time, and rows scored on different sample sizes are
