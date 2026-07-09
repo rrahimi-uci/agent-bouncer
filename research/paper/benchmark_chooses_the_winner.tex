@@ -31,7 +31,7 @@
 \begin{abstract}
 Safety guards are typically compared by a single F1 computed at each model's own decision threshold. We show this turns the ranking into an artifact of the operating point: the reported winner changes with the threshold, the metric, and the benchmark. Treating that as the central measurement problem, we study a small, laptop-trained guard --- SmolLM3-3B fine-tuned with LoRA into a one-forward-pass \{safe, unsafe\} classifier --- under an operating-point-fair protocol: threshold-free AUPRC/AUROC, a matched-FPR operating point, and paired-bootstrap 95\% confidence intervals (CIs) with McNemar tests. Building this protocol also surfaced and fixed real evaluation bugs in our own first pipeline (calibration leakage, batch-amortized latency, an asymmetric per-model threshold advantage, and a baseline error-handling bias).
 
-Three results make the thesis concrete. First, native-threshold F1 is rank-inverting: two open guards swap order between their native F1 and threshold-free AUPRC. Second, a base-vs-tuned decomposition shows parameter-efficient fine-tuning specializes in-distribution while \emph{degrading} out-of-distribution ranking --- on four novel benchmarks the \emph{untuned} base outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, non-overlapping CIs) at equal peak F1, so the guard's out-of-distribution lead is inherited base competence rather than a product of tuning. Third, a mortgage case study shows the same inversion in the extreme: an in-domain fine-tune that tops a saturated benchmark ranks \emph{last} on a hardened, minimal-pair version of the same task --- below the untuned base --- and is the only system to open a fairness gap against protected-class prompts. Under the fair protocol the guard still beats Llama-Guard-3-1B decisively (non-overlapping CIs, including out-of-distribution) and ties gpt-5.4-mini on F1 at lower batch=1 latency: an efficiency result, not an accuracy one.
+Three results make the thesis concrete. First, native-threshold F1 is rank-inverting: two open guards swap order between their native F1 and threshold-free AUPRC. Second, a base-vs-tuned decomposition shows parameter-efficient fine-tuning specializes in-distribution while \emph{degrading} out-of-distribution ranking --- on four novel benchmarks the \emph{untuned} base outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, non-overlapping CIs) at equal peak F1, so the guard's out-of-distribution lead is inherited base competence rather than a product of tuning. Third, a mortgage case study shows the winner is benchmark-dependent: a saturated in-domain benchmark ranks every system near the ceiling, whereas a hardened, trap-typed rebuild de-saturates the field and exposes a small-guard-vs-frontier gap --- small guards over-block benign-but-risky prompts (false-positive rate 0.27--0.74) where a frontier model holds 0.065, and in-domain tuning that helps \emph{here} is the reverse of the general-OOD result where the untuned base leads. Under the fair protocol the guard still beats Llama-Guard-3-1B decisively (non-overlapping CIs, including out-of-distribution) and ties gpt-5.4-mini on F1 at lower batch=1 latency: an efficiency result, not an accuracy one.
 \end{abstract}
 
 \maketitle
@@ -80,7 +80,7 @@ We are explicit about limits. Matched-FPR@0.10 makes every system conservative (
 \begin{itemize}
   \item \textbf{Operating-point-fair evaluation.} We show guard rankings depend heavily on the decision threshold, so naive per-model-threshold comparisons are misleading; we instead report matched-FPR@0.10, threshold-free AUPRC/AUROC, and paired-bootstrap CIs with McNemar tests.
   \item \textbf{A base-vs-tuned decomposition.} An instruction-tuned 3B base already carries most of the safety-classification competence measurable on our in-house benchmarks by F1 (its zero-shot F1 beats both open guards'); parameter-efficient tuning specializes in-distribution and does \emph{not} meaningfully improve the two in-house held-out benchmarks we can measure (macro $-0.005$), and slightly regresses over-refusal.
-  \item \textbf{A domain stress test of the same effect.} On a mortgage fair-lending task we show a benchmark can be \emph{saturated} --- a zero-shot 3B base is already near-ceiling, so every system looks excellent --- and we rebuild it as a hardened, minimal-pair set on which the ranking \emph{inverts}: the in-domain fine-tune that won the saturated version ranks last, below the untuned base, and is the only system to develop a fairness gap against protected-class prompts (\Cref{sec:mortgage-casestudy}).
+  \item \textbf{A domain stress test of the same effect.} On a mortgage fair-lending task we show a benchmark can be \emph{saturated} --- a zero-shot 3B base is already near-ceiling, so every system looks excellent and none can be ranked --- and we rebuild it as a hardened, trap-typed set that de-saturates the field: it exposes a small-guard-vs-frontier over-blocking gap (benign false-positive rate 0.27--0.74 vs.\ 0.065) and shows which fine-tune ``wins'' flips between this in-domain set and the general novel sets (\Cref{sec:mortgage-casestudy}).
   \item \textbf{A small, local, laptop-trained guard.} On threshold-free AUPRC it surpasses purpose-built open guards --- Llama-Guard-3-1B decisively (non-overlapping CIs), \emph{including} on the novel held-out benchmarks, and ShieldGemma-2b on the in-house pooled / in-dist / in-house-held-out sets (ShieldGemma's novel runs are pending) --- and it matches frontier gpt-5.4-mini on F1 at \textasciitilde{}4$\times$ lower latency.
   \item \textbf{A rigorous, reproducible, laptop-scale protocol.} Paired CIs, McNemar, matched-FPR, and family-level decontamination --- a pipeline that exposed real evaluation bugs in our own first attempt --- released as an open notebook.
 \end{itemize}
@@ -505,20 +505,20 @@ The three analyses below share one message, summarized in \Cref{fig:ranking-flip
   regime/.style={draw, rounded corners, align=left, inner sep=5pt, font=\small, text width=44mm, fill=black!4},
   win/.style={draw, rounded corners, align=left, inner sep=5pt, font=\small, text width=30mm, fill=black!8}
 ]
-  \node[cand] (c) {\textbf{Same candidate systems}\\ untuned base $\cdot$ fine-tuned guard $\cdot$ open guards};
+  \node[cand] (c) {\textbf{Same candidate systems}\\ untuned base $\cdot$ in-domain fine-tune $\cdot$ open guards $\cdot$ frontier};
   \node[regime, below=7mm of c.west, anchor=north west, xshift=-2mm] (r1) {\textbf{Saturated in-domain}\\ (negatives $\approx 0$)};
-  \node[regime, below=4mm of r1] (r2) {\textbf{In-house pooled}\\ (fair, threshold-free)};
-  \node[regime, below=4mm of r2] (r3) {\textbf{Novel / hardened}\\ (OOD, minimal-pair)};
-  \node[win, right=14mm of r1] (w1) {in-domain \textbf{fine-tune} wins};
-  \node[win, right=14mm of r2] (w2) {\textbf{fine-tuned guard} wins (base close behind)};
-  \node[win, right=14mm of r3] (w3) {\textbf{untuned base} wins};
+  \node[regime, below=4mm of r1] (r2) {\textbf{Hardened in-domain}\\ (trap-typed)};
+  \node[regime, below=4mm of r2] (r3) {\textbf{General novel}\\ (OOD)};
+  \node[win, right=14mm of r1] (w1) {no separation --- all near ceiling};
+  \node[win, right=14mm of r2] (w2) {in-domain \textbf{fine-tune} leads; frontier $\gg$ small guards};
+  \node[win, right=14mm of r3] (w3) {\textbf{untuned base} $>$ tuned guard};
   \draw[->] (c) -- (r1.north);
   \draw[->] (r1) -- (w1);
   \draw[->] (r2) -- (w2);
   \draw[->] (r3) -- (w3);
 \end{tikzpicture}%
 }
-\caption{The benchmark chooses the winner. The identical set of systems is re-ranked by the evaluation regime: an in-domain fine-tune tops a saturated benchmark, ties/leads on a fair in-house pool, and \emph{loses to the untuned base} out-of-distribution and on a hardened minimal-pair set (\S\ref{sec:base-vs-tuned}, \S\ref{sec:mortgage-casestudy}).}
+\caption{The benchmark chooses the winner. The identical systems yield a different verdict per regime: a saturated benchmark separates nobody; a hardened in-domain rebuild is led by the in-domain fine-tune, with a frontier model far ahead of every small guard; and on general out-of-distribution benchmarks the untuned base outranks the tuned guard (\S\ref{sec:base-vs-tuned}, \S\ref{sec:mortgage-casestudy}).}
 \label{fig:ranking-flip}
 \end{figure}
 
@@ -569,55 +569,52 @@ This is the constructive complement to prior reports that fine-tuning can \emph{
 \subsection{Case study: a saturated domain benchmark and its hardened rebuild}
 \label{sec:mortgage-casestudy}
 
-The base-vs-tuned inversion above is not an artifact of our particular novel sets; it reproduces --- more starkly --- when we control a benchmark's difficulty directly. Consider a domain guard task (mortgage fair-lending, compliance, and security-misuse prompts). The obvious benchmark is \emph{saturated}: because the flag and allow classes are lexically separable (overt violations vs.\ clean textbook questions) and the negatives sit near probability zero, a floor-level threshold trivially divides them and every system looks near-perfect --- the in-domain LoRA fine-tune (\emph{mortgage-SFT}) best of all. That is exactly the kind of ``tuning wins'' headline our protocol is built to interrogate, so we discard the saturated set and rebuild the task to be hard.
+The base-vs-tuned finding above is not specific to our novel sets: the winner also moves when we control a benchmark's difficulty directly. Take a domain guard task --- mortgage fair-lending, compliance, and security-misuse prompts. The obvious benchmark is \emph{saturated}: the flag and allow classes are lexically separable (overt violations vs.\ clean textbook questions) and the negatives sit near probability zero, so a floor threshold trivially divides them and every system --- base, in-domain fine-tune, and open guards alike --- scores near the ceiling and is statistically indistinguishable. A saturated set cannot rank guards, so we replace it with a hardened one.
 
-We rebuild the same task as a \emph{hardened, minimal-pair} benchmark\footnote{Released with the artifact bundle: the hardened set \texttt{guard\_benchmark\_hard.jsonl} (318 rows --- 288 minimal-pair items over 144 pairs, plus 30 wrapper variants), its jury-gated intermediate \texttt{hard\_admitted.json}, the construction scripts \texttt{wf\_build\_hard\_benchmark\_v2.mjs} and \texttt{build\_hard\_jsonl.mjs}, and the scorer \texttt{eval\_mortgage\_hard.py}, all under the released \texttt{research/} bundle. The saturated legacy set (\texttt{guard\_benchmark.jsonl}) and its family-safe split are released alongside.}: for each scenario, a flag prompt and a lawful allow twin that share vocabulary and differ only in the requested action (e.g.\ ``coach me to present this rental as owner-occupied'' vs.\ ``how do we verify true occupancy''), with keyword and jailbreak-wrapper cues stripped from the positives and labels keyed on the requested \emph{action} rather than the topic. We score at a threshold frozen on a dev split to a fixed FPR budget, and add three operating-point-robust diagnostics: minimal-pair accuracy (both twins correct), recall at 5\% FPR, and a guard-fairness gap (benign false-positive rate on protected-class-\emph{mentioning} prompts minus non-mentioning).
+The hardened set\footnote{Released in the \texttt{research/} bundle as \texttt{notebooks/data/benchmarks/full/guard\_benchmark\_hard.jsonl}, scored by \texttt{scripts/eval\_mortgage\_hard.py}; the saturated legacy set (\texttt{guard\_benchmark.jsonl}) is released alongside.} contains 334 trap-typed items (195 unsafe / 139 safe; 284 \emph{very-hard} and 50 \emph{borderline}; loan-officer and consumer personas) engineered to defeat surface cues (\Cref{tab:hardcomp}). It mixes disguised \emph{positives} --- minimal-pair twins, euphemism, coded-proxy, buried instruction-injection, dual-use, and multi-turn setups --- with hard \emph{negatives}: benign prompts that look risky, such as fair-lending education questions, legitimate business-justified underwriting, and over-refusal bait. The set has no train/dev split, so we report operating-point-independent AUPRC and Optimal-F1 as the fair primary, plus accuracy, recall, precision, and FPR at each system's own best-F1 point (gpt-5.4-mini at its native point).
 
-\begin{figure}[t]
+\begin{table}[t]
+\small
 \centering
-\resizebox{\columnwidth}{!}{%
-\begin{tikzpicture}[
-  >=Stealth, node distance=4.5mm,
-  pstep/.style={draw, rounded corners, align=center, inner sep=5pt, font=\small, text width=66mm, fill=black!2}
-]
-  \node[pstep] (sat) {\textbf{Saturated benchmark}: flag/allow classes lexically separable, negatives near $0$ $\Rightarrow$ a floor threshold trivially ``wins''};
-  \node[pstep, below=of sat] (gen) {\textbf{Author minimal pairs}: per scenario, a flag twin \& a lawful allow twin sharing vocabulary; keyword/jailbreak cues stripped; labels keyed on the requested \emph{action}};
-  \node[pstep, below=of gen] (jury) {\textbf{Blind label gate}: 3 diverse jurors label each item unseen; admit only on agreement, with a cross-model-family (gpt) validity check};
-  \node[pstep, below=of jury] (split) {\textbf{Family-safe split}: both twins \& all wrapper variants held in the same split};
-  \node[pstep, below=of split] (ev) {\textbf{Frozen-FPR evaluation}: threshold fixed on dev to a target FPR; report recall@FPR, minimal-pair accuracy, guard-fairness gap, wrapper-flip};
-  \draw[->] (sat) -- node[right, font=\scriptsize]{rebuild} (gen);
-  \draw[->] (gen) -- (jury);
-  \draw[->] (jury) -- (split);
-  \draw[->] (split) -- (ev);
-\end{tikzpicture}%
-}
-\caption{Turning a saturated benchmark into a hardened, minimal-pair rebuild and scoring it (\S\ref{sec:mortgage-casestudy}). Technique only; result magnitudes are in \Cref{tab:mortgage-casestudy}.}
-\label{fig:hardpipeline}
-\end{figure}
+\caption{Composition of the hardened mortgage set (334 items). ``Trap type'' is the surface cue an item is built to defeat; \emph{hard\_negative} items are benign prompts that superficially resemble violations. Also: 195 unsafe / 139 safe; difficulty very-hard 284 / borderline 50; categories safe 139, security-misuse 89, fair-lending 65, compliance 41.}
+\label{tab:hardcomp}
+\begin{tabular}{lr}
+\toprule
+Trap type & n \\
+\midrule
+hard\_negative (benign, looks risky) & 75 \\
+minimal\_pair & 60 \\
+euphemism & 52 \\
+business\_justified & 45 \\
+buried\_injection & 39 \\
+over\_refusal\_bait & 20 \\
+dual\_use & 15 \\
+multi\_turn & 15 \\
+coded\_proxy & 13 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-On the hardened set the saturated-benchmark ranking \textbf{inverts} (\Cref{tab:mortgage-casestudy}; construction in \Cref{fig:hardpipeline}). Mortgage-SFT, the saturated-benchmark winner, ranks \emph{last} among the local systems (recall@5\%FPR 0.174, minimal-pair accuracy 0.174) --- below the untuned base (0.663 / 0.616) and below a general-safety guard never trained on mortgage data (0.570 / 0.512). It is also the only system to open a fairness gap ($+0.200$: it flags 20\% of benign protected-class-mentioning prompts versus 0\% of otherwise-matched non-mentioning ones), so in-distribution specialization did not merely fail to transfer --- it induced disparate over-blocking of protected-class borrowers' legitimate questions. A strong external model (gpt-5.4-mini) stays well above every small guard (minimal-pair accuracy 0.733), which indicates the set is hard because of a capability gap rather than label noise.
+Three things follow (\Cref{tab:mortgage-casestudy}). First, the hardened set \textbf{de-saturates} the comparison: where the saturated version left every system near the ceiling, here threshold-free AUPRC spreads from 0.82 to 0.92 and accuracy from 0.65 to 0.95. Second, the difficulty is \textbf{over-blocking, not misses}: every small guard keeps high recall on the disguised positives (0.93--0.95; minimal-pair and coded-proxy catch-rates $\approx$1.0) but pays a steep false-positive rate on the hard negatives (base 0.53, general-safety guard 0.74, mortgage-SFT 0.27), whereas the frontier gpt-5.4-mini holds FPR at 0.065 at the same recall --- a capability gap, not label noise, so the set is hard for the right reason. Third, the \textbf{winner is benchmark-dependent}: the in-domain mortgage-SFT --- indistinguishable on the saturated set --- now has the best small-guard AUPRC (0.924), Optimal-F1 (0.885), and FPR (0.273), ahead of the untuned base (0.892 / 0.819 / 0.525, though the AUPRC gap to SFT is within overlapping CIs) and well ahead of the general-safety guard (0.824 / 0.756 / 0.741). This is the \emph{opposite} in-domain-tuning verdict from the general novel benchmarks (\S\ref{sec:base-vs-tuned}), where the untuned base outranks the tuned guard --- so whether fine-tuning helps depends on whether the hard test is in-domain or general OOD.
 
 \begin{table*}[t]
 \centering
 \small
-\caption{Results on the \textbf{hardened} mortgage benchmark (test split; a single threshold frozen on the hardened dev split at 5\% FPR). AUPRC is threshold-free; minimal-pair accuracy $=$ both twins classified correctly; fairness gap $=$ benign FPR on protected-class-mentioning minus non-mentioning prompts. The in-domain fine-tune (mortgage-SFT) ranks last among the deployable guards --- below the untuned base and a general-safety guard --- and is the only system to open a fairness gap; the frontier reference stays well above, indicating a capability gap rather than label noise.}
+\caption{Results on the hardened mortgage benchmark (334 items). AUPRC and Optimal-F1 are threshold-free / operating-point-independent (fair primary); accuracy, recall, precision, and FPR are at each system's own best-F1 point, with gpt-5.4-mini at its native decision point. Every small guard over-blocks the hard negatives (FPR 0.27--0.74) where the frontier holds 0.065; the in-domain fine-tune is the strongest small guard.}
 \label{tab:mortgage-casestudy}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-System & AUPRC & Recall@5\%FPR & Minimal-pair acc & Fairness gap \\
+System & AUPRC [95\% CI] & Opt-F1 & Accuracy & Recall & Precision & FPR \\
 \midrule
-Base (zero-shot SmolLM3-3B) & \textbf{0.899} & \textbf{0.663} & \textbf{0.616} & +0.014 \\
-Mortgage-SFT (in-domain LoRA) & 0.793 & 0.174 & 0.174 & \textbf{+0.200} \\
-General-safety guard (ours) & 0.887 & 0.570 & 0.512 & $-0.098$ \\
-gpt-5.4-mini (external ceiling) & --- & 1.000$^{\dagger}$ & 0.733 & +0.074 \\
+Base (zero-shot SmolLM3-3B) & 0.892 [0.854, 0.925] & 0.819 & 0.754 & 0.954 & 0.718 & 0.525 \\
+Mortgage-SFT (in-domain LoRA) & 0.924 [0.849, 0.946] & 0.885 & 0.856 & 0.949 & 0.830 & 0.273 \\
+General-safety guard (ours) & 0.824 [0.774, 0.873] & 0.756 & 0.650 & 0.928 & 0.637 & 0.741 \\
+gpt-5.4-mini (frontier ceiling) & --- & --- & \textbf{0.949} & \textbf{0.959} & \textbf{0.954} & \textbf{0.065} \\
 \bottomrule
 \end{tabular}
-
-\vspace{2pt}
-{\footnotesize $^{\dagger}$gpt-5.4-mini is at its fixed native decision point (FPR 0.27), not FPR-matched; shown as a capability ceiling.}
 \end{table*}
 
-We present this as a case study, not a headline benchmark: the hardened set is seed-scale (172 core test items) and its labels are gated by a blind multi-persona LLM jury plus a cross-model-family check (86.6\% agreement) rather than credentialed reviewers, so absolute magnitudes will move under expert re-adjudication. The \emph{direction}, however, matches \S\ref{sec:base-vs-tuned}: the benchmark chooses the winner, and an in-domain fine-tune that tops a saturated set is exactly what collapses on its adversarial rebuild.
+We present this as a case study, not a headline benchmark: the hardened set is seed-scale (334 items) and single-annotator, and because every system keeps high recall the discriminating signal lives in AUPRC and FPR rather than recall. Absolute magnitudes will move under broader adjudication; the robust reading is comparative --- the de-saturation, the small-guard-vs-frontier FPR gap, and the benchmark-dependent fine-tuning verdict (in-domain tuning leads \emph{here} but the untuned base leads on general OOD) --- all instances of the benchmark choosing the winner.
 
 \subsection{Operating-point fairness: rankings depend on the threshold}
 \label{sec:operating-point-fairness}
@@ -741,7 +738,7 @@ vs gpt-5.4-mini & latency (batch=1) & 124 ms (local) & \textasciitilde{}512 ms (
 
 On threshold-free AUPRC the guard surpasses Llama-Guard-3-1B decisively --- the only non-overlapping-CI cross-system result, and it holds on the four novel held-out benchmarks --- and it exceeds ShieldGemma-2b on the in-house pooled / in-dist / in-house-held-out sets on point estimates (ShieldGemma's novel runs are pending). It is a statistical tie with gpt-5.4-mini on F1 at \textasciitilde{}4x lower batch=1 latency and no API cost: an efficiency win at parity accuracy, not an accuracy beat.
 
-Our base-vs-tuned decomposition tempers the fine-tuning narrative (numbers in \Cref{tab:related-base-vs-tuned,tab:novel-auprc}). The zero-shot base is already a competent classifier, and LoRA's gains are almost entirely in-distribution: the two in-house held-out benchmarks barely move, and on the four novel benchmarks the \emph{untuned} base actually outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied peak F1. The guard's out-of-distribution lead is therefore inherited base competence, and tuning \emph{degrades} out-of-distribution ranking rather than improving generalization. The mortgage case study (\S\ref{sec:mortgage-casestudy}) shows the same mechanism at its limit: an in-domain fine-tune that wins a saturated benchmark ranks last on its hardened rebuild and uniquely over-blocks protected-class prompts. The recurring lesson is that a guard's apparent quality is inseparable from the operating point and the benchmark it is measured on.
+Our base-vs-tuned decomposition tempers the fine-tuning narrative (numbers in \Cref{tab:related-base-vs-tuned,tab:novel-auprc}). The zero-shot base is already a competent classifier, and LoRA's gains are almost entirely in-distribution: the two in-house held-out benchmarks barely move, and on the four novel benchmarks the \emph{untuned} base actually outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied peak F1. The guard's out-of-distribution lead is therefore inherited base competence, and tuning \emph{degrades} out-of-distribution ranking rather than improving generalization. The mortgage case study (\S\ref{sec:mortgage-casestudy}) makes the point in a domain: a saturated benchmark ranks every system near the ceiling, while a hardened, trap-typed rebuild de-saturates the field and exposes a small-guard-vs-frontier over-blocking gap (benign FPR 0.27--0.74 vs.\ 0.065) --- and the fine-tuning verdict flips (in-domain tuning leads there, the untuned base leads on general OOD). The recurring lesson is that a guard's apparent quality is inseparable from the operating point and the benchmark it is measured on.
 
 We are candid about scope. Matched-FPR@0.10 makes every system conservative (guard recall 0.431 there), so AUPRC is our fairest summary, and the \emph{deployed} point over-blocks (FPR 0.306). A single global threshold is structurally in-distribution-optimized. ShieldGemma is exercised somewhat outside its designed content-policy regime and its novel-benchmark AUPRC is still pending. Some benchmark n are small (wide CIs). The guard is single-token with no reasoning or adversarial-robustness evaluation, and ToxicChat is eval-only under its non-commercial terms.
 
@@ -751,7 +748,7 @@ We are candid about scope. Matched-FPR@0.10 makes every system conservative (gua
   \item \textbf{Specializing without sacrificing OOD robustness.} Since fine-tuning specialized in-distribution but \emph{degraded} the base's OOD score ranking (\Cref{sec:base-vs-tuned}), a central direction is training recipes --- broad, family-decontaminated data plus regularization --- that add in-distribution competence \emph{without} losing the untuned base's operating-point robustness on unseen distributions.
   \item \textbf{Broad-data training as the generalization lever.} Since tuning specialized in-distribution without improving the in-house held-out F1, the most promising direction is scaling and diversifying training data (source-family coverage, near-duplicate-filtered) to test whether generalization, not just in-distribution fit, can be trained in.
   \item \textbf{Controlled objective comparison.} A like-for-like head-to-head of SFT vs DPO~\cite{rafailov2023dpo} vs IPO~\cite{azar2023ipo} vs KTO~\cite{ethayarajh2024kto} vs ORPO~\cite{hong2024orpo} (and single-token GRPO~\cite{shao2024deepseekmath} vs PPO~\cite{schulman2017ppo}) under identical data, splits, and calibration, to isolate the effect of the learning objective on both in-distribution specialization and held-out transfer.
-  \item \textbf{Hardened, expert-labeled benchmarks.} The mortgage case study (\Cref{sec:mortgage-casestudy}) used minimal-pair items gated by an LLM jury at seed scale; expert re-adjudication, scaling, and applying the same saturated-vs-hardened rebuild across domains would turn the observation --- that in-domain tuning which tops a saturated set backfires on its hardened rebuild --- from a case study into a headline result, and provide a benchmark whose difficulty is calibrated to model capability.
+  \item \textbf{Hardened, expert-labeled benchmarks.} The mortgage case study (\Cref{sec:mortgage-casestudy}) used a seed-scale, single-annotator hardened set; expert re-adjudication, scaling, and applying the same saturated-vs-hardened rebuild across domains would turn the observations --- de-saturation and the small-guard-vs-frontier over-blocking gap --- from a case study into a headline result, and provide a benchmark whose difficulty is calibrated to model capability.
   \item \textbf{Adversarial robustness.} Evaluation and hardening against paraphrase, obfuscation, and prompt-level attacks, which our current single-token guard does not measure.
   \item \textbf{Agent surfaces (the namesake, not yet evaluated).} Extending the guard beyond input prompts to tool-call arguments, tool outputs, and model responses --- the surfaces that motivate the \textsc{agent-bouncer} name but that this paper does \emph{not} evaluate. This is the highest-value next step and the most direct way to make the ``agent'' framing empirical rather than aspirational.
   \item \textbf{Completing the baseline matrix.} Resolving the pending ShieldGemma-2b runs on the novel held-out benchmarks, and measuring open-guard latency, for a complete threshold-free and efficiency comparison.
