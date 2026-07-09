@@ -7,6 +7,8 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
 \usepackage[capitalize]{cleveref}
+\usepackage{microtype}                 % char protrusion + font expansion: fixes text spilling past the margin
+\setlength{\emergencystretch}{3em}     % allow extra glue on hard lines so nothing overflows the text block
 
 % ---- acmart housekeeping (nonacm) ----
 \settopmatter{printacmref=false}
