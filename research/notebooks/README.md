@@ -5,6 +5,11 @@
 Trains **SmolLM3-3B** into an LLM/agent safety guard and evaluates it against the mini judges, end to end,
 in one notebook. It implements [`../docs/smollm3-guard-plan.md`](../docs/smollm3-guard-plan.md).
 
+> **This notebook is a companion demo, not the paper's reproduction path.** The paper's open-guard /
+> AUPRC / matched-FPR results are produced by `../scripts/` (see `../README.md`). This notebook is a
+> self-contained illustrative pipeline; its GPT baselines are a mini-judge parity check and use a
+> demo-grade **fail-closed** default on API errors (the paper's *abstain* policy lives in the eval scripts).
+
 **This folder is standalone.** The benchmark data is bundled in
 [`data/benchmarks/full/`](data/benchmarks/full/) — copy or zip the `notebooks/` folder and the eval sets
 travel with it, no download needed. The notebook builds class-balanced matched-n subsets from it (seed 42)

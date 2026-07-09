@@ -1,3 +1,5 @@
+// SUPERSEDED: generated the earlier synthetic 318-row minimal-pair set, NOT the committed 334-row
+// trap-typed guard_benchmark_hard.jsonl the paper analyzes. Kept for history only.
 export const meta = {
   name: 'build-hard-mortgage-benchmark-v2',
   description: 'Scaled hardened mortgage guard benchmark: 16 hard-case families as minimal pairs, blind chunked 3-juror label gate',
