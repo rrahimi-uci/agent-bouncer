@@ -1,3 +1,5 @@
+// SUPERSEDED: this builds the earlier *synthetic* 318-row minimal-pair set. It is NOT the committed
+// guard_benchmark_hard.jsonl the paper analyzes (a 334-row trap-typed set); kept for history only.
 // Build guard_benchmark_hard.jsonl from the admitted workflow items.
 // Family-safe split (both twins of a pair_group stay together), deterministic.
 // Adds wrapper variants (legacy jailbreak/urgency prefixes) for the wrapper-flip metric.
