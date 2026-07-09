@@ -1,0 +1,15 @@
+# Reproducibility environment for the research/ bundle (notebook + scripts).
+# Pinned to the versions the results were produced with. Python 3.11+ (see .python-version).
+# The paper (research/paper) compiles with `tectonic` and needs none of these.
+torch==2.12.1
+transformers==5.12.1
+peft==0.19.1
+trl==1.7.0
+datasets==5.0.0
+accelerate==1.14.0
+safetensors==0.8.0
+numpy==2.5.0
+pandas==3.0.3
+matplotlib==3.11.0
+openai==2.44.0
+scikit-learn==1.9.0

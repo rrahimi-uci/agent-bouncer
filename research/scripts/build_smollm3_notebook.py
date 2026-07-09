@@ -1,4 +1,4 @@
-"""Builds notebooks/smollm3_guard_end_to_end.ipynb — a self-contained, end-to-end notebook that
+"""Builds notebooks/smollm3_guard_reproduction.ipynb — a self-contained, end-to-end notebook that
 implements the SmolLM3-3B guard plan (docs/smollm3-guard-plan.md). Run: python scripts/build_smollm3_notebook.py
 
 The notebook depends only on pip packages (transformers/peft/datasets/torch/numpy/pandas/matplotlib) — no
@@ -147,7 +147,7 @@ def _read_jsonl(path):
 # Find the cached benchmarks: the bundle shipped next to this notebook (data/benchmarks/) is preferred, so
 # the notebooks/ folder is self-contained; the repo copy and a couple of common layouts are also checked.
 def _find_dir(name):
-    for base in (".", "notebooks", "..", "../..", os.path.dirname(os.getcwd())):
+    for base in (".", "notebooks", ".."):   # bounded to the research bundle
         p = os.path.join(base, name)
         if os.path.isdir(p): return os.path.normpath(p)
     return None
@@ -666,6 +666,6 @@ subsets when present, so the numbers line up with the leaderboard.""") )
 nb = {"cells": CELLS, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
       "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
 os.makedirs("notebooks", exist_ok=True)
-with open("notebooks/smollm3_guard_end_to_end.ipynb", "w") as f:
+with open("notebooks/smollm3_guard_reproduction.ipynb", "w") as f:
     json.dump(nb, f, indent=1)
-print("wrote notebooks/smollm3_guard_end_to_end.ipynb with", len(CELLS), "cells")
+print("wrote notebooks/smollm3_guard_reproduction.ipynb with", len(CELLS), "cells")
