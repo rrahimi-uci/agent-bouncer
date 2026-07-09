@@ -1,6 +1,6 @@
 # Notebooks
 
-## `smollm3_guard_end_to_end.ipynb` — self-contained SmolLM3-3B guard pipeline
+## `smollm3_guard_reproduction.ipynb` — self-contained SmolLM3-3B guard pipeline
 
 Trains **SmolLM3-3B** into an LLM/agent safety guard and evaluates it against the mini judges, end to end,
 in one notebook. It implements [`../docs/smollm3-guard-plan.md`](../docs/smollm3-guard-plan.md).
