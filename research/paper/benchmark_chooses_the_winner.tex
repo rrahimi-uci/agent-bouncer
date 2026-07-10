@@ -149,9 +149,10 @@ We are explicitly a \emph{measurement and controlled study}, not a new architect
 \item \textbf{(Engineering) A reproducible laptop-scale protocol} --- family-level decontamination and paired CIs across the benchmark suite \cite{mazeika2024harmbench,han2024wildguard,jiang2024wildteaming,xie2024sorrybench,rottger2024xstest,cui2024orbench,chao2024jailbreakbench,lin2023toxicchat,ji2023beavertails,markov2023holistic} --- released as open code (the evaluation scripts plus a single orchestrating reproduction notebook). We scope claims to detection-based content classification and note that adversarial evasion remains open \cite{hackett2025bypassing}.
 \end{itemize}
 
-\section{Method}
+\section{Methodology}
+\label{sec:methodology}
 
-\Cref{fig:pipeline} is the whole setup at a glance --- how the benchmark pool is split, the fine-tuning and calibration \emph{technique}, and the frozen, operating-point-fair evaluation. It carries no result numbers (those live in the tables it points to); the rest of this section and \S\ref{sec:setup} detail each stage.
+\Cref{fig:pipeline} is the whole method at a glance --- how the benchmark pool is split, the fine-tuning and calibration \emph{technique}, and the frozen, operating-point-fair evaluation. It carries no result numbers (those live in the tables it points to); the rest of this section details each stage, and the hardware, software, and reproducibility setup is collected in \Cref{sec:impl}.
 
 \begin{figure*}[t]
 \centering
@@ -205,6 +206,10 @@ A single forward pass yields the score (\Cref{fig:logprob-head}) --- no autoregr
 \label{fig:logprob-head}
 \end{figure}
 
+\subsection{Model selection: small language models}
+
+We use \textbf{SmolLM3-3B}~\cite{bakouch2025smollm3} as the primary guard base --- small enough to fine-tune and serve on a single consumer laptop, instruction-tuned (so it already carries much of the safety-classification competence, \Cref{sec:base-vs-tuned}), and it tokenizes \texttt{safe}/\texttt{unsafe} as single tokens, which the one-forward-pass logprob head requires. The recipe is deliberately base-agnostic; to check that our conclusions are not an artifact of one model family, we apply the \emph{identical} LoRA recipe and evaluation protocol to three further small instruction-tuned bases that also expose single-token verdicts --- Qwen2.5-1.5B-Instruct, DeepSeek-R1-Distill-Qwen-1.5B, and SmolLM2-1.7B-Instruct.
+
 \subsection{Calibration}
 
 The temperature $T$ (temperature scaling \cite{guo2017calibration}) and threshold $\tau$ are the only post-training free parameters, and both are fit exclusively on an \textbf{in-distribution dev split} drawn from the four in-distribution benchmarks (BeaverTails, ToxicChat, Prompt Injections, Jailbreak Classification). The two in-house held-out benchmarks (JailbreakBench, XSTest) and the four novel benchmarks contribute zero rows to calibration; this is a deliberate correction of an earlier pipeline in which held-out dev rows had leaked into temperature/threshold fitting. The clean, leak-free calibration yields the values in \Cref{tab:calibration}.
@@ -254,10 +259,8 @@ Seed & 42 \\
 
 Training ran entirely on a consumer Apple M4 Max laptop (36 GB unified memory, MPS backend, no CUDA), demonstrating that the recipe is reproducible at laptop scale. Because ToxicChat is non-commercial, it is used for evaluation only and is excluded from any released model's training data.
 
-\section{Experimental Setup}
-\label{sec:setup}
-
 \subsection{Task and label mapping}
+\label{sec:setup}
 
 The guard is a binary classifier that emits a single-token verdict, \texttt{safe} or \texttt{unsafe}. We read the logits at the last position, take a softmax over the \texttt{\{safe, unsafe\}} token pair, and treat the resulting $P(\text{unsafe})$ as the decision score. A prompt is labeled \texttt{unsafe} if it should be blocked (harmful content, successful jailbreak/injection, policy-violating request) and \texttt{safe} otherwise; the over-refusal axis contributes benign-but-superficially-risky prompts whose gold label is \texttt{safe}. All evaluations reduce to this one score per row, obtained in a single forward pass.
 
@@ -363,11 +366,30 @@ Training data is leakage-filtered against the test splits. Our initial pipeline 
 
 Building the pipeline surfaced four real bugs in our own first evaluation, each of which we corrected before reporting: (1) a \textbf{calibration leak} in which in-house held-out dev rows had leaked into temperature/threshold fitting --- fixed to in-dist-only calibration ($T=2.10$, $\tau=0.59$); (2) \textbf{batch-amortized latency} (throughput/16) --- replaced with true batch=1 p50/p90; (3) an \textbf{asymmetric threshold advantage} (only our model got a dev-tuned threshold while baselines were fixed points) --- addressed via matched-FPR + threshold-free AUPRC; and (4) a \textbf{GPT error-handling bias} in which API errors defaulted to \texttt{unsafe} (inflating the GPT FPR) --- corrected to \emph{abstain}. We verified this does not affect the reported comparison: an abstention-logged re-score of the in-house GPT baseline found \textbf{zero} API errors in the original run (the fail-closed branch never fired), and it reproduces the tie (GPT FPR $0.321{\to}0.326$; guard\,$-$\,GPT $\Delta$F1 $+0.007$, McNemar $p{=}0.65$).
 
-\subsection{Hardware}
+\section{Implementation Framework}
+\label{sec:impl}
 
-Training and evaluation run on a single consumer Apple M4 Max laptop (36 GB unified memory, MPS backend, no CUDA). Fine-tuning uses LoRA ($r=32$, $\alpha=64$, dropout 0.05, all seven projections) with completion-only loss on the verdict token: 60.5M trainable parameters (1.93\% of 3.14B), bf16, 300 optimizer steps in $\approx$71 minutes, seed 42. Guard inference latency at batch=1 is p50 124 ms / p90 188 ms.
+\subsection{Hardware configuration}
 
-\section{Results}
+Training and evaluation run on a single consumer Apple M4 Max laptop (36 GB unified memory, MPS backend, no CUDA); everything --- training, calibration, and evaluation --- fits on the laptop. Guard inference latency at batch=1 is p50 124 ms / p90 188 ms.
+
+\subsection{Software and frameworks}
+
+The guard is built on Hugging Face \texttt{transformers} with \texttt{peft} (LoRA) and \texttt{trl}, PyTorch on the MPS backend, and \texttt{datasets} for benchmark loading; evaluation uses NumPy/pandas, and Matplotlib for figures. Exact pinned versions are released with the code (\texttt{requirements.txt}).
+
+\subsection{Model configuration and hyperparameters}
+
+Fine-tuning uses LoRA ($r=32$, $\alpha=64$, dropout 0.05) on all seven projection matrices (q, k, v, o, gate, up, down) with a completion-only objective on the single verdict token: 60.5M trainable parameters (1.93\% of 3.14B), bf16, 300 optimizer steps in $\approx$71 minutes, seed 42. The full recipe is in \Cref{tab:lora} and the post-training calibration values in \Cref{tab:calibration}.
+
+\subsection{Reproducibility}
+
+All results are reproduced by the released scripts, orchestrated by a single notebook (\texttt{paper\_reproduction.ipynb}) that runs each producing script and renders every table and figure from the emitted JSON, with a \texttt{verify\_cached} mode (render committed artifacts) and a \texttt{recompute} mode (rerun scoring), plus a validation checklist against the reported numbers. Evaluation rows are reconstructed from the public benchmark datasets; we recommend pinning dataset revisions for byte-exact reruns.
+
+\subsection{System architecture}
+
+\Cref{fig:pipeline} shows the end-to-end pipeline (data splits $\to$ fine-tuning and calibration $\to$ frozen evaluation) and \Cref{fig:logprob-head} the single-token logprob head that all systems are read through.
+
+\section{Experimental Results and Analysis}
 \label{sec:results}
 
 We report all systems at threshold-free operating points (AUPRC/AUROC) and at a common, conservative operating point (matched-FPR@0.10), with paired-bootstrap 95\% CIs where available. Latency is measured at true batch size 1.
@@ -491,7 +513,7 @@ gpt-5.4-mini latency & \textasciitilde{}512 ms (remote API) \\
 
 The F1 difference is not significant (McNemar $p=0.20$; CI spans zero, its lower bound admitting the guard being 0.006 \emph{worse}), so this is a statistical \textbf{tie} with the guard nominally ahead, not an accuracy beat. Two caveats. First, this comparison places the guard at its in-dist-tuned threshold ($\tau=0.59$) against gpt at its fixed native point --- the same per-model-threshold asymmetry we criticize in \Cref{sec:operating-point-fairness}; because gpt exposes no tunable threshold, a matched-FPR comparison is not possible, so the tie is threshold-advantaged in the guard's favor and should be read as such. Second, latency is cross-substrate: 124 ms is local M4 Max inference while \textasciitilde{}512 ms is a remote API round-trip (network plus server-side batching), so ``\textasciitilde{}4x lower latency'' is deployment-realistic but \emph{not} a controlled hardware comparison, and it is a \textbf{guard-vs-gpt claim only} --- Llama-Guard and ShieldGemma latency were not measured. With those caveats, the guard achieves parity accuracy locally at roughly 4x lower batch=1 latency with no API cost: an efficiency win at parity accuracy rather than an accuracy win (\Cref{fig:pareto}).
 
-\section{Analysis}
+\subsection{Analysis: why the rankings move}
 \label{sec:analysis}
 
 The three analyses below share one message, summarized in \Cref{fig:ranking-flip}: the \emph{same} candidate systems change rank as the evaluation regime changes, so the reported ``best guard'' is a property of the benchmark and operating point as much as of the model.
@@ -667,7 +689,7 @@ gpt-5.4-mini (fixed native point) & 0.856 & 0.784 & 0.321 \\
 
 Why native-threshold F1 comparisons mislead: gpt-5.4-mini's native point trades a high FPR (0.321) for high recall (0.856), producing an F1 of 0.784 that is not comparable to a guard evaluated at FPR 0.051. Conversely, the matched-FPR@0.10 constraint makes \emph{every} system conservative --- the guard's recall there is only 0.431 --- so matched-FPR alone understates absolute capability. The two views are complementary: matched-FPR fixes the confound of who got to tune a threshold, and AUPRC is the threshold-free summary that removes operating-point choice entirely. Read together they give a consistent picture on point estimates --- guard $>$ ShieldGemma-2b $>$ Llama-Guard-3-1B --- with the one formally supported (non-overlapping-CI) statement being the guard's novel-set lead over Llama-Guard (see \Cref{subsec:novel}).
 
-\section{Limitations}
+\subsection{Limitations}
 \label{sec:limitations}
 
 We frame these results as a measurement and controlled study, not a state-of-the-art claim. Several caveats bound their interpretation.
@@ -712,7 +734,7 @@ The guard is nominally ahead but the difference is not significant, and the comp
 
 \textbf{Scope of the guard and evaluation.} The guard emits a single-token verdict from one forward pass; we do not evaluate a multi-token or reasoning-style guard, and adversarial-robustness evaluation (e.g., against adaptive attacks) is future work.
 
-\section{Conclusion}
+\section{Conclusion and Future Work}
 
 We presented a binary \emph{input-prompt} safety guard --- the prompt-classification component of the \textsc{agent-bouncer} project --- obtained by parameter-efficient fine-tuning of SmolLM3-3B on a single consumer laptop (Apple M4 Max, MPS, no CUDA; \textasciitilde{}71 min / 300 steps; 60.5M trainable params, 1.93\% of 3.14B). The guard emits a single-token verdict in one forward pass at batch=1 p50 124 ms / p90 188 ms. Our central finding is a measurement one: guard rankings depend heavily on the decision threshold, so we evaluate at matched FPR, with threshold-free AUPRC/AUROC, paired-bootstrap 95\% CIs, and McNemar tests. Building the pipeline surfaced and let us fix real evaluation bugs (calibration leak, batch-amortized latency, per-model-only threshold tuning, GPT error-to-``unsafe'' default, exact-string decontamination).
 
