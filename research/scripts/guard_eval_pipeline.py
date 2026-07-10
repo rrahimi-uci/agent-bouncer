@@ -23,7 +23,11 @@ DEV="cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_ava
 MID=os.environ.get("MODEL_ID","Qwen/Qwen3-4B"); ADAPTER=os.environ.get("ADAPTER","outputs/qwen3-4b-guard/adapter")
 TAG=os.environ.get("TAG","qwen3-4b"); MAXLEN=1024; PC=400; BS=16; ND="notebooks/outputs/nb-smollm3-guard"
 CO=f"{ND}/{TAG}"; os.makedirs(ND, exist_ok=True)
-print(f"device={DEV} model={MID} adapter={ADAPTER} tag={TAG}")
+# Row-freezing for drift-free remote (GPU) runs: FREEZE_ROWS=<path> builds the pools from HF locally and
+# dumps them (then exits); FROZEN_ROWS=<path> loads those exact rows instead of rebuilding from HF.
+FROZEN=os.environ.get("FROZEN_ROWS"); FREEZE=os.environ.get("FREEZE_ROWS")
+_FR=json.load(open(FROZEN)) if FROZEN else None
+print(f"device={DEV} model={MID} adapter={ADAPTER} tag={TAG}"+(f" [FROZEN {FROZEN}]" if FROZEN else "")+(f" [FREEZE {FREEZE}]" if FREEZE else ""))
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
@@ -170,22 +174,51 @@ def dts(rows,ratio,seed):
     idx=list(range(len(rows)));random.Random(seed).shuffle(idx);cut=max(1,int(len(rows)*ratio)) if len(rows)>2 else 0
     return [rows[i] for i in idx[:cut]],[rows[i] for i in idx[cut:]]
 
-print("building in-house eval ...")
-TK = train_keys()
-raw=load_eval_raw(); EVAL={}
-for b in AXIS:
-    kept=[r for r in raw.get(b,[]) if _norm(r["text"]) not in TK]
-    bal=balance(kept, 1200, seed=7)
-    if bal: EVAL[b]=bal
-DEV_,TEST={},{}
-for b,rows in EVAL.items(): DEV_[b],TEST[b]=dts(rows,0.4,SEED)
-test_texts=[r["text"] for b in TEST for r in TEST[b]]
-gold=np.array([1 if r["label"]=="unsafe" else 0 for b in TEST for r in TEST[b]])
-strata=np.array([b for b in TEST for r in TEST[b]])
-INDIST=[b for b in DEV_ if b not in HELD_OUT]
-dev_indist_texts=[r["text"] for b in INDIST for r in DEV_[b]]
-dev_indist_gold=np.array([1 if r["label"]=="unsafe" else 0 for b in INDIST for r in DEV_[b]])
-print(f"in-house test={len(test_texts)} in-dist-dev={len(dev_indist_texts)}")
+def load_new():
+    if _FR is not None:
+        return {b:[{"text":t,"label":"unsafe" if g else "safe"} for t,g in zip(_FR["novel"][b]["texts"],_FR["novel"][b]["gold"])] for b in _FR["novel"]}
+    N={}
+    wg=load_dataset("allenai/wildguardmix","wildguardtest",split="test",token=HF)
+    N["wildguardtest"]=balance([{"text":r["prompt"],"label":"unsafe" if r["prompt_harm_label"]=="harmful" else "safe"} for r in wg if r["prompt_harm_label"] in ("harmful","unharmful") and (r["prompt"] or "").strip()],PC)
+    wj=load_dataset("allenai/wildjailbreak","eval",split="train",token=HF)
+    N["wildjailbreak"]=balance([{"text":r["adversarial"],"label":"unsafe" if int(r["label"])==1 else "safe"} for r in wj if (r["adversarial"] or "").strip()],PC)
+    hb=load_dataset("bench-llm/or-bench","or-bench-hard-1k",split="train",token=HF);tox=load_dataset("bench-llm/or-bench","or-bench-toxic",split="train",token=HF)
+    N["orbench_hard"]=balance([{"text":r["prompt"],"label":"safe"} for r in hb if (r["prompt"] or "").strip()]+[{"text":r["prompt"],"label":"unsafe"} for r in tox if (r["prompt"] or "").strip()],PC)
+    hbm=load_dataset("walledai/HarmBench","standard",split="train",token=HF)
+    N["harmbench"]=[{"text":r["prompt"],"label":"unsafe"} for r in hbm if (r["prompt"] or "").strip()]
+    return N
+
+if FROZEN:
+    test_texts=list(_FR["test_texts"]); gold=np.array(_FR["gold"]); strata=np.array(_FR["strata"])
+    dev_indist_texts=list(_FR["dev_indist_texts"]); dev_indist_gold=np.array(_FR["dev_indist_gold"])
+    print(f"[FROZEN] in-house test={len(test_texts)} in-dist-dev={len(dev_indist_texts)}")
+else:
+    print("building in-house eval ...")
+    TK = train_keys()
+    raw=load_eval_raw(); EVAL={}
+    for b in AXIS:
+        kept=[r for r in raw.get(b,[]) if _norm(r["text"]) not in TK]
+        bal=balance(kept, 1200, seed=7)
+        if bal: EVAL[b]=bal
+    DEV_,TEST={},{}
+    for b,rows in EVAL.items(): DEV_[b],TEST[b]=dts(rows,0.4,SEED)
+    test_texts=[r["text"] for b in TEST for r in TEST[b]]
+    gold=np.array([1 if r["label"]=="unsafe" else 0 for b in TEST for r in TEST[b]])
+    strata=np.array([b for b in TEST for r in TEST[b]])
+    INDIST=[b for b in DEV_ if b not in HELD_OUT]
+    dev_indist_texts=[r["text"] for b in INDIST for r in DEV_[b]]
+    dev_indist_gold=np.array([1 if r["label"]=="unsafe" else 0 for b in INDIST for r in DEV_[b]])
+    print(f"in-house test={len(test_texts)} in-dist-dev={len(dev_indist_texts)}")
+if FREEZE:
+    _NEWf=load_new()  # HF build (FROZEN is unset in freeze mode) -> the exact SmolLM3-era novel pool
+    _L=json.load(open(f"{ND}/preds_large.json"))
+    assert list(test_texts)==_L["texts"], "FREEZE: in-house rows differ from preds_large.json (local dataset drift)"
+    json.dump({"test_texts":list(test_texts),"gold":[int(x) for x in gold],"strata":[str(x) for x in strata],
+               "dev_indist_texts":list(dev_indist_texts),"dev_indist_gold":[int(x) for x in dev_indist_gold],
+               "novel":{b:{"texts":[r["text"] for r in _NEWf[b]],"gold":[1 if r["label"]=="unsafe" else 0 for r in _NEWf[b]]} for b in _NEWf}},
+              open(FREEZE,"w"))
+    print(f"[FREEZE] wrote {FREEZE}: test={len(test_texts)} dev={len(dev_indist_texts)} novel={{{', '.join(f'{b}:{len(_NEWf[b])}' for b in _NEWf)}}}")
+    raise SystemExit(0)
 
 # ---- score guard + base on in-house (dev-indist for calibration, test for report) ----
 print("[1/4] guard in-house ...")
@@ -201,7 +234,7 @@ print(f"calibrated (in-dist) T={T:.2f} THR={THR:.2f}")
 res={"model":MID,"tag":TAG,"calibration":{"T":T,"THR":THR},"latency_batch1":{"p50":gp50,"p90":gp90}}
 # in-house AUPRC (guard) + per-benchmark F1
 per={}
-for b in TEST:
+for b in sorted(set(strata.tolist())):  # iterate benchmark names from strata (works in FROZEN mode too; TEST dict is only built on the HF path)
     m=strata==b; p=(apply_T(g_test[m],T)>=THR).astype(int); gg=gold[m]
     per[b]={"axis":AXIS[b],**{k:round(prf(gg,p)[k],3) for k in ("precision","recall","f1","fpr")},"n":int(m.sum())}
 ind=strata!=None
@@ -233,17 +266,6 @@ res["matched_fpr_and_auprc"]=mf
 
 # ---- novel held-out: guard + base (new) vs reused llama cache ----
 print("[3/4] novel held-out build ...")
-def load_new():
-    N={}
-    wg=load_dataset("allenai/wildguardmix","wildguardtest",split="test",token=HF)
-    N["wildguardtest"]=balance([{"text":r["prompt"],"label":"unsafe" if r["prompt_harm_label"]=="harmful" else "safe"} for r in wg if r["prompt_harm_label"] in ("harmful","unharmful") and (r["prompt"] or "").strip()],PC)
-    wj=load_dataset("allenai/wildjailbreak","eval",split="train",token=HF)
-    N["wildjailbreak"]=balance([{"text":r["adversarial"],"label":"unsafe" if int(r["label"])==1 else "safe"} for r in wj if (r["adversarial"] or "").strip()],PC)
-    hb=load_dataset("bench-llm/or-bench","or-bench-hard-1k",split="train",token=HF);tox=load_dataset("bench-llm/or-bench","or-bench-toxic",split="train",token=HF)
-    N["orbench_hard"]=balance([{"text":r["prompt"],"label":"safe"} for r in hb if (r["prompt"] or "").strip()]+[{"text":r["prompt"],"label":"unsafe"} for r in tox if (r["prompt"] or "").strip()],PC)
-    hbm=load_dataset("walledai/HarmBench","standard",split="train",token=HF)
-    N["harmbench"]=[{"text":r["prompt"],"label":"unsafe"} for r in hbm if (r["prompt"] or "").strip()]
-    return N
 NEW=load_new(); novel_texts=[r["text"] for b in NEW for r in NEW[b]]
 print("[4/4] guard + base on novel ...")
 g_nov,_,_=score(novel_texts, True, "guard_novel"); b_nov,_,_=score(novel_texts, False, "base_novel")

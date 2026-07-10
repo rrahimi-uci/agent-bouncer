@@ -1,0 +1,59 @@
+% ======================================================================
+% STAGING DRAFT: MEASURED guardrail comparison (our matched protocol, frozen rows).
+% All numbers here are measured by us on the identical 2,018 in-house + 2,020 novel frozen rows.
+% Logprob guards -> threshold-free AUPRC + matched-FPR; binary-verdict guards -> native decision point.
+% ======================================================================
+
+\subsection{Specialized guards under our controlled protocol}
+\label{sec:guardrail-measured}
+
+The published numbers above are self-reported and not comparable across models (\S\ref{sec:guardrail-landscape}). To put a subset on a controlled footing, we re-evaluate seven specialized guards on the \emph{identical} frozen rows and protocol used for our own guard. Guards that expose a token-level verdict logit (Llama Guard, ShieldGemma, Prompt Guard) are scored threshold-free (\Cref{tab:gr-auprc}); guards that emit only a generated binary verdict (Qwen3Guard-Gen, WildGuard) are read at their native decision point (\Cref{tab:gr-native}), exactly as we treat gpt-5.4-mini.
+
+\begin{table*}[t]
+\small\centering\setlength{\tabcolsep}{4pt}
+\caption{Guards with a token-level verdict, \textbf{measured} on our rows: threshold-free AUPRC (in-house pooled / novel 3-set aggregate), matched-FPR@0.10 F1, batch=1 latency, bf16 VRAM. Our guard and its untuned base are repeated from \Cref{tab:auprc-poolings,tab:novel-auprc} for reference.}
+\label{tab:gr-auprc}
+\begin{tabular}{lcccccc}
+\toprule
+System & Params & in-house & novel & mF1@.10 & lat.\ (ms) & VRAM \\
+\midrule
+Guard (SmolLM3-3B, tuned) & 3B & \textbf{0.844} & 0.781 & \textbf{0.581} & 124 & 6\,GB \\
+Untuned base (SmolLM3-3B) & 3B & 0.696 & \textbf{0.886} & --- & 124 & 6\,GB \\
+Llama-Guard-3-8B          & 8B & 0.750 & 0.833 & 0.475 & --- & 16\,GB \\
+ShieldGemma-2B            & 2.6B & 0.712 & n/r & 0.425 & --- & 5\,GB \\
+Llama-Guard-3-1B          & 1.1B & 0.639 & 0.701 & 0.360 & 20 & 3\,GB \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\small\centering\setlength{\tabcolsep}{4pt}
+\caption{Generative binary-verdict guards, \textbf{measured} at their native decision point on our rows (no tunable threshold, as for gpt-5.4-mini): F1 / FPR on the in-house pool and novel aggregate, plus FPR on the over-refusal-bait-heavy OR-Bench-hard set. Both over-block benign-adjacent prompts.}
+\label{tab:gr-native}
+\begin{tabular}{lccccc}
+\toprule
+System & Params & in-house F1/FPR & novel F1/FPR & OR-Bench-hard FPR & lat.\ (ms) \\
+\midrule
+Qwen3Guard-4B & 4B & 0.797 / 0.389 & 0.807 / 0.376 & 0.812 & 491 \\
+WildGuard-7B  & 7B & 0.787 / 0.360 & 0.823 / 0.335 & 0.728 & 918 \\
+gpt-5.4-mini  & --- & --- / 0.326 & --- & --- & \textasciitilde{}512 \\
+Guard (deployed pt) & 3B & 0.794 / 0.306 & --- & --- & 124 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Three findings, all from controlled measurement. \textbf{(1) Out-of-distribution ranking.} On the novel benchmarks the open guards order as untuned base (0.886) $>$ Llama-Guard-3-8B (0.833) $>$ our tuned guard (0.781) $>$ Llama-Guard-3-1B (0.701): the 8B guard is a strong OOD \emph{ranker} --- second only to our untuned base --- yet at the deployable matched-FPR@0.10 operating point our 3B guard leads it on F1 (0.581 vs 0.475) at a quarter of the VRAM, because AUPRC rewards ranking while the guards must still be read at a threshold. \textbf{(2) Over-blocking is universal among the strong recall-first guards.} Qwen3Guard-4B and WildGuard-7B both post high recall ($\approx$0.93) but heavy false-positive rates on OR-Bench-hard (0.81 and 0.73) --- an independent, cross-vendor confirmation of the over-refusal failure mode this paper isolates (\S\ref{sec:mortgage-casestudy}). \textbf{(3) A specialized injection detector is not a general moderator.} Prompt Guard 2-86M scores 0.903 AUPRC on our in-house injection subsets (its designed task) but only 0.625 on the novel jailbreak sets, and by construction does not classify general harm --- so it is complementary to, not a replacement for, a content guard.
+
+\subsection{Recommendations}
+\label{sec:recommendations}
+
+Combining our controlled measurements with the published landscape and deployment profiles, and scoped to \emph{input-prompt} moderation (our evaluation setting; response- and tool-moderation are out of scope, \S\ref{sec:future}):
+
+\begin{itemize}
+  \item \textbf{Best overall guard (accuracy-first, resources permitting).} No single winner: Llama-Guard-3-8B is the strongest measured OOD ranker among off-the-shelf guards (novel AUPRC 0.833), and Qwen3Guard reports the strongest published generalist profile; both cost 8--16\,GB and 0.5--0.9\,s per call and over-block. If a frontier API is acceptable, gpt-5.4-mini ties our guard on F1.
+  \item \textbf{Best lightweight base to fine-tune.} If in-house accuracy and a low false-positive operating point dominate, \textbf{Qwen3-4B} --- the highest measured in-house AUPRC (0.882) and matched-FPR@0.10 F1 (0.753) of the six bases, at 4B / 112\,ms (\Cref{tab:slm-sweep}); Qwen3-8B is statistically indistinguishable at double the memory. If efficiency dominates, any 1.5--3B base (SmolLM2, Qwen2.5, SmolLM3) reaches in-house AUPRC 0.82--0.85 at a fraction of the VRAM. Because tuning \emph{converges} out-of-distribution behaviour across bases (\Cref{sec:cross-family}), the base barely affects OOD robustness --- so choose on in-house accuracy, cost, and license, not on hoped-for generalization; and where OOD robustness is paramount, keep the untuned base in a base$\oplus$tuned ensemble (\Cref{sec:ensemble}).
+  \item \textbf{Best prompt-injection / jailbreak detector.} Prompt Guard 2-86M --- 0.903 measured in-house-injection AUPRC, 0.998 published jailbreak AUC, 0.56\,GB, sub-100\,ms; pair it with a content guard rather than using it alone.
+  \item \textbf{Best content-category moderation.} ShieldGemma (published OpenAI-Mod F1 0.82) for policy-category outputs; but on our hardened domain set every small guard over-blocks (\S\ref{sec:mortgage-casestudy}), so category moderation still needs an operating-point audit.
+  \item \textbf{Best performance/efficiency balance.} Our laptop-trained 3B guard: it leads all measured open guards in-house (AUPRC 0.844) and at matched-FPR (F1 0.581) at 6\,GB / 124\,ms, and ties gpt-5.4-mini on F1; the untuned base or a base$\oplus$tuned ensemble (\S\ref{sec:ensemble}) is preferable when out-of-distribution robustness dominates.
+  \item \textbf{Best for real-time production.} For pure injection/jailbreak gating, Prompt Guard 2 (encoder, single forward pass, sub-100\,ms). For general prompt moderation, Llama-Guard-3-1B (20\,ms, 3\,GB) or our 3B guard (124\,ms) --- the generative 4--8B guards (0.5--0.9\,s) are hard to justify inline. Qwen3Guard-Stream (token-level, published) is the one design here built for streaming.
+\end{itemize}
