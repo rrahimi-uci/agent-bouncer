@@ -71,8 +71,6 @@ The headline comparisons are collected once in \Cref{tab:headline} and reported 
   \end{tabular}
 \end{table*}
 
-Only the guard's pooled/held-out AUPRC, the guard-vs-Llama novel aggregate, the base-vs-tuned delta, and the GPT $\Delta$F1 carry CIs; baseline AUPRCs are point estimates (see \S5, \S6).
-
 We are explicit about limits. Matched-FPR@0.10 makes every system conservative (guard recall 0.431 there), so AUPRC is our fair primary summary; at the \emph{deployed} operating point (T=2.10, $\tau=0.59$) the guard's overall FPR is 0.306, i.e.\ it over-blocks benign prompts, which we treat as a real deployment concern. ShieldGemma is run somewhat outside its designed content-policy regime and its novel-benchmark numbers are still pending; a single global threshold is structurally in-distribution-optimized. Positioned against the two closest works, we complement CPU-class efficient-guard studies (``Do You Really Need a GPU to Guard Your LLM?'') by adding rigorous operating-point-fair comparison and a base-vs-tuned decomposition on a 3B generative guard, and we serve as the constructive counterpart to ``Why LLM Safety Guardrails Collapse After Fine-tuning'' (ICML 2025): where they show tuning can destroy alignment, we show that even when tuning \emph{works}, its measurable gains are memorized in-distribution and do not transfer to the in-house held-out sets we can test.
 
 \subsection{Contributions}
@@ -87,23 +85,7 @@ We are explicit about limits. Matched-FPR@0.10 makes every system conservative (
 
 \section{Related Work}
 
-\textbf{LLM safety guards and content moderation.} A growing family of purpose-built classifiers screens prompts and responses for LLM and agent pipelines. Meta's Llama Guard line (1/2/3) \cite{inan2023llamaguard,meta2024llamaguard2_3,fedorov2024llamaguard3_1b} and Prompt Guard \cite{meta2024promptguard}, Google's ShieldGemma \cite{zeng2024shieldgemma}, NVIDIA's Aegis \cite{ghosh2024aegis}, IBM's Granite Guardian \cite{padhi2024graniteguardian}, and AI2's WildGuard \cite{han2024wildguard} all frame moderation as a supervised classification task over a safety taxonomy, typically emitting a verdict token or category label. Recent work pushes on the \emph{reasoning} axis (R\textsuperscript{2}-Guard's knowledge-enhanced logical-reasoning inference \cite{kang2025r2guard} at ICLR 2025, DuoGuard's two-player RL/multilingual training \cite{deng2025duoguard}, and other reasoning-guards). Our guard is deliberately minimal by comparison: a single-token verdict read from the \{safe, unsafe\} logits in one forward pass, LoRA-tuned (60.5M trainable params, 1.93\% of 3.14B) on a consumer laptop. We compare directly against two open guards under a fair protocol; on threshold-free AUPRC our guard leads both on the in-house pool (baseline values are point estimates without CIs):
-
-\begin{table*}[t]
-\centering
-\small
-\caption{Threshold-free AUPRC on the in-house pool. Our guard leads both open baselines; baseline values are point estimates without CIs.}
-\label{tab:related-inhouse-auprc}
-\begin{tabular}{lrrr}
-\toprule
-System & AUPRC (in-house pooled) & AUPRC (in-dist) & AUPRC (in-house held-out) \\
-\midrule
-Guard (ours) & 0.844 [0.825, 0.866] & 0.846 & 0.860 [0.803, 0.909] \\
-ShieldGemma-2b & 0.712 & 0.702 & 0.785 \\
-Llama-Guard-3-1B & 0.639 & 0.610 & 0.762 \\
-\bottomrule
-\end{tabular}
-\end{table*}
+\textbf{LLM safety guards and content moderation.} A growing family of purpose-built classifiers screens prompts and responses for LLM and agent pipelines. Meta's Llama Guard line (1/2/3) \cite{inan2023llamaguard,meta2024llamaguard2_3,fedorov2024llamaguard3_1b} and Prompt Guard \cite{meta2024promptguard}, Google's ShieldGemma \cite{zeng2024shieldgemma}, NVIDIA's Aegis \cite{ghosh2024aegis}, IBM's Granite Guardian \cite{padhi2024graniteguardian}, and AI2's WildGuard \cite{han2024wildguard} all frame moderation as a supervised classification task over a safety taxonomy, typically emitting a verdict token or category label. Recent work pushes on the \emph{reasoning} axis (R\textsuperscript{2}-Guard's knowledge-enhanced logical-reasoning inference \cite{kang2025r2guard} at ICLR 2025, DuoGuard's two-player RL/multilingual training \cite{deng2025duoguard}, and other reasoning-guards). Our guard is deliberately minimal by comparison: a single-token verdict read from the \{safe, unsafe\} logits in one forward pass, LoRA-tuned on a consumer laptop. We compare directly against two open guards under a fair protocol; on threshold-free AUPRC our guard leads both open guards on the in-house pool (full comparison with CIs in \Cref{tab:main-inhouse}; per-pooling breakdown in \Cref{tab:auprc-poolings}).
 
 \textbf{Benchmarks.} We evaluate on established suites spanning guardrail, red-team, and over-refusal axes: BeaverTails \cite{ji2023beavertails}, ToxicChat \cite{lin2023toxicchat}, JailbreakBench \cite{chao2024jailbreakbench}, XSTest \cite{rottger2024xstest}, OR-Bench \cite{cui2024orbench}, HarmBench \cite{mazeika2024harmbench}, and prompt-injection/jailbreak-classification sets, plus OpenAI's moderation evaluation set \cite{markov2023holistic}. To probe generalization rather than memorization, we additionally reserve four novel benchmarks the guard never trained on --- WildGuardTest \cite{han2024wildguard}, WildJailbreak \cite{jiang2024wildteaming}, OR-Bench-Hard \cite{cui2024orbench}, and HarmBench \cite{mazeika2024harmbench} --- held out at the source-family level, and report per-benchmark and aggregate results with paired-bootstrap 95\% CIs and McNemar tests. On these four novel held-out benchmarks the guard's aggregate AUPRC is 0.781 [0.751, 0.811] versus Llama-Guard-3-1B 0.701 [0.673, 0.733], the only cross-system AUPRC comparison in which both sides carry CIs and they do not overlap.
 
@@ -113,41 +95,11 @@ Llama-Guard-3-1B & 0.639 & 0.610 & 0.762 \\
 
 \textbf{``Do You Really Need a GPU to Guard Your LLM?'' \cite{majhi2025gpuguard} (CPU-class classifiers / efficient pipelines).} That line argues small, cheap classifiers can serve as practical guards. We share the efficiency motivation --- our guard is laptop-trained (\textasciitilde{}71 min / 300 steps, bf16, Apple M4 Max, MPS, no CUDA) and runs locally at \textasciitilde{}$4\times$ lower latency than gpt-5.4-mini (124 ms vs \textasciitilde{}512 ms per request; see the latency caveat in \Cref{subsec:frontier}). Our distinct contribution is not a smaller classifier but a \emph{rigorous fair comparison} on a 3B generative guard: operating-point-fair evaluation (matched-FPR + threshold-free AUPRC + paired CIs) and a base-vs-tuned decomposition that prior efficient-guard work does not report.
 
-\textbf{``Why LLM Safety Guardrails Collapse After Fine-tuning'' \cite{hsiung2025guardrails} (ICML 2025 DIG-BUGS).} That work shows fine-tuning can \emph{destroy} a model's alignment. We are the constructive complement. Even when fine-tuning ``works,'' our base-vs-tuned ablation (identical paired rows; base = zero-shot SmolLM3-3B with the same logprob head) shows the measurable gains are almost entirely in-distribution and do not improve the two in-house held-out benchmarks we can test:
-
-\begin{table*}[t]
-\centering
-\small
-\caption{Base-vs-tuned F1 by benchmark. LoRA tuning specializes in-distribution and does not lift the in-house held-out benchmarks.}
-\label{tab:related-base-vs-tuned}
-\begin{tabular}{llrrr}
-\toprule
-Benchmark & Split & Base F1 & Tuned F1 & Delta \\
-\midrule
-jailbreak\_classification & in-dist & 0.339 & 0.980 & +0.641 \\
-toxicchat & in-dist & 0.766 & 0.915 & +0.150 \\
-prompt\_injections & in-dist & 0.690 & 0.828 & +0.138 \\
-beavertails & in-dist & 0.691 & 0.716 & +0.024 \\
-jailbreakbench & in-house held-out & 0.809 & 0.821 & +0.012 \\
-xstest & in-house held-out & 0.856 & 0.833 & $-0.023$ \\
-\midrule
-\textbf{Aggregate (paired rows)} & & \textbf{0.713} & \textbf{0.794} & \textbf{+0.081 [0.062, 0.100]} \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-The zero-shot base (F1 0.713) exceeds zero-shot Llama-Guard-3-1B (0.673) and ShieldGemma-2b (0.424) \emph{by F1}, suggesting an instruction-tuned 3B base already carries much of the safety-classification competence; under threshold-free AUPRC, however, the base's in-house score (0.696) sits \emph{between} the two open guards (Llama-Guard-3-1B 0.639, ShieldGemma-2b 0.712), so this in-house ranking holds by F1 only and not threshold-free (\Cref{sec:base-vs-tuned}). Where the ICML work demonstrates that tuning can break alignment, we show that tuning which appears successful still only measurably specializes in-distribution, and we decompose how much competence is base versus tuned. We have since run the base on the four novel benchmarks (\Cref{sec:base-vs-tuned}): the base \emph{outranks} the tuned guard out-of-distribution (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied best-threshold F1, so the guard's novel-set lead reflects inherited base competence, and tuning degrades OOD score ranking rather than improving generalization.
+\textbf{``Why LLM Safety Guardrails Collapse After Fine-tuning'' \cite{hsiung2025guardrails} (ICML 2025 DIG-BUGS).} That work shows fine-tuning can \emph{destroy} a model's alignment. We are the constructive complement. Even when fine-tuning ``works,'' our base-vs-tuned ablation (identical paired rows; base = zero-shot SmolLM3-3B with the same logprob head) shows the measurable gains are almost entirely in-distribution and do not improve the two in-house held-out benchmarks we can test (per-benchmark decomposition in \Cref{tab:base-vs-tuned}). The zero-shot base (F1 0.713) exceeds zero-shot Llama-Guard-3-1B (0.673) and ShieldGemma-2b (0.424) \emph{by F1}, suggesting an instruction-tuned 3B base already carries much of the safety-classification competence; under threshold-free AUPRC, however, the base's in-house score (0.696) sits \emph{between} the two open guards (Llama-Guard-3-1B 0.639, ShieldGemma-2b 0.712), so this in-house ranking holds by F1 only and not threshold-free (\Cref{sec:base-vs-tuned}). Where the ICML work demonstrates that tuning can break alignment, we show that tuning which appears successful still only measurably specializes in-distribution, and we decompose how much competence is base versus tuned. We have since run the base on the four novel benchmarks (\Cref{sec:base-vs-tuned}): the base \emph{outranks} the tuned guard out-of-distribution (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied best-threshold F1, so the guard's novel-set lead reflects inherited base competence, and tuning degrades OOD score ranking rather than improving generalization.
 
 \subsection{What is novel here}
 
-We are explicitly a \emph{measurement and controlled study}, not a new architecture or training objective. Two findings are, to our knowledge, genuinely new; the other two are engineering/measurement contributions.
-
-\begin{itemize}
-\item \textbf{(Novel) Operating-point-fair guard comparison.} Threshold-free AUPRC is \emph{already} an established guard metric (originating with OpenAI's moderation work \cite{markov2023holistic} and reported by Llama Guard \cite{inan2023llamaguard}, ShieldGemma \cite{zeng2024shieldgemma}, Aegis \cite{ghosh2024aegis}, Granite Guardian \cite{padhi2024graniteguardian}, and R\textsuperscript{2}-Guard \cite{kang2025r2guard}); we therefore do \textbf{not} claim AUPRC as our innovation. What is missing in prior work is (i) \emph{head-to-head} F1 typically reported at each model's \emph{native} threshold as point estimates without significance tests, and (ii) no combination of a matched operating point with paired uncertainty. We show native-threshold F1 is not merely imprecise but rank-\emph{inverting}: ShieldGemma-2b \cite{zeng2024shieldgemma} appears worse than Llama-Guard-3-1B \cite{fedorov2024llamaguard3_1b} at native thresholds yet better under AUPRC (\Cref{sec:operating-point-fairness}). Our contribution is the \emph{combination} the field lacks --- matched-FPR@0.10 across systems (the nearest prior art being Granite Guardian's fixed-FPR points \cite{padhi2024graniteguardian}), AUPRC \textbf{and} AUROC, paired-bootstrap CIs and McNemar tests on a shared calibration set \cite{guo2017calibration}, and calibration reporting --- a rigor set otherwise present only piecemeal (CIs/McNemar/calibration in the CPU-classifier study \cite{majhi2025gpuguard}; fixed-FPR in Granite Guardian \cite{padhi2024graniteguardian}).
-\item \textbf{(Novel) Base-vs-tuned decomposition.} We separate what an instruction-tuned base \cite{bakouch2025smollm3,ouyang2022instructgpt} already knows zero-shot from what LoRA \cite{hu2021lora} adds, and find that tuning specializes in-distribution without lifting the in-house held-out F1. This is the constructive complement to \cite{hsiung2025guardrails} (tuning can \emph{collapse} alignment): we isolate the guard-classification case and characterize it as in-distribution \emph{specialization} rather than collapse.
-\item \textbf{(Engineering) A local, laptop-trained 3B guard} that surpasses the open guards on threshold-free AUPRC --- decisively over Llama-Guard-3-1B \cite{fedorov2024llamaguard3_1b}, including on four novel held-out benchmarks --- and ties gpt-5.4-mini on F1 at \textasciitilde{}$4\times$ lower latency. The nearest efficiency-focused work \cite{majhi2025gpuguard} reaches CPU-class cost with TF-IDF classifiers matched in-distribution; we instead evaluate a 3B LLM guard for \emph{out-of-distribution} generalization under a threshold-free metric.
-\item \textbf{(Engineering) A reproducible laptop-scale protocol} --- family-level decontamination and paired CIs across the benchmark suite \cite{mazeika2024harmbench,han2024wildguard,jiang2024wildteaming,xie2024sorrybench,rottger2024xstest,cui2024orbench,chao2024jailbreakbench,lin2023toxicchat,ji2023beavertails,markov2023holistic} --- released as open code (the evaluation scripts plus a single orchestrating reproduction notebook). We scope claims to detection-based content classification and note that adversarial evasion remains open \cite{hackett2025bypassing}.
-\end{itemize}
+Threshold-free AUPRC is itself an established guard metric~\cite{markov2023holistic,inan2023llamaguard,zeng2024shieldgemma,padhi2024graniteguardian,kang2025r2guard}, so we do \textbf{not} claim it as our innovation. What prior work lacks --- and what we contribute --- is the \emph{combination}: matched-FPR across systems (nearest prior art, Granite Guardian's fixed-FPR points~\cite{padhi2024graniteguardian}), AUPRC \emph{and} AUROC, paired-bootstrap CIs and McNemar tests on a shared calibration set~\cite{guo2017calibration}, plus the finding that native-threshold F1 is not merely imprecise but rank-\emph{inverting} (\Cref{sec:operating-point-fairness}). Our two genuinely new findings are this operating-point-fairness result and the base-vs-tuned decomposition~\cite{hsiung2025guardrails} (\Cref{sec:base-vs-tuned}); the laptop-trained guard and the reproducible protocol are the engineering contributions listed above. We scope claims to detection-based content classification; adversarial evasion remains open~\cite{hackett2025bypassing}.
 
 \section{Methodology}
 \label{sec:methodology}
@@ -700,25 +652,9 @@ We frame these results as a measurement and controlled study, not a state-of-the
 
 \textbf{Statistical support is uneven.} Only four comparisons carry CIs (guard pooled/in-house-held-out AUPRC, guard-vs-Llama novel aggregate, base-vs-tuned F1 delta, guard-vs-GPT $\Delta$F1). Baseline AUPRCs are point estimates, so the pooled/in-dist ``leads'' and the matched-FPR ranking are point-estimate claims, not significance tests. We reserve ``decisive'' for the single non-overlapping-CI result (novel guard vs Llama-Guard).
 
-\textbf{GPT is a tie, not a beat, and threshold-advantaged.} Against gpt-5.4-mini the guard shows no significant F1 difference:
+\textbf{GPT is a tie, not a beat, and threshold-advantaged.} Against gpt-5.4-mini the guard shows no significant F1 difference (\Cref{tab:frontier}); the comparison uses the guard's dev-tuned threshold against gpt's fixed native point (no matched-FPR comparison is possible), and the latency edge is cross-substrate (local vs remote API) --- an efficiency, not accuracy, advantage.
 
-\begin{table}[t]
-\small
-\centering
-\caption{Guard vs gpt-5.4-mini: paired F1 comparison.}
-\label{tab:guard-vs-gpt}
-\begin{tabular}{lrrr}
-\toprule
-Comparison & $\Delta$F1 & 95\% CI & McNemar \\
-\midrule
-guard vs gpt-5.4-mini & +0.010 & [-0.006, 0.027] & p=0.20 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The guard is nominally ahead but the difference is not significant, and the comparison uses the guard's dev-tuned threshold against gpt's fixed native point (gpt exposes no tunable threshold, so a matched-FPR comparison is impossible). The advantage over GPT is an efficiency one (local, \textasciitilde{}4$\times$ lower batch=1 latency: 124 ms vs \textasciitilde{}512 ms per request, no API cost), not an accuracy win, and the latency figure is cross-substrate (local inference vs remote API), not a controlled hardware benchmark.
-
-\textbf{Novel-set win is inherited, not tuned.} We ran the base SmolLM3-3B on the four novel benchmarks: it \emph{outranks} the tuned guard OOD (aggregate AUPRC 0.886 [0.870, 0.900] vs 0.781), so the guard's novel-set advantage over Llama-Guard reflects inherited base competence, and LoRA in fact degrades OOD ranking (\Cref{sec:base-vs-tuned}). This result is anchored on threshold-free AUPRC and best-threshold Optimal-F1 (both operating-point-independent), so it does not depend on any calibration choice. The in-house base-vs-tuned F1 delta uses a base-specific clean calibration ($T{=}7.00,\tau{=}0.51$) fit on the same in-distribution dev split and protocol as the tuned guard --- so each model is read at its own best in-distribution operating point --- and we additionally report the base's threshold-free in-house AUPRC (0.696), which places it between the two open guards and confirms the in-house base-competence claim is by F1 only (\Cref{sec:base-vs-tuned}).
+\textbf{Novel-set win is inherited, not tuned.} The guard's novel-set lead over Llama-Guard reflects inherited base competence, not LoRA --- the untuned base outranks the tuned guard OOD (\Cref{sec:base-vs-tuned}). The result is anchored on operating-point-independent AUPRC and Optimal-F1, so it does not depend on any calibration choice.
 
 \textbf{Generalization claim rests on two benchmarks.} The ``PEFT specializes but does not improve generalization'' finding is evidenced by only the two in-house held-out benchmarks (JailbreakBench, XSTest); it is not a broad OOD-generalization result.
 
@@ -736,33 +672,11 @@ The guard is nominally ahead but the difference is not significant, and the comp
 
 \section{Conclusion and Future Work}
 
-We presented a binary \emph{input-prompt} safety guard --- the prompt-classification component of the \textsc{agent-bouncer} project --- obtained by parameter-efficient fine-tuning of SmolLM3-3B on a single consumer laptop (Apple M4 Max, MPS, no CUDA; \textasciitilde{}71 min / 300 steps; 60.5M trainable params, 1.93\% of 3.14B). The guard emits a single-token verdict in one forward pass at batch=1 p50 124 ms / p90 188 ms. Our central finding is a measurement one: guard rankings depend heavily on the decision threshold, so we evaluate at matched FPR, with threshold-free AUPRC/AUROC, paired-bootstrap 95\% CIs, and McNemar tests. Building the pipeline surfaced and let us fix real evaluation bugs (calibration leak, batch-amortized latency, per-model-only threshold tuning, GPT error-to-``unsafe'' default, exact-string decontamination).
+We presented a binary \emph{input-prompt} safety guard --- the prompt-classification component of the \textsc{agent-bouncer} project --- obtained by parameter-efficient fine-tuning of SmolLM3-3B on a single consumer laptop (Apple M4 Max, MPS, no CUDA). The guard emits a single-token verdict in one forward pass. Our central finding is a measurement one: guard rankings depend heavily on the decision threshold, so we evaluate at matched FPR, with threshold-free AUPRC/AUROC, paired-bootstrap 95\% CIs, and McNemar tests. Building the pipeline surfaced and let us fix real evaluation bugs (calibration leak, batch-amortized latency, per-model-only threshold tuning, GPT error-to-``unsafe'' default, exact-string decontamination).
 
-Under this protocol the results are modest and specific rather than sweeping:
+Under this protocol the results are modest and specific rather than sweeping (headline numbers in \Cref{tab:headline}). On threshold-free AUPRC the guard surpasses Llama-Guard-3-1B decisively --- the only non-overlapping-CI cross-system result, and it holds on the four novel held-out benchmarks --- and it exceeds ShieldGemma-2b on the in-house pooled / in-dist / in-house-held-out sets on point estimates (ShieldGemma's novel runs are pending). It is a statistical tie with gpt-5.4-mini on F1 at \textasciitilde{}4x lower batch=1 latency and no API cost: an efficiency win at parity accuracy, not an accuracy beat.
 
-\begin{table*}[t]
-\centering
-\small
-\caption{Summary of the guard's headline comparisons under the operating-point-fair protocol. CIs are 95\% paired-bootstrap intervals; baseline point estimates without CIs are reported as such.}
-\label{tab:conclusion-summary}
-\begin{tabular}{llll}
-\toprule
-Comparison & Metric & Guard & Baseline \\
-\midrule
-vs Llama-Guard-3-1B (novel held-out) & aggregate AUPRC & 0.781 [0.751, 0.811] & 0.701 [0.673, 0.733] \\
-vs Llama-Guard-3-1B (in-house pooled) & AUPRC (point est.) & 0.844 [0.825, 0.866] & 0.639 \\
-vs ShieldGemma-2b (in-house pooled) & AUPRC (point est.) & 0.844 & 0.712 \\
-vs gpt-5.4-mini (paired) & $\Delta$F1 & +0.010 [-0.006, 0.027], McNemar $p=0.20$ & --- \\
-vs gpt-5.4-mini & latency (batch=1) & 124 ms (local) & \textasciitilde{}512 ms (remote API) \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-On threshold-free AUPRC the guard surpasses Llama-Guard-3-1B decisively --- the only non-overlapping-CI cross-system result, and it holds on the four novel held-out benchmarks --- and it exceeds ShieldGemma-2b on the in-house pooled / in-dist / in-house-held-out sets on point estimates (ShieldGemma's novel runs are pending). It is a statistical tie with gpt-5.4-mini on F1 at \textasciitilde{}4x lower batch=1 latency and no API cost: an efficiency win at parity accuracy, not an accuracy beat.
-
-Our base-vs-tuned decomposition tempers the fine-tuning narrative (numbers in \Cref{tab:related-base-vs-tuned,tab:novel-auprc}). The zero-shot base is already a competent classifier, and LoRA's gains are almost entirely in-distribution: the two in-house held-out benchmarks barely move, and on the four novel benchmarks the \emph{untuned} base actually outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied peak F1. The guard's out-of-distribution lead is therefore inherited base competence, and tuning \emph{degrades} out-of-distribution ranking rather than improving generalization. The mortgage case study (\S\ref{sec:mortgage-casestudy}) makes the point in a domain: a saturated benchmark ranks every system near the ceiling, while a hardened, trap-typed rebuild de-saturates the field and exposes a small-guard-vs-frontier over-blocking gap (benign FPR 0.27--0.74 vs.\ 0.065) --- and the fine-tuning verdict flips (in-domain tuning leads there, the untuned base leads on general OOD). The recurring lesson is that a guard's apparent quality is inseparable from the operating point and the benchmark it is measured on.
-
-We are candid about scope. Matched-FPR@0.10 makes every system conservative (guard recall 0.431 there), so AUPRC is our fairest summary, and the \emph{deployed} point over-blocks (FPR 0.306). A single global threshold is structurally in-distribution-optimized. ShieldGemma is exercised somewhat outside its designed content-policy regime and its novel-benchmark AUPRC is still pending. Some benchmark n are small (wide CIs). The guard is single-token with no reasoning or adversarial-robustness evaluation, and ToxicChat is eval-only under its non-commercial terms.
+Our base-vs-tuned decomposition tempers the fine-tuning narrative (numbers in \Cref{tab:base-vs-tuned,tab:novel-auprc}). The zero-shot base is already a competent classifier, and LoRA's gains are almost entirely in-distribution: the two in-house held-out benchmarks barely move, and on the four novel benchmarks the \emph{untuned} base actually outranks the tuned guard (aggregate AUPRC 0.886 vs 0.781, disjoint CIs) at tied peak F1. The guard's out-of-distribution lead is therefore inherited base competence, and tuning \emph{degrades} out-of-distribution ranking rather than improving generalization. The mortgage case study (\S\ref{sec:mortgage-casestudy}) makes the point in a domain: a saturated benchmark ranks every system near the ceiling, while a hardened, trap-typed rebuild de-saturates the field and exposes a small-guard-vs-frontier over-blocking gap (benign FPR 0.27--0.74 vs.\ 0.065) --- and the fine-tuning verdict flips (in-domain tuning leads there, the untuned base leads on general OOD). The recurring lesson is that a guard's apparent quality is inseparable from the operating point and the benchmark it is measured on.
 
 \subsection{Future Work}\label{sec:future}
 
