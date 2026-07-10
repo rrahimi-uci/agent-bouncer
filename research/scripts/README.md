@@ -15,6 +15,10 @@ benchmark they generate is committed, so re-running them is optional.
 | `verify_novel.py` | Re-ground the novel numbers (base 0.886 / tuned 0.781 / llama 0.701). |
 | `score_base_inhouse.py` | Score the zero-shot base (no adapter) on in-house dev+test. |
 | `recompute_base_vs_tuned.py` | Base-vs-tuned at clean per-model in-dist calibration (Δ+0.081). |
+| `emit_inhouse_auprc_poolings.py` | Emit `tab:auprc-poolings` (guard/base/shieldgemma/llama AUPRC on pooled/in-dist/held-out + CIs) from cached scores. |
+| `reground_gpt_inhouse.py` | Abstain-aware guard-vs-gpt frontier re-ground vs the clean deployed guard → `summary_gpt_reground.json`. |
+| `ensemble_probe.py` | base⊕tuned ensemble weight sweep (rank/prob) → `summary_ensemble_probe.json`. |
+| `ensemble_deployable.py` | Deployable per-prompt PIT base⊕tuned ensemble → `summary_ensemble_deployable.json`. |
 | `eval_base_ablation.py` | Base-vs-tuned ablation on identical rows. |
 | `diag_base_id_ood.py` | Diagnostic: why base novel AUPRC ≫ base in-house AUPRC. |
 | `guard_eval_pipeline.py` | Parameterized eval pipeline for any decoder guard. |
@@ -37,7 +41,7 @@ benchmark they generate is committed, so re-running them is optional.
 | `wf_harden_mortgage.mjs` | Design workshop: multi-lens design → adversarial verify → synthesize the hardening spec. |
 | `wf_build_hard_benchmark.mjs` | First-pass minimal-pair generation + blind 3-juror gate. |
 | `wf_build_hard_benchmark_v2.mjs` | Scaled generation (16 families) + chunked jury → `notebooks/data/benchmarks/hard_admitted.json`. |
-| `build_hard_jsonl.mjs` | (plain node) split the admitted items family-safe + add wrapper variants → `guard_benchmark_hard.jsonl`. |
+| `build_hard_jsonl.mjs` | (plain node) LEGACY: rebuilds the superseded 318-row minimal-pair set → `guard_benchmark_hard_legacy318.jsonl` (NOT the paper's committed 334-row `guard_benchmark_hard.jsonl`, which ships in the bundle). |
 
 ## Notebook build / data bundle
 | script | purpose |
