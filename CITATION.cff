@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite the paper below."
-title: "Small-LLM Guardrails for High-Compliance LLM Deployments: Layering General and Domain-Specific Protection"
+title: "The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards"
 authors:
   - family-names: Rahimi
     given-names: Reza
@@ -22,7 +22,7 @@ keywords:
   - out-of-distribution
 preferred-citation:
   type: article
-  title: "Small-LLM Guardrails for High-Compliance LLM Deployments: Layering General and Domain-Specific Protection"
+  title: "The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards"
   authors:
     - family-names: Rahimi
       given-names: Reza
