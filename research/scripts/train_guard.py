@@ -117,7 +117,8 @@ print(f"train examples={len(train_ds)}")
 print("loading base (bf16) + LoRA ...")
 model=AutoModelForCausalLM.from_pretrained(MODEL_ID,dtype=torch.bfloat16,trust_remote_code=True,token=HF)
 model.config.use_cache=False
-model=get_peft_model(model, LoraConfig(r=32,lora_alpha=64,lora_dropout=0.05,task_type="CAUSAL_LM",
+RANK=int(os.environ.get("GUARD_LORA_R","32")); ALPHA=int(os.environ.get("GUARD_LORA_ALPHA","64"))
+model=get_peft_model(model, LoraConfig(r=RANK,lora_alpha=ALPHA,lora_dropout=0.05,task_type="CAUSAL_LM",
     target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"]))
 model.enable_input_require_grads(); model.print_trainable_parameters(); model.to(DEV)
 class Prog(TrainerCallback):
@@ -127,7 +128,8 @@ class Prog(TrainerCallback):
                 f.write(json.dumps({"step":s.global_step,"max_steps":s.max_steps,"t":time.time(),**(logs or {})})+"\n")
         except Exception: pass
 args=TrainingArguments(output_dir=OUT, per_device_train_batch_size=1, gradient_accumulation_steps=4,
-    num_train_epochs=3, max_steps=MAX_STEPS, learning_rate=2e-4, lr_scheduler_type="cosine", warmup_ratio=0.03,
+    num_train_epochs=3, max_steps=MAX_STEPS, learning_rate=float(os.environ.get("GUARD_LR","2e-4")),
+    lr_scheduler_type="cosine", warmup_ratio=float(os.environ.get("GUARD_WARMUP","0.03")),
     bf16=(DEV=="cuda"), fp16=False, gradient_checkpointing=(DEV=="cuda"), logging_steps=10,
     save_strategy="steps", save_steps=25, save_total_limit=1,   # mid-run checkpoints => resumable on stall
     remove_unused_columns=False, report_to=[], seed=SEED)
