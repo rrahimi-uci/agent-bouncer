@@ -116,16 +116,19 @@ def prf(g,p):
     pr=tp/(tp+fp) if tp+fp else 0.0;rc=tp/(tp+fn) if tp+fn else 0.0
     return {"precision":pr,"recall":rc,"f1":2*pr*rc/(pr+rc) if pr+rc else 0.0,"fpr":fp/(fp+tn) if fp+tn else 0.0,"n":len(g)}
 def auprc(scores,gold):
-    s=np.asarray(scores);g=np.asarray(gold);o=np.argsort(-s);g=g[o]
-    tp=np.cumsum(g);fp=np.cumsum(1-g);P=g.sum()
-    if P==0: return 0.0
-    prec=tp/(tp+fp);rec=tp/P; rec=np.concatenate([[0],rec]);prec=np.concatenate([[1],prec])
-    return float(np.sum((rec[1:]-rec[:-1])*prec[1:]))
+    # tie-aware non-interpolated average precision (groups equal scores; sklearn-canonical).
+    # NOTE: the previous hand-written version treated each row as its own threshold, so its
+    # value depended on the arbitrary order of tied rows (bf16 scores have many ties).
+    from sklearn.metrics import average_precision_score
+    g=np.asarray(gold)
+    if g.min()==g.max(): return 0.0
+    return float(average_precision_score(g, np.asarray(scores,float)))
 def auroc(scores,gold):
-    s=np.asarray(scores);g=np.asarray(gold);P=g.sum();N=len(g)-P
-    if P==0 or N==0: return 0.5
-    order=np.argsort(s); ranks=np.empty(len(s)); ranks[order]=np.arange(1,len(s)+1)
-    return float((ranks[g==1].sum()-P*(P+1)/2)/(P*N))
+    # tie-corrected AUROC (average ranks for ties; sklearn-canonical).
+    from sklearn.metrics import roc_auc_score
+    g=np.asarray(gold)
+    if g.min()==g.max(): return 0.5
+    return float(roc_auc_score(g, np.asarray(scores,float)))
 def thr_at_fpr(scores,gold,target=0.10):   # smallest threshold with FPR<=target on this (calibration) set
     s=np.asarray(scores);g=np.asarray(gold); order=np.argsort(-s)
     best=1.0

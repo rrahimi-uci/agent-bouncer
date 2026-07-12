@@ -31,10 +31,11 @@ def load_new():
     N["harmbench"]=("red_team",[{"text":r["prompt"],"label":"unsafe"} for r in hbm if (r["prompt"] or "").strip()])
     return N
 
-def auprc(s,g):
-    s=np.asarray(s); o=np.argsort(-s); g=np.asarray(g)[o]; tp=np.cumsum(g); fp=np.cumsum(1-g); P=g.sum()
-    if P==0: return float('nan')
-    pr=tp/(tp+fp); rc=tp/P; rc=np.r_[0,rc]; pr=np.r_[1,pr]; return float(np.sum((rc[1:]-rc[:-1])*pr[1:]))
+def auprc(s,g):  # tie-aware non-interpolated AP (sklearn-canonical; groups equal scores)
+    from sklearn.metrics import average_precision_score
+    g=np.asarray(g)
+    if g.min()==g.max(): return float('nan')
+    return float(average_precision_score(g, np.asarray(s,float)))
 def ci(s,g,B=2000):
     r=np.random.default_rng(0); n=len(g); v=[auprc(np.asarray(s)[i],np.asarray(g)[i]) for i in (r.integers(0,n,n) for _ in range(B))]
     return float(np.nanpercentile(v,2.5)),float(np.nanpercentile(v,97.5))

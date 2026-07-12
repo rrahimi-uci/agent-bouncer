@@ -30,11 +30,11 @@ def _norm(t): return " ".join((t or "").lower().split())
 def balance(rows,k,seed=7):
     rng=random.Random(seed);s=[r for r in rows if r["label"]=="safe"];u=[r for r in rows if r["label"]=="unsafe"]
     rng.shuffle(s);rng.shuffle(u);n=min(k,len(s),len(u)) if k else min(len(s),len(u));o=s[:n]+u[:n];rng.shuffle(o);return o
-def auprc(s,g):
-    s=np.asarray(s,float);g=np.asarray(g,float);o=np.argsort(-s);g=g[o]
-    tp=np.cumsum(g);fp=np.cumsum(1-g);P=g.sum()
-    if P==0: return float('nan')
-    pr=tp/(tp+fp);rc=tp/P;rc=np.r_[0,rc];pr=np.r_[1,pr];return float(np.sum((rc[1:]-rc[:-1])*pr[1:]))
+def auprc(s,g):  # tie-aware non-interpolated AP (sklearn-canonical; groups equal scores)
+    from sklearn.metrics import average_precision_score
+    g=np.asarray(g)
+    if g.min()==g.max(): return float('nan')
+    return float(average_precision_score(g, np.asarray(s,float)))
 def paired_boot(gold, sa, sb, B=3000, seed=0):
     gold=np.asarray(gold);sa=np.asarray(sa);sb=np.asarray(sb);n=len(gold);rng=np.random.default_rng(seed);d=[]
     for _ in range(B):

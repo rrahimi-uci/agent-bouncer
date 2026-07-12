@@ -6,7 +6,7 @@ Trains **SmolLM3-3B** into an LLM/agent safety guard and evaluates it against th
 in one notebook. It implements [`../docs/smollm3-guard-plan.md`](../docs/smollm3-guard-plan.md).
 
 > **This notebook is a companion demo, not the paper's reproduction path.** The paper's open-guard /
-> AUPRC / matched-FPR results are produced by `../scripts/` (see `../README.md`). This notebook is a
+> AUPRC / matched-FPR results are produced by `../experiments/` (see `../README.md`). This notebook is a
 > self-contained illustrative pipeline; its GPT baselines are a mini-judge parity check and use a
 > demo-grade **fail-closed** default on API errors (the paper's *abstain* policy lives in the eval scripts).
 
@@ -25,5 +25,5 @@ Hugging Face. The only network requirement is the one-time model download.
 Outputs (leaderboard, per-axis + per-benchmark P/R/F1, parity CIs, and the figures) are written to
 `outputs/nb-smollm3-guard/`.
 
-Regenerate the notebook: `python ../scripts/build_smollm3_notebook.py`.
-Refresh the bundled data: `python ../scripts/bundle_notebook_data.py`.
+Regenerate the notebook: `python ../experiments/build_smollm3_notebook.py`.
+Refresh the bundled data: `python ../experiments/bundle_notebook_data.py`.

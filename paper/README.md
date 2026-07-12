@@ -6,7 +6,7 @@ ACM-formatted (`acmart`, sigconf) measurement study of a laptop-trained SmolLM3-
 - `benchmark_chooses_the_winner.tex` — the paper (ACM `acmart`, `sigconf` + `nonacm`).
 - `benchmark_chooses_the_winner.pdf` — compiled output.
 - `refs.bib` — 32 fact-checked references (verified arXiv IDs).
-- `figures/` — vector PDF figures (drawn by `scripts/make_figures.py` from **inline, hand-entered** values --- not auto-loaded from the result JSON, so keep in sync with the TeX tables by hand; Okabe-Ito colorblind-safe palette):
+- `figures/` — vector PDF figures (drawn by `experiments/make_figures.py` from **inline, hand-entered** values --- not auto-loaded from the result JSON, so keep in sync with the TeX tables by hand; Okabe-Ito colorblind-safe palette):
   - `fig1_inhouse_auprc.pdf` — in-house pooled AUPRC (guard vs open guards).
   - `fig2_novel_auprc.pdf` — novel held-out AUPRC (base > tuned > Llama-Guard).
   - `fig3_operating_point_flip.pdf` — native-F1 vs AUPRC vs matched-FPR ranking flip.
@@ -26,18 +26,18 @@ Or directly: `tectonic benchmark_chooses_the_winner.tex` (needs network on first
 
 ## Provenance
 All numbers trace to `notebooks/outputs/nb-smollm3-guard/*.json`. Producing scripts:
-- `scripts/eval_corrected.py` → `summary_corrected.json`, `preds_corrected.json`
+- `experiments/eval_corrected.py` → `summary_corrected.json`, `preds_corrected.json`
   (in-dist-only calibration T=2.10/τ=0.59, matched-FPR@0.10, AUPRC, batch=1 latency).
-- `scripts/eval_novel_gaps.py` + `scripts/verify_novel.py` → `_cache_{guard,base,llama}_exp.json`,
+- `experiments/eval_novel_gaps.py` + `experiments/verify_novel.py` → `_cache_{guard,base,llama}_exp.json`,
   `summary_novel_full.json` (novel-set AUPRC + Optimal-F1; `verify_novel.py` reconstructs the
   gold/order deterministically and re-grounds base 0.886 / tuned 0.781 / llama 0.701).
-- `scripts/score_base_inhouse.py` → `base_smollm3_inhouse.json` (base continuous in-house scores).
-- `scripts/recompute_base_vs_tuned.py` → `base_vs_tuned_clean.json` (base-vs-tuned at CLEAN
+- `experiments/score_base_inhouse.py` → `base_smollm3_inhouse.json` (base continuous in-house scores).
+- `experiments/recompute_base_vs_tuned.py` → `base_vs_tuned_clean.json` (base-vs-tuned at CLEAN
   per-model in-dist calibration on the identical 2,018 rows: base 0.713 / tuned 0.794,
   Δ+0.081 [0.062,0.100]; base in-house AUPRC 0.696).
-- `scripts/guard_eval_pipeline.py`, `scripts/eval_expanded_heldout.py` — parameterized / earlier eval.
+- `experiments/guard_eval_pipeline.py`, `experiments/eval_expanded_heldout.py` — parameterized / earlier eval.
 
-Figures are drawn by `scripts/make_figures.py`, which holds the plotted values **inline** (hand-transcribed from the numbers above); it does not read the JSON, so it must be kept in sync by hand.
+Figures are drawn by `experiments/make_figures.py`, which holds the plotted values **inline** (hand-transcribed from the numbers above); it does not read the JSON, so it must be kept in sync by hand.
 
 Note: the `notebooks/outputs/nb-smollm3-guard/*.json` artifacts are gitignored (derived); regenerate them with the producing scripts listed above.
 

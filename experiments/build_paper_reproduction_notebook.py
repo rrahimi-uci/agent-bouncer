@@ -64,7 +64,7 @@ C.append(code(
 "    if MODE!='recompute':\n"
 "        print(f'[verify] skipping experiments/{name} (using cached JSON)'); return\n"
 "    print(f'[recompute] python experiments/{name}  (cwd={RESEARCH})', flush=True)\n"
-"    p = subprocess.run([sys.executable,'-u',os.path.join('scripts',name)], cwd=RESEARCH,\n"
+"    p = subprocess.run([sys.executable,'-u',os.path.join('experiments',name)], cwd=RESEARCH,\n"
 "                       env={**os.environ, **(env or {})})\n"
 "    if p.returncode!=0: raise RuntimeError(f'experiments/{name} failed (exit {p.returncode})')\n"
 "\n"

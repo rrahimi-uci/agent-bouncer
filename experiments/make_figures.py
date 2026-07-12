@@ -22,18 +22,18 @@ def lab(ax,bars,vals,fmt="{:.3f}",dy=0.006):
 
 # ---- Fig 1: In-house pooled AUPRC (guard vs open guards); guard has CI ----
 fig,ax=plt.subplots(figsize=(3.3,2.5))
-sys=["Guard\n(ours, 3B)","ShieldGemma-2b","Llama-Guard-3-1B"]; ap=[0.844,0.712,0.639]; col=[C["guard"],C["shield"],C["llama"]]
-err=[[0.844-0.825],[0.866-0.844]]
+sys=["Guard\n(ours, 3B)","ShieldGemma-2b","Llama-Guard-3-1B"]; ap=[0.833,0.710,0.624]; col=[C["guard"],C["shield"],C["llama"]]  # tie-aware
+err=[[0.833-0.813],[0.854-0.833]]
 b=ax.bar(sys,ap,color=col,width=0.62,zorder=3)
-ax.errorbar([0],[0.844],yerr=err,fmt="none",ecolor=C["ink"],capsize=3,lw=1,zorder=4)
+ax.errorbar([0],[0.833],yerr=err,fmt="none",ecolor=C["ink"],capsize=3,lw=1,zorder=4)
 lab(ax,b,ap); ax.set_ylim(0,1.0); ax.set_ylabel("AUPRC (in-house pooled)"); clean(ax)
 ax.set_title("Threshold-free discrimination (in-house)",fontsize=8.5,color=C["ink"])
 plt.tight_layout(); plt.savefig("paper/figures/fig1_inhouse_auprc.pdf",bbox_inches="tight"); plt.close()
 
 # ---- Fig 2: NOVEL held-out AUPRC (base vs tuned guard vs llama) with CIs -- the key cross result ----
 fig,ax=plt.subplots(figsize=(3.3,2.5))
-sys=["Base\n(zero-shot)","Guard\n(tuned)","Llama-Guard\n-3-1B"]; ap=[0.886,0.781,0.701]; col=[C["base"],C["guard"],C["llama"]]
-lo=[0.870,0.751,0.673]; hi=[0.900,0.811,0.733]
+sys=["Base\n(zero-shot)","Guard\n(tuned)","Llama-Guard\n-3-1B"]; ap=[0.884,0.780,0.685]; col=[C["base"],C["guard"],C["llama"]]  # tie-aware
+lo=[0.869,0.751,0.657]; hi=[0.899,0.809,0.715]
 err=[[a-l for a,l in zip(ap,lo)],[h-a for a,h in zip(ap,hi)]]
 b=ax.bar(sys,ap,color=col,width=0.62,zorder=3)
 ax.errorbar(range(3),ap,yerr=err,fmt="none",ecolor=C["ink"],capsize=3,lw=1,zorder=4)
@@ -44,7 +44,7 @@ plt.tight_layout(); plt.savefig("paper/figures/fig2_novel_auprc.pdf",bbox_inches
 # ---- Fig 3: Operating-point flip (grouped): native-F1 vs AUPRC vs matched-FPR F1 ----
 fig,ax=plt.subplots(figsize=(3.5,2.6))
 groups=["Native-thresh\nF1","Threshold-free\nAUPRC","Matched-FPR\nF1"]
-guard=[0.794,0.844,0.581]; shield=[0.424,0.712,0.464]; llama=[0.673,0.639,0.360]
+guard=[0.794,0.833,0.581]; shield=[0.424,0.710,0.464]; llama=[0.673,0.624,0.360]  # AUPRC tie-aware
 x=np.arange(3); w=0.26
 b1=ax.bar(x-w,guard,w,label="Guard (ours)",color=C["guard"],zorder=3)
 b2=ax.bar(x,shield,w,label="ShieldGemma-2b",color=C["shield"],zorder=3)

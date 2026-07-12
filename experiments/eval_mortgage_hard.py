@@ -36,14 +36,16 @@ def prf(g,p):
     pr=tp/(tp+fp) if tp+fp else 0.0;rc=tp/(tp+fn) if tp+fn else 0.0
     return {"precision":pr,"recall":rc,"f1":2*pr*rc/(pr+rc) if pr+rc else 0.0,"fpr":fp/(fp+tn) if fp+tn else 0.0,
             "acc":(tp+tn)/len(g) if len(g) else 0.0}
-def auprc(s,g):
-    s=np.asarray(s,float);o=np.argsort(-s);g=np.asarray(g)[o];tp=np.cumsum(g);fp=np.cumsum(1-g);P=g.sum()
-    if P==0: return float('nan')
-    pr=tp/(tp+fp);rc=tp/P;rc=np.r_[0,rc];pr=np.r_[1,pr];return float(np.sum((rc[1:]-rc[:-1])*pr[1:]))
-def auroc(s,g):
-    s=np.asarray(s,float);g=np.asarray(g);P=g.sum();N=len(g)-P
-    if P==0 or N==0: return float('nan')
-    o=np.argsort(s);r=np.empty(len(s));r[o]=np.arange(1,len(s)+1);return float((r[g==1].sum()-P*(P+1)/2)/(P*N))
+def auprc(s,g):  # tie-aware non-interpolated AP (sklearn-canonical; groups equal scores)
+    from sklearn.metrics import average_precision_score
+    g=np.asarray(g)
+    if g.min()==g.max(): return float('nan')
+    return float(average_precision_score(g, np.asarray(s,float)))
+def auroc(s,g):  # tie-corrected AUROC (average ranks for ties)
+    from sklearn.metrics import roc_auc_score
+    g=np.asarray(g)
+    if g.min()==g.max(): return float('nan')
+    return float(roc_auc_score(g, np.asarray(s,float)))
 def ci_auprc(s,g,B=2000):
     rng=np.random.default_rng(0);n=len(g);v=[auprc(np.asarray(s)[i],np.asarray(g)[i]) for i in (rng.integers(0,n,n) for _ in range(B))]
     return float(np.nanpercentile(v,2.5)),float(np.nanpercentile(v,97.5))

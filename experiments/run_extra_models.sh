@@ -2,8 +2,9 @@
 # Cross-family guard pipeline for extra bases: train LoRA guard + full eval (in-house + novel + base-vs-tuned).
 # Resumable (train_guard skips existing adapters; guard_eval_pipeline is TAG-cached). Run from repo root.
 set -u
-ROOT="/Users/rezarahimi/Documents/GitHub/personal/agent-bouncer/research"
-PY="/Users/rezarahimi/Documents/GitHub/personal/agent-bouncer/.venv/bin/python"
+# repo-relative paths (this script lives in experiments/)
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="${GUARD_PY:-$ROOT/.venv/bin/python}"
 cd "$ROOT" || exit 1
 MODE="${1:-full}"   # 'smoke' = GUARD_SMOKE train only (validate); 'full' = train+eval
 
