@@ -25,13 +25,13 @@ def le(p):
             if l and not l.startswith("#") and "=" in l:
                 k,v=l.split("=",1); os.environ.setdefault(k.strip(),v.strip().strip('"').strip("'"))
 le("notebooks/.env"); le(".env"); HF=os.environ.get("HF_TOKEN")
-SEED=42; random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
+SEED=int(os.environ.get("GUARD_SEED","42")); random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)  # GUARD_SEED: multi-seed training randomness (data split stays fixed at seed 42 in balance())
 DEV="cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
 MODEL_ID=os.environ.get("MODEL_ID","HuggingFaceTB/SmolLM3-3B")
 TECH=os.environ.get("TECHNIQUE","dpo").lower()
 OUT=os.environ.get("OUT",f"notebooks/outputs/smollm3-{TECH}"); ADAPTER=f"{OUT}/adapter"
 SMOKE=os.environ.get("GUARD_SMOKE","0") in ("1","true","yes")
-MAX_SEQ_LEN=1024; TRAIN_CAP=1200; OR_BENCH_CAP=1000; MAX_STEPS=int(os.environ.get("GUARD_MAX_STEPS","300"))
+MAX_SEQ_LEN=1024; TRAIN_CAP=1200; OR_BENCH_CAP=int(os.environ.get("OR_BENCH_CAP","1000")); MAX_STEPS=int(os.environ.get("GUARD_MAX_STEPS","300"))  # OR_BENCH_CAP=0 -> clean source-family-disjoint split
 if SMOKE: TRAIN_CAP=40; OR_BENCH_CAP=30; MAX_STEPS=10
 os.makedirs(OUT, exist_ok=True)
 if os.path.exists(f"{ADAPTER}/adapter_config.json"):
