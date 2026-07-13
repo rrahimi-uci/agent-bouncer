@@ -96,6 +96,18 @@ table.detail .res{margin-top:0}
 .minibar{display:inline-flex;width:150px;height:8px;border-radius:4px;overflow:hidden;vertical-align:middle;
   margin-right:9px;background:#94a3b8}
 .minibar .u{background:var(--redteam)}.minibar .s{background:#94a3b8}
+/* sample content */
+.samples .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+.samples .meta a{color:var(--guardrail);text-decoration:none}.samples .meta a:hover{text-decoration:underline}
+.slist{max-height:540px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.srow{display:flex;gap:11px;padding:9px 12px;border-top:1px solid var(--line);font-size:13px;align-items:flex-start}
+.srow:first-child{border-top:none}
+.srow:nth-child(even){background:#fafbfc}
+.pill{flex:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.03em;margin-top:1px;text-transform:uppercase}
+.pill.uns{background:#fde8e8;color:#b91c1c}.pill.safe{background:#eaf0f6;color:#41608a}
+.srow .txt{flex:1;line-height:1.45;word-break:break-word}
+.srow .rtag{flex:none;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);background:#f1f4f8;
+  padding:1px 7px;border-radius:5px;margin-top:1px;white-space:nowrap}
 footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:10px}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
 </style>
@@ -106,7 +118,8 @@ footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px so
     <h1>Guard Benchmark Explorer</h1>
     <p class="sub">The evaluation suites behind <em>“The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards.”</em>
     Every set classifies <b>input prompts</b> (unsafe = positive). Scores are threshold-free <b>tie-aware AUPRC</b>.
-    Browse the <b>cards</b>, or switch to <b>Table</b> view for a tab per benchmark with its complete record.</p>
+    Browse the <b>cards</b>, or switch to <b>Table</b> view for a tab per benchmark with its complete record
+    and a <b>sample of its actual prompts</b>.</p>
     <div class="stats" id="stats"></div>
   </header>
 
@@ -137,6 +150,7 @@ footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px so
 <div class="scrim" id="scrim" onclick="closeD()"></div>
 <aside class="drawer" id="drawer" aria-live="polite"></aside>
 
+<script src="samples.js"></script>
 <script>
 const AX={guardrail:["Guardrail","--guardrail"],red_team:["Red-team","--redteam"],over_refusal:["Over-refusal","--refusal"]};
 const POOL={
@@ -243,6 +257,19 @@ let fPool="all",fAxis="all",view="cards",activeTab=B[0].id;
 const VIEWS={cards:"Cards",table:"Table"};
 const $=s=>document.querySelector(s);
 function cvar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function contentBlock(id){
+  const s=(window.SAMPLES||{})[id]; if(!s) return "";
+  const src=s.src?` · <a href="${s.src}" target="_blank" rel="noopener">full set at source ↗</a>`:"";
+  if(!s.rows||!s.rows.length)
+    return `<h4>Sample content</h4><p class="desc" style="margin:0">${s.note||"Not redistributed here."}${src}</p>`;
+  const meta=`Real prompts, unsafe = positive. Showing ${s.shown} of ${s.n.toLocaleString()}`
+    +`${s.trunc?` · truncated to ${s.trunc} chars`:""}${src}`;
+  const rows=s.rows.map(r=>`<div class="srow"><span class="pill ${r.g?'uns':'safe'}">${r.g?'unsafe':'safe'}</span>`
+    +`<span class="txt">${esc(r.t)}</span>${r.tag?`<span class="rtag">${esc(r.tag)}</span>`:""}</div>`).join("");
+  return `<h4>Sample content</h4><div class="samples"><div class="meta">${meta}</div>`
+    +`<div class="slist">${rows}</div></div>`;
+}
 
 function stats(){
   const pools=new Set(B.map(b=>b.pool)), axes=new Set(B.map(b=>b.axis));
@@ -322,7 +349,8 @@ function detailTable(b){
   return `<div class="tv"><h2>${b.name}</h2><div class="repo">${b.repo}</div>
     <div class="badges">${badge(pl[0],pl[1])}${badge(ax[0],ax[1])}</div>
     <p class="desc">${b.desc}</p>
-    <table class="detail"><tbody>${rows.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table></div>`;
+    <table class="detail"><tbody>${rows.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table>
+    ${contentBlock(b.id)}</div>`;
 }
 function resBars(b,head=true){
   const data=b.res||b.meanp; if(!data) return "";
@@ -358,6 +386,7 @@ function openD(id){
       ${b.perdom?`<p><b>Per domain:</b> ${b.perdom}</p>`:""}
       ${resBars(b)}
       ${b.caveat?`<h4>Caveat</h4><div class="note">${b.caveat}</div>`:""}
+      ${contentBlock(b.id)}
     </div>`;
   $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
 }
