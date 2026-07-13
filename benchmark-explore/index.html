@@ -69,9 +69,33 @@ h1{margin:0 0 6px;font-size:30px;letter-spacing:-.02em}
 .res{margin-top:6px}
 .res .row{display:grid;grid-template-columns:130px 1fr 52px;gap:10px;align-items:center;margin:7px 0;font-size:13px}
 .res .track{background:#eef1f6;border-radius:5px;height:16px;overflow:hidden}
-.res .fill{height:100%;border-radius:5px}
+.res .fill{display:block;height:100%;border-radius:5px;min-width:2px}
 .res .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 .tag{font:11.5px ui-monospace,monospace;color:var(--muted)}
+/* tab bar + full-record table view */
+.tabbar{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:2px 0 0;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.tab{white-space:nowrap;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13.5px;
+  color:var(--muted);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s;font-weight:500}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:600}
+.tab .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.tv{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  padding:22px 24px 24px;margin:16px 0 60px}
+.tv h2{margin:0 0 3px;font-size:23px;letter-spacing:-.02em}
+.tv .repo{margin-bottom:11px}
+.tv .desc{color:var(--muted);font-size:14px;margin:6px 0 16px;min-height:0}
+table.detail{width:100%;border-collapse:collapse;font-size:14px}
+table.detail th,table.detail td{text-align:left;vertical-align:top;padding:11px 14px;border-top:1px solid var(--line)}
+table.detail th{width:180px;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.05em;white-space:nowrap}
+table.detail tr:first-child th,table.detail tr:first-child td{border-top:none}
+table.detail td .badges{margin:0}
+table.detail .note{margin-top:0}
+table.detail .res{margin-top:0}
+.minibar{display:inline-flex;width:150px;height:8px;border-radius:4px;overflow:hidden;vertical-align:middle;
+  margin-right:9px;background:#94a3b8}
+.minibar .u{background:var(--redteam)}.minibar .s{background:#94a3b8}
 footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:10px}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
 </style>
@@ -82,11 +106,14 @@ footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px so
     <h1>Guard Benchmark Explorer</h1>
     <p class="sub">The evaluation suites behind <em>“The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards.”</em>
     Every set classifies <b>input prompts</b> (unsafe = positive). Scores are threshold-free <b>tie-aware AUPRC</b>.
-    Click a card for sources, composition, per-system results, and caveats.</p>
+    Browse the <b>cards</b>, or switch to <b>Table</b> view for a tab per benchmark with its complete record.</p>
     <div class="stats" id="stats"></div>
   </header>
 
   <div class="filters">
+    <div class="filtrow" style="margin-bottom:8px">
+      <span class="lbl">View</span><span id="viewtoggle"></span>
+    </div>
     <div class="filtrow" style="margin-bottom:8px">
       <span class="lbl">Pool</span><span id="pool"></span>
     </div>
@@ -96,6 +123,10 @@ footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px so
   </div>
 
   <div class="grid" id="grid"></div>
+  <div id="tableview" style="display:none">
+    <div class="tabbar" id="tabbar"></div>
+    <div id="tabpanel"></div>
+  </div>
   <footer>
     Numbers are tie-aware AUPRC (grouped equal scores; the paper's primary in-house / novel / mortgage tables).
     SmolLM3 guard OOD figures are being refreshed by an uncontaminated clean-split, multi-seed rerun; the base-vs-tuned
@@ -208,7 +239,8 @@ const B=[
 const RES_SYS={base:["Untuned base","--base"],guard:["Tuned guard (SFT)","--guard"],sft:["Mortgage-SFT","--sft"],
   general:["General guard","--shield"],llama:["Llama-Guard-3-1B","--llama"],shield:["ShieldGemma-2b","--shield"]};
 
-let fPool="all",fAxis="all";
+let fPool="all",fAxis="all",view="cards",activeTab=B[0].id;
+const VIEWS={cards:"Cards",table:"Table"};
 const $=s=>document.querySelector(s);
 function cvar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
 
@@ -228,8 +260,16 @@ function chips(el,map,cur,set){
 }
 function badge(txt,varname){return `<span class="b" style="background:${cvar(varname)}18;color:${cvar(varname)}">${txt}</span>`}
 function render(){
+  const vt=$("#viewtoggle");
+  vt.innerHTML=Object.entries(VIEWS).map(([k,l])=>`<span class="chip ${view===k?'on':''}" data-k="${k}">${l}</span>`).join("");
+  vt.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{view=c.dataset.k;render()});
   chips($("#pool"),POOL,fPool,v=>fPool=v); chips($("#axis"),AX,fAxis,v=>fAxis=v);
   const list=B.filter(b=>(fPool==="all"||b.pool===fPool)&&(fAxis==="all"||b.axis===fAxis));
+  $("#grid").style.display=view==="cards"?"":"none";
+  $("#tableview").style.display=view==="table"?"":"none";
+  if(view==="cards") renderCards(list); else renderTable(list);
+}
+function renderCards(list){
   const g=$("#grid");
   if(!list.length){g.innerHTML='<div class="empty">No benchmarks match those filters.</div>';return}
   g.innerHTML=list.map(b=>{
@@ -246,18 +286,55 @@ function render(){
       </div></article>`;
   }).join("");
 }
-function resBars(b){
+function renderTable(list){
+  const bar=$("#tabbar"),panel=$("#tabpanel");
+  if(!list.length){bar.innerHTML="";panel.innerHTML='<div class="empty">No benchmarks match those filters.</div>';return}
+  if(!list.find(b=>b.id===activeTab)) activeTab=list[0].id;
+  bar.innerHTML=list.map(b=>{
+    const c=cvar(AX[b.axis][1]),on=b.id===activeTab;
+    return `<button class="tab ${on?'on':''}" data-id="${b.id}"${on?` style="border-bottom-color:${c}"`:''}>`
+      +`<span class="dot" style="background:${c}"></span>${b.name}</button>`;
+  }).join("");
+  bar.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{activeTab=t.dataset.id;renderTable(list);
+    const el=[...bar.children].find(x=>x.dataset.id===activeTab); if(el) el.scrollIntoView({block:"nearest",inline:"nearest"});});
+  panel.innerHTML=detailTable(B.find(b=>b.id===activeTab));
+}
+function detailTable(b){
+  const ax=AX[b.axis],pl=POOL[b.pool];
+  const hf=b.repo.includes("/")&&!b.repo.includes(" ")?`https://huggingface.co/datasets/${b.repo.split(" ")[0]}`:null;
+  const bal=b.n?`<span class="minibar"><span class="u" style="width:${100*b.uns/b.n}%"></span><span class="s" style="width:${100*b.safe/b.n}%"></span></span>`
+    +`<span class="tag">${b.uns} unsafe / ${b.safe} safe · ${(100*b.uns/b.n).toFixed(0)}% positive</span>`:"—";
+  const rows=[
+    ["Source", hf?`<a href="${hf}" target="_blank" rel="noopener">${b.repo} ↗</a>`:b.repo],
+    ["Safety axis", `<div class="badges">${badge(ax[0],ax[1])}</div>`],
+    ["Evaluation pool", `<div class="badges">${badge(pl[0],pl[1])}</div><span class="tag">${pl[2]}</span>`],
+    ["Split role", b.role||"—"],
+    ["Test size", b.n?`${b.n.toLocaleString()} rows`:"not evaluated on our frozen rows"],
+    ["Class balance", bal],
+    ["Citation", b.cite||"—"],
+    ["What it tests", b.tests||"—"],
+    ["Composition", b.comp||"—"],
+  ];
+  if(b.perdom) rows.push(["Per domain", b.perdom]);
+  const rb=resBars(b,false);
+  if(rb) rows.push([b.meanp?"Mean P(unsafe)":"Per-system AUPRC", rb]);
+  if(b.caveat) rows.push(["Caveat", `<div class="note">${b.caveat}</div>`]);
+  return `<div class="tv"><h2>${b.name}</h2><div class="repo">${b.repo}</div>
+    <div class="badges">${badge(pl[0],pl[1])}${badge(ax[0],ax[1])}</div>
+    <p class="desc">${b.desc}</p>
+    <table class="detail"><tbody>${rows.map(([k,v])=>`<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function resBars(b,head=true){
   const data=b.res||b.meanp; if(!data) return "";
   const label=b.meanp?"Mean P(unsafe)":"Tie-aware AUPRC";
   const ent=Object.entries(data).filter(([k,v])=>v!=null);
-  const max=Math.max(...ent.map(([k,v])=>v),.6);
   const rows=ent.sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
     const sys=RES_SYS[k]||[k,"--muted"];
     return `<div class="row"><span>${sys[0]}</span>
       <span class="track"><span class="fill" style="width:${100*v/1}%;background:${cvar(sys[1])}"></span></span>
       <span class="val">${v.toFixed(3)}</span></div>`;
   }).join("");
-  return `<h4>${label} on this set</h4><div class="res">${rows}</div>`;
+  return `${head?`<h4>${label} on this set</h4>`:''}<div class="res">${rows}</div>`;
 }
 function openD(id){
   const b=B.find(x=>x.id===id); const ax=AX[b.axis],pl=POOL[b.pool];
