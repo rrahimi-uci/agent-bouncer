@@ -4,7 +4,7 @@
 Family-safe train split from mortgage_split.json. Single-token verdict (safe/unsafe) with a mortgage
 system prompt used consistently for training AND evaluation. TRL for dpo/ipo/kto; manual completion-only
 Trainer for sft. Resumable (skips if adapter exists).  GUARD_SMOKE=1 for a 2-step API smoke test.
-Run:  TECHNIQUE=sft .venv/bin/python -u experiments/train_mortgage.py
+Run:  TECHNIQUE=sft .venv/bin/python -u legacy/experiments/train_mortgage.py
 """
 import os, json, time, random
 import numpy as np, torch

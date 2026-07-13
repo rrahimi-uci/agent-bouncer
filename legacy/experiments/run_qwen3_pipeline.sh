@@ -7,7 +7,7 @@ export OUT="outputs/qwen3-4b-guard"
 export TAG="qwen3-4b"
 export TOKENIZERS_PARALLELISM=false
 echo "[pipeline] $(date) — training Qwen3-4B guard (skips if adapter exists) ..."
-.venv/bin/python -u experiments/train_guard.py
+.venv/bin/python -u legacy/experiments/train_guard.py
 echo "[pipeline] $(date) — eval (corrected + novel + base-vs-tuned) ..."
-.venv/bin/python -u experiments/guard_eval_pipeline.py
+.venv/bin/python -u legacy/experiments/guard_eval_pipeline.py
 echo "[pipeline] $(date) — DONE_QWEN3_PIPELINE"

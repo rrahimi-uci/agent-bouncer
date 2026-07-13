@@ -5,7 +5,7 @@ The committed in-house GPT point estimate came from eval_large_guard.py, which d
 prompt) but ABSTAIN (-1) on API errors, then recompute the guard-vs-GPT F1 comparison over ANSWERED rows
 only, with McNemar and a paired stratified bootstrap CI. Writes summary_gpt_reground.json with n_abstain
 so the paper's GPT-tie claim has machine-readable, abstention-aware evidence.
-Run from repo root:  python experiments/reground_gpt_inhouse.py
+Run from repo root:  python legacy/experiments/reground_gpt_inhouse.py
 """
 import os, json, time
 import numpy as np

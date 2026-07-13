@@ -3,7 +3,7 @@
 LoRA (r=32, alpha=64, all 7 projections) + completion-only loss on a single-token verdict.
 Resumable: skips if the adapter already exists. Reuses the same train mixture + leakage filter as SmolLM3.
   MODEL_ID (default Qwen/Qwen3-4B)  OUT (default outputs/qwen3-4b-guard)  GUARD_SMOKE=1 (tiny quick test)
-Run:  MODEL_ID=Qwen/Qwen3-4B .venv/bin/python -u experiments/train_guard.py
+Run:  MODEL_ID=Qwen/Qwen3-4B .venv/bin/python -u legacy/experiments/train_guard.py
 """
 import os, json, time, random
 import numpy as np, torch

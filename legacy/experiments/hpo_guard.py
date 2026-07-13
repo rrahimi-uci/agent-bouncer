@@ -7,7 +7,7 @@ frozen IN-DIST DEV split -- NEVER on test/novel (that would be leakage). Novel A
 
   HPO_METHOD=sft|dpo|grpo  MODEL_ID=HuggingFaceTB/SmolLM3-3B  HPO_TRIALS=16  HPO_STEPS=120
   FROZEN_ROWS=notebooks/outputs/frozen_eval_rows.json  OUT=outputs/hpo
-Run from repo root (GPU):  HPO_METHOD=dpo python3 -u experiments/hpo_guard.py
+Run from repo root (GPU):  HPO_METHOD=dpo python3 -u legacy/experiments/hpo_guard.py
 """
 import os, json, time, subprocess, sys, shutil
 import numpy as np, torch
@@ -68,7 +68,7 @@ def score(adapter, texts):
     if DEV=="cuda": torch.cuda.empty_cache()
     return np.array(out)
 
-SCRIPT={"sft":"experiments/train_guard.py"}.get(METHOD,"experiments/train_guard_pref.py")
+SCRIPT={"sft":"legacy/experiments/train_guard.py"}.get(METHOD,"legacy/experiments/train_guard_pref.py")
 def suggest(trial):
     hp={"GUARD_LORA_R":str(trial.suggest_categorical("lora_r",[16,32,64]))}
     hp["GUARD_LORA_ALPHA"]=str(2*int(hp["GUARD_LORA_R"]))

@@ -1,6 +1,6 @@
 """Bundle the cached benchmark subsets into notebooks/data/ so the notebooks/ folder is a standalone,
 self-contained unit (copy/zip it and the eval sets travel with the notebook). Excludes safepyramid (48 MB;
-the SmolLM3 notebook does not use it). Run: python experiments/bundle_notebook_data.py"""
+the SmolLM3 notebook does not use it). Run: python legacy/experiments/bundle_notebook_data.py"""
 from __future__ import annotations
 
 import shutil
@@ -10,7 +10,8 @@ from pathlib import Path
 BENCHES = ["beavertails", "openai_moderation", "toxicchat", "prompt_injections",
            "jailbreak_classification", "jailbreakbench", "xstest"]
 
-ROOT = Path(__file__).resolve().parent.parent
+# repo root is three levels up now that this script lives in legacy/experiments/
+ROOT = Path(__file__).resolve().parent.parent.parent
 SRC = ROOT / "data" / "benchmarks"
 DST = ROOT / "notebooks" / "data" / "benchmarks"
 

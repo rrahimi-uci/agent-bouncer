@@ -26,13 +26,13 @@ for base in "${BASES[@]}"; do
       if [ -f "$ND/summary_${TAG}.json" ]; then echo "===== [$(date +%H:%M)] SKIP (summary exists) $TAG ====="; continue; fi
       echo "===== [$(date +%H:%M)] TRAIN $TAG (${MID[$base]}) ====="
       if [ "$obj" = "sft" ]; then
-        MODEL_ID="${MID[$base]}" OUT=$OUT OR_BENCH_CAP=0 GUARD_SEED=$seed python3 -u experiments/train_guard.py 2>&1 | tail -3
+        MODEL_ID="${MID[$base]}" OUT=$OUT OR_BENCH_CAP=0 GUARD_SEED=$seed python3 -u legacy/experiments/train_guard.py 2>&1 | tail -3
       else
-        MODEL_ID="${MID[$base]}" OUT=$OUT TECHNIQUE=$obj OR_BENCH_CAP=0 GUARD_SEED=$seed python3 -u experiments/train_guard_pref.py 2>&1 | tail -3
+        MODEL_ID="${MID[$base]}" OUT=$OUT TECHNIQUE=$obj OR_BENCH_CAP=0 GUARD_SEED=$seed python3 -u legacy/experiments/train_guard_pref.py 2>&1 | tail -3
       fi
       if [ ! -f "$OUT/adapter/adapter_config.json" ]; then echo "===== [$(date +%H:%M)] TRAIN FAILED/OOM $TAG -- skipping eval ====="; continue; fi
       echo "===== [$(date +%H:%M)] EVAL $TAG ====="
-      MODEL_ID="${MID[$base]}" ADAPTER=$OUT/adapter TAG=$TAG FROZEN_ROWS=$FR python3 -u experiments/guard_eval_pipeline.py 2>&1 | tail -4
+      MODEL_ID="${MID[$base]}" ADAPTER=$OUT/adapter TAG=$TAG FROZEN_ROWS=$FR python3 -u legacy/experiments/guard_eval_pipeline.py 2>&1 | tail -4
       rm -rf "$OUT"/checkpoint-* 2>/dev/null   # drop intermediate checkpoints; keep adapter + summary + scores
       echo "===== [$(date +%H:%M)] SUMMARY_DONE $TAG ====="
     done

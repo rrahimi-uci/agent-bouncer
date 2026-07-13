@@ -4,7 +4,7 @@ IDENTICAL mortgage system prompt used during training, each calibrated (T, tau) 
 Zero-shot references (base SmolLM3-3B and the original GENERAL-safety guard adapter) are scored under the
 SAME prompt so the comparison isolates the effect of mortgage tuning. Metrics per system: threshold-free
 AUPRC/AUROC (+CI), F1/precision/recall/FPR at the dev-calibrated tau, Optimal-F1, and per-category recall.
-Run:  .venv/bin/python -u experiments/eval_mortgage_tuned.py
+Run:  .venv/bin/python -u legacy/experiments/eval_mortgage_tuned.py
 """
 import os, json, time
 import numpy as np, torch

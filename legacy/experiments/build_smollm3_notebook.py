@@ -1,5 +1,5 @@
 """Builds notebooks/smollm3_guard_reproduction.ipynb — a self-contained, end-to-end notebook that
-implements the SmolLM3-3B guard plan (docs/smollm3-guard-plan.md). Run: python experiments/build_smollm3_notebook.py
+implements the SmolLM3-3B guard plan (docs/smollm3-guard-plan.md). Run: python legacy/experiments/build_smollm3_notebook.py
 
 The notebook depends only on pip packages (transformers/peft/datasets/torch/numpy/pandas/matplotlib) — no
 agent_bouncer import — so it runs standalone (e.g. Colab). It PREFERS the repo's cached benchmark subsets

@@ -10,7 +10,7 @@ FORMAT=promptguard: Prompt Guard 2 sequence classifier -> P(malicious); injectio
 
 Validate first with SANITY=1 (8 obvious probes; expects P(unsafe)>0.5 on harmful, <0.5 on benign).
 Run from repo root (GPU):
-  MODEL_ID=meta-llama/Llama-Guard-3-8B FORMAT=llamaguard TAG=llamaguard3-8b FROZEN_ROWS=notebooks/outputs/frozen_eval_rows.json SANITY=1 python3 -u experiments/eval_llamaguard_logprob.py
+  MODEL_ID=meta-llama/Llama-Guard-3-8B FORMAT=llamaguard TAG=llamaguard3-8b FROZEN_ROWS=notebooks/outputs/frozen_eval_rows.json SANITY=1 python3 -u legacy/experiments/eval_llamaguard_logprob.py
 """
 import os, json, time
 import numpy as np, torch

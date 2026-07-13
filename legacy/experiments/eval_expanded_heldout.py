@@ -4,7 +4,7 @@ held-out benchmarks (never trained on) -> more held-out data -> decisive AUPRC C
 Metric = threshold-free AUPRC/AUROC (rank-based, calibration-independent). All 3 models scored via a single
 batched FORWARD (llama-guard/shieldgemma verdict = first-token logits, no generation needed). Per-model
 scores cached to _cache_*.json so a stall never loses work (rerun resumes).
-Run:  .venv/bin/python -u experiments/eval_expanded_heldout.py
+Run:  .venv/bin/python -u legacy/experiments/eval_expanded_heldout.py
 """
 import os, json, time, random
 import numpy as np, torch

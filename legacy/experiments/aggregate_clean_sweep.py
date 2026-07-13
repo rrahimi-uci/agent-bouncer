@@ -10,7 +10,7 @@ tie-aware AUPRC after the metric correction) and the HPO best-config JSONs, and 
                        novel_base, with the DPO>SFT-novel bold rule applied.
   * tab:hpo         -- per-objective HPO on the primary base: best dev/novel AUPRC + params.
 
-Usage:  RESULT_DIR=notebooks/outputs/nb-smollm3-guard python3 experiments/aggregate_clean_sweep.py
+Usage:  RESULT_DIR=notebooks/outputs/nb-smollm3-guard python3 legacy/experiments/aggregate_clean_sweep.py
         (RESULT_DIR may also hold hpo_best_{sft,dpo,grpo}_*.json under an hpo/ subdir or flat.)
 
 It is read-only and defensive: any (base,obj) with missing seeds is reported with the

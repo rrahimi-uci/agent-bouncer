@@ -13,7 +13,7 @@ FORMAT selects the model's prompt template + verdict parser:
 ALWAYS run SANITY=1 first: scores 4 clearly-harmful + 4 clearly-benign probes and prints each verdict, so a
 broken template is caught before the full run. Reads FROZEN_ROWS (shared with the paper). Emits
 summary_guardrail_<TAG>.json. Run from repo root (GPU):
-  MODEL_ID=allenai/wildguard FORMAT=wildguard TAG=wildguard-7b FROZEN_ROWS=notebooks/outputs/frozen_eval_rows.json SANITY=1 python3 -u experiments/eval_guardrail_baselines.py
+  MODEL_ID=allenai/wildguard FORMAT=wildguard TAG=wildguard-7b FROZEN_ROWS=notebooks/outputs/frozen_eval_rows.json SANITY=1 python3 -u legacy/experiments/eval_guardrail_baselines.py
 """
 import os, json, time
 import numpy as np, torch

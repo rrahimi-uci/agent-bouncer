@@ -4,7 +4,7 @@
 Reuses the already-trained LoRA adapter (deterministic -> identical guard, no retrain) and runs the
 notebook's exact scoring / calibration / parity logic. Leakage-clean: reconstructs the adapter's exact
 train_pool (same seeds/caps as the notebook) and drops any eval row it contains.
-Run from repo root:  .venv/bin/python experiments/eval_large_guard.py
+Run from repo root:  .venv/bin/python legacy/experiments/eval_large_guard.py
 """
 import os, json, time, math, random, warnings
 import numpy as np, pandas as pd, torch

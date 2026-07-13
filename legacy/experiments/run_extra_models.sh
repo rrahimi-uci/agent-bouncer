@@ -18,14 +18,14 @@ for entry in "${MODELS[@]}"; do
   MID="${entry%%|*}"; TAG="${entry##*|}"; OUT="notebooks/outputs/${TAG}-guard"
   echo "================ [$TAG] $MID ($MODE) ================"
   if [ "$MODE" = "smoke" ]; then
-    GUARD_SMOKE=1 MODEL_ID="$MID" OUT="notebooks/outputs/_smoke_${TAG}" "$PY" -u experiments/train_guard.py \
+    GUARD_SMOKE=1 MODEL_ID="$MID" OUT="notebooks/outputs/_smoke_${TAG}" "$PY" -u legacy/experiments/train_guard.py \
       && echo "[$TAG] SMOKE_OK" || echo "[$TAG] SMOKE_FAIL"
     continue
   fi
   echo "--- train ---"
-  MODEL_ID="$MID" OUT="$OUT" "$PY" -u experiments/train_guard.py || { echo "[$TAG] TRAIN_FAIL"; continue; }
+  MODEL_ID="$MID" OUT="$OUT" "$PY" -u legacy/experiments/train_guard.py || { echo "[$TAG] TRAIN_FAIL"; continue; }
   echo "--- eval (in-house + novel + base-vs-tuned) ---"
-  MODEL_ID="$MID" ADAPTER="$OUT/adapter" TAG="$TAG" "$PY" -u experiments/guard_eval_pipeline.py || { echo "[$TAG] EVAL_FAIL"; continue; }
+  MODEL_ID="$MID" ADAPTER="$OUT/adapter" TAG="$TAG" "$PY" -u legacy/experiments/guard_eval_pipeline.py || { echo "[$TAG] EVAL_FAIL"; continue; }
   echo "[$TAG] DONE"
 done
 echo "ALL_EXTRA_MODELS_${MODE}_DONE"

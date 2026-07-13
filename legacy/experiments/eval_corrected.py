@@ -4,7 +4,7 @@
   (2) true batch=1 latency p50/p90 (not batch-amortized);
   (3) continuous scores + matched-FPR@0.10 + AUPRC for local models (guard, llama-guard, shieldgemma);
   reuses saved GPT/keyword hard preds from preds_large.json (fixed operating points; no GPT re-call).
-Held-out = {jailbreakbench, xstest}. Run from repo root:  .venv/bin/python -u experiments/eval_corrected.py
+Held-out = {jailbreakbench, xstest}. Run from repo root:  .venv/bin/python -u legacy/experiments/eval_corrected.py
 """
 import os, json, time, math, random
 import numpy as np, torch

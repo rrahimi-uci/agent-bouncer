@@ -12,7 +12,7 @@ TECHNIQUE=kto  : Kahneman-Tversky Optimization (binary desirable/undesirable; na
 
   MODEL_ID (base)  OUT (adapter dir)  TECHNIQUE=dpo|grpo|kto  GUARD_SMOKE=1 (10 steps, validate trl API)
 Run from repo root (GPU):
-  MODEL_ID=HuggingFaceTB/SmolLM3-3B OUT=notebooks/outputs/smollm3-dpo TECHNIQUE=dpo GUARD_SMOKE=1 python3 -u experiments/train_guard_pref.py
+  MODEL_ID=HuggingFaceTB/SmolLM3-3B OUT=notebooks/outputs/smollm3-dpo TECHNIQUE=dpo GUARD_SMOKE=1 python3 -u legacy/experiments/train_guard_pref.py
 """
 import os, json, time, random
 import numpy as np, torch

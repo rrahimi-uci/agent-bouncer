@@ -3,7 +3,7 @@
 
 Same prompt + logprob head + dev-calibration protocol as the tuned guard -> isolates the LoRA contribution.
 Reuses notebooks/outputs/nb-smollm3-guard/preds_large.json for the tuned guard's per-row test preds + gold.
-Run from repo root:  .venv/bin/python -u experiments/eval_base_ablation.py
+Run from repo root:  .venv/bin/python -u legacy/experiments/eval_base_ablation.py
 """
 import os, json, time, math, random
 import numpy as np, pandas as pd, torch

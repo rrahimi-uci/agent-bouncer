@@ -10,7 +10,7 @@ softmax P(unsafe); metrics are tie-aware (scikit-learn). Reports per-domain + ag
 untuned base and the tuned guard, plus the paired-bootstrap base-minus-tuned dAUPRC.
 
   MODEL_ID (HuggingFaceTB/SmolLM3-3B)  ADAPTER (tuned guard adapter dir)  TAG (label)
-Run: MODEL_ID=... ADAPTER=outputs/sm3clean-sft-s42/adapter TAG=sm3-sft-s42 python3 -u experiments/expguard_eval.py
+Run: MODEL_ID=... ADAPTER=outputs/sm3clean-sft-s42/adapter TAG=sm3-sft-s42 python3 -u legacy/experiments/expguard_eval.py
 """
 import os, json, time
 import numpy as np, torch

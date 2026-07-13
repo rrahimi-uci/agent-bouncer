@@ -5,7 +5,7 @@ It does NOT reimplement the paper logic (that would drift); it ORCHESTRATES the 
 and renders every table/figure from the JSON they emit. Two modes via env REPRO_MODE:
   - verify_cached (default): load existing summary_*.json and render tables/figures/validation (fast).
   - recompute: run each paper script to (re)produce the JSON first, then render (heavy: GPU/API/time).
-Run from repo root:  python experiments/build_paper_reproduction_notebook.py
+Run from repo root:  python legacy/experiments/build_paper_reproduction_notebook.py
 """
 import json, os
 def md(*s): return {"cell_type":"markdown","metadata":{},"source":[l if l.endswith("\n") else l+"\n" for l in s]}

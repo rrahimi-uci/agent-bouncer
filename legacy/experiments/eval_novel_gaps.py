@@ -3,7 +3,7 @@
   1) BASE SmolLM3-3B (no adapter) on the 4 novel benchmarks -> attribute the novel win to tuning vs base competence.
   2) ShieldGemma-2b on the 4 novel benchmarks (tiny batch + short max_len to dodge the Gemma-2/MPS stall).
 Then print the full novel AUPRC table (guard + llama from existing caches; base + shield new).
-Run:  .venv/bin/python -u experiments/eval_novel_gaps.py
+Run:  .venv/bin/python -u legacy/experiments/eval_novel_gaps.py
 """
 import os, json, time, random
 import numpy as np, torch

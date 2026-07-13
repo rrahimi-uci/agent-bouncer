@@ -20,7 +20,7 @@ Design notes (for transparency / to avoid ad-hoc choices):
   flag-rate uses each model's own calibrated (T, tau).
 
   MODEL_ID (HuggingFaceTB/SmolLM3-3B)  ADAPTER (tuned adapter dir)  TAG
-Run: MODEL_ID=... ADAPTER=outputs/sm3clean-sft-s42/adapter TAG=sm3-sft-s42 python3 -u experiments/name_fairness_probe.py
+Run: MODEL_ID=... ADAPTER=outputs/sm3clean-sft-s42/adapter TAG=sm3-sft-s42 python3 -u legacy/experiments/name_fairness_probe.py
 """
 import os, json, time
 import numpy as np, torch

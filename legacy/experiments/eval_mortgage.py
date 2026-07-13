@@ -10,7 +10,7 @@ in the paper and report threshold-free AUPRC/AUROC (fair primary), the deployed 
 in-house calibration (T=2.10, tau=0.59), per-system Optimal-F1 (ceiling), and a per-category
 breakdown. Continuous scores are cached (resumable under thermal throttling).
 
-Run:  .venv/bin/python -u experiments/eval_mortgage.py
+Run:  .venv/bin/python -u legacy/experiments/eval_mortgage.py
 """
 import os, json, time
 import numpy as np, torch

@@ -12,7 +12,7 @@ reported AUPRCs have no leakage. We report three points:
   rank-avg      (a non-deployable global-rank-average alternative, from ensemble_probe.py, for context;
                  NOT an upper bound -- the PIT ensemble can and does exceed it, e.g. Qwen 0.847 > 0.845)
 A single model's AUPRC is invariant to any monotone map, so the base/tuned endpoints are unchanged.
-Run from repo root:  .venv/bin/python experiments/ensemble_deployable.py
+Run from repo root:  .venv/bin/python legacy/experiments/ensemble_deployable.py
 """
 import os, json, random
 import numpy as np

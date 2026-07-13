@@ -5,7 +5,7 @@ Reuses model-INDEPENDENT baselines already computed for SmolLM3 (same benchmark 
   _cache_llama_exp.json (Llama-Guard on the 4 novel benchmarks).
 Only the given guard + its base are scored. Staged + cached (TAG-prefixed) => resumable across stalls.
   MODEL_ID (Qwen/Qwen3-4B)  ADAPTER (outputs/qwen3-4b-guard/adapter)  TAG (qwen3-4b)
-Run:  MODEL_ID=Qwen/Qwen3-4B ADAPTER=outputs/qwen3-4b-guard/adapter TAG=qwen3-4b .venv/bin/python -u experiments/guard_eval_pipeline.py
+Run:  MODEL_ID=Qwen/Qwen3-4B ADAPTER=outputs/qwen3-4b-guard/adapter TAG=qwen3-4b .venv/bin/python -u legacy/experiments/guard_eval_pipeline.py
 """
 import os, json, time, random
 import numpy as np, torch

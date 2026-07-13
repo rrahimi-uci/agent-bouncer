@@ -6,7 +6,7 @@ This set has no train/dev split, minimal-pair ids, or protected-class tags, so w
 operating-point-INDEPENDENT metrics (threshold-free AUPRC/AUROC and Optimal-F1) as the fair primary,
 plus accuracy / recall / FPR at each system's own best-F1 point and per-trap-type / per-category /
 per-difficulty catch-rates. gpt-5.4-mini is scored at its native decision point as a frontier ceiling.
-Systems use the identical mortgage system prompt. Run from repo root:  python experiments/eval_mortgage_hard.py
+Systems use the identical mortgage system prompt. Run from repo root:  python legacy/experiments/eval_mortgage_hard.py
 """
 import os, json, time
 import numpy as np, torch

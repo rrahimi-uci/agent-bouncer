@@ -7,7 +7,7 @@ weights over model pairs and reports threshold-free AUPRC on the in-house pool (
 novel pool (2020). AUPRC is rank-based, so we test BOTH probability-averaging and rank-averaging.
 
 Endpoints are sanity-checked against the paper/summary AUPRCs before any ensemble claim is trusted.
-Run from repo root:  .venv/bin/python experiments/ensemble_probe.py
+Run from repo root:  .venv/bin/python legacy/experiments/ensemble_probe.py
 """
 import os, json, random
 import numpy as np

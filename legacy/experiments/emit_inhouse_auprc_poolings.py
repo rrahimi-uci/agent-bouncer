@@ -6,7 +6,7 @@ producer -- a provenance gap. This script closes it, reading ONLY committed per-
 scoring): guard/shieldgemma/llama continuous scores from preds_corrected.json and the untuned base's
 continuous scores from base_smollm3_inhouse.json, split by strata into in-distribution vs in-house
 held-out (JailbreakBench, XSTest). Writes summary_auprc_poolings.json.
-Run from repo root:  .venv/bin/python experiments/emit_inhouse_auprc_poolings.py
+Run from repo root:  .venv/bin/python legacy/experiments/emit_inhouse_auprc_poolings.py
 """
 import json
 import numpy as np
