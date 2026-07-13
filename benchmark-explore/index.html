@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Guard Benchmark Explorer</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1a2233; --muted:#5b6675; --line:#e5e8ee;
+  --guardrail:#2563eb; --redteam:#dc2626; --refusal:#ca8a04;
+  --indist:#2563eb; --held:#7c3aed; --novel:#dc2626; --domain:#0d9488; --landscape:#64748b;
+  --guard:#2563eb; --base:#15803d; --llama:#ca8a04; --shield:#7c3aed; --sft:#2563eb;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+header.hero{padding:38px 0 20px}
+h1{margin:0 0 6px;font-size:30px;letter-spacing:-.02em}
+.sub{color:var(--muted);max-width:760px;font-size:15px}
+.sub code{background:#eef1f6;padding:1px 6px;border-radius:5px;font-size:12.5px}
+.stats{display:flex;gap:26px;margin:20px 0 4px;flex-wrap:wrap}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow)}
+.stat b{font-size:22px;display:block;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:12.5px}
+.filters{position:sticky;top:0;z-index:20;background:linear-gradient(var(--bg),var(--bg) 70%,rgba(246,247,249,0));
+  padding:16px 0 12px;margin-top:8px}
+.filtrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filtrow .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:999px;
+  cursor:pointer;font-size:13px;transition:.15s;user-select:none}
+.chip:hover{border-color:#c7ccd6}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:6px 0 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;
+  box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s;position:relative}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(16,24,40,.12)}
+.accent{height:4px}
+.card .body{padding:15px 16px 16px}
+.card h3{margin:0 0 3px;font-size:17px;letter-spacing:-.01em}
+.repo{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);word-break:break-all}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:11px 0 10px}
+.b{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;letter-spacing:.01em}
+.desc{color:var(--muted);font-size:13.5px;min-height:38px}
+.balance{margin-top:12px}
+.balance .bar{height:7px;border-radius:4px;background:var(--refusal);display:flex;overflow:hidden}
+.balance .u{background:var(--redteam)}.balance .s{background:#94a3b8}
+.balance .cap{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:5px}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(16,24,40,.34);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,94vw);background:var(--panel);z-index:50;
+  box-shadow:-8px 0 40px rgba(16,24,40,.2);transform:translateX(102%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto}
+.drawer.on{transform:none}
+.dhead{padding:22px 26px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.dhead h2{margin:0 0 6px;font-size:22px;letter-spacing:-.02em}
+.close{position:absolute;top:18px;right:20px;border:none;background:#eef1f6;width:30px;height:30px;border-radius:8px;
+  cursor:pointer;font-size:16px;color:var(--muted)}
+.dbody{padding:20px 26px 60px}
+.dbody h4{margin:22px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.dbody p{margin:0 0 10px}
+.kv{display:grid;grid-template-columns:132px 1fr;gap:6px 12px;font-size:13.5px}
+.kv .k{color:var(--muted)}
+.kv a{color:var(--guardrail);text-decoration:none}.kv a:hover{text-decoration:underline}
+.note{background:#fff8e6;border:1px solid #f2e2b0;border-radius:10px;padding:11px 13px;font-size:13px;color:#6b5300;margin-top:6px}
+.res{margin-top:6px}
+.res .row{display:grid;grid-template-columns:130px 1fr 52px;gap:10px;align-items:center;margin:7px 0;font-size:13px}
+.res .track{background:#eef1f6;border-radius:5px;height:16px;overflow:hidden}
+.res .fill{height:100%;border-radius:5px}
+.res .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.tag{font:11.5px ui-monospace,monospace;color:var(--muted)}
+footer{color:var(--muted);font-size:12.5px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:10px}
+.empty{color:var(--muted);padding:40px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>Guard Benchmark Explorer</h1>
+    <p class="sub">The evaluation suites behind <em>“The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards.”</em>
+    Every set classifies <b>input prompts</b> (unsafe = positive). Scores are threshold-free <b>tie-aware AUPRC</b>.
+    Click a card for sources, composition, per-system results, and caveats.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="filters">
+    <div class="filtrow" style="margin-bottom:8px">
+      <span class="lbl">Pool</span><span id="pool"></span>
+    </div>
+    <div class="filtrow">
+      <span class="lbl">Axis</span><span id="axis"></span>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <footer>
+    Numbers are tie-aware AUPRC (grouped equal scores; the paper's primary in-house / novel / mortgage tables).
+    SmolLM3 guard OOD figures are being refreshed by an uncontaminated clean-split, multi-seed rerun; the base-vs-tuned
+    ordering is unchanged. HarmBench is all-unsafe (no AUPRC; scored by mean&nbsp;P(unsafe)). Built for local exploration.
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" onclick="closeD()"></div>
+<aside class="drawer" id="drawer" aria-live="polite"></aside>
+
+<script>
+const AX={guardrail:["Guardrail","--guardrail"],red_team:["Red-team","--redteam"],over_refusal:["Over-refusal","--refusal"]};
+const POOL={
+  in_dist:["In-distribution","--indist","Train + dev + test"],
+  held_out:["In-house held-out","--held","Test only (same pool, zero train/dev)"],
+  novel:["Novel / OOD","--novel","Test only, held out by source family"],
+  domain:["Domain use case","--domain","Specialized-domain evaluation"],
+  landscape:["Landscape only","--landscape","Cited self-reported; not in the controlled pipeline"]
+};
+// tie-aware AUPRC per system where measured (unsafe = positive)
+const B=[
+ {id:"beavertails",name:"BeaverTails",repo:"PKU-Alignment/BeaverTails",axis:"guardrail",pool:"in_dist",
+  n:1041,uns:513,safe:528,role:"in-dist (train/dev/test)",cite:"Ji et al., 2023",
+  desc:"Large QA-safety set; the biggest in-house source. Harmful-content guardrail axis.",
+  tests:"Whether the guard flags harmful requests vs. edgy-but-benign ones across many harm categories.",
+  comp:"Prompts drawn from a QA-pair safety dataset. We use the prompt with a prompt-level label.",
+  res:{guard:.680,base:.618,llama:.553,shield:.653},
+  caveat:"BeaverTails' is_safe is a QA-pair (response-context) label; we repurpose it as a prompt label with an ‘unsafe wins’ dedup across duplicate prompts — a documented source of label noise."},
+ {id:"toxicchat",name:"ToxicChat",repo:"lmsys/toxic-chat",axis:"guardrail",pool:"in_dist",
+  n:401,uns:199,safe:202,role:"in-dist (train/dev/test)",cite:"Lin et al., 2023",
+  desc:"Real user queries to an LLM, toxicity-labeled. Realistic in-the-wild guardrail signal.",
+  tests:"Detection of genuinely toxic user turns amid ordinary chat traffic.",
+  comp:"Sampled from the toxicchat0124 config; class-balanced test split.",
+  res:{guard:.946,base:.854,llama:.661,shield:.951},
+  caveat:"Non-commercial license: used in this study's experiments but excluded from any distributed model's training."},
+ {id:"prompt_injections",name:"Prompt Injections",repo:"deepset/prompt-injections",axis:"red_team",pool:"in_dist",
+  n:68,uns:32,safe:36,role:"in-dist (train/dev/test)",cite:"deepset",
+  desc:"Prompt-injection attacks vs. benign instructions. Small red-team set.",
+  tests:"Whether injection attempts (‘ignore previous instructions…’) are flagged.",
+  comp:"Balanced-ish attack/benign split (~6% off parity).",
+  res:{guard:.902,base:.783,llama:.790,shield:.656}},
+ {id:"jailbreak_classification",name:"Jailbreak Classification",repo:"jackhhao/jailbreak-classification",axis:"red_team",pool:"in_dist",
+  n:148,uns:73,safe:75,role:"in-dist (train/dev/test)",cite:"jackhhao",
+  desc:"Jailbreak prompts vs. benign prompts. The base nearly inverts this one.",
+  tests:"Recognition of jailbreak framings; a big base→tuned gain (0.45→1.00 AUPRC).",
+  comp:"Balanced jailbreak/benign test split.",
+  res:{guard:.999,base:.448,llama:.660,shield:.820}},
+ {id:"jailbreakbench",name:"JailbreakBench",repo:"JailbreakBench/JBB-Behaviors",axis:"red_team",pool:"held_out",
+  n:120,uns:58,safe:62,role:"in-house held-out (test only)",cite:"Chao et al., 2024",
+  desc:"Standardized jailbreak behaviors. Held out from training/calibration.",
+  tests:"Transfer to a standardized jailbreak set the guard never trained on.",
+  comp:"58 unsafe behaviors + 62 benign contrasts.",
+  res:{guard:.805,base:.963,llama:.801,shield:.676},
+  caveat:"The untuned base outranks the tuned guard here — foreshadows the OOD ranking reversal."},
+ {id:"xstest",name:"XSTest",repo:"natolambert/xstest-v2-copy",axis:"over_refusal",pool:"held_out",
+  n:240,uns:123,safe:117,role:"in-house held-out (test only)",cite:"Röttger et al., 2024",
+  desc:"Over-refusal probe: benign-but-superficially-risky prompts + unsafe contrasts.",
+  tests:"Whether the guard over-blocks safe prompts that merely look risky.",
+  comp:"Near-balanced after filtering (123 unsafe / 117 safe) rather than all-safe.",
+  res:{guard:.862,base:.975,llama:.724,shield:.822},
+  caveat:"Base again outranks the tuned guard — the over-refusal axis of the base-vs-tuned finding."},
+ {id:"wildguardtest",name:"WildGuardTest",repo:"allenai/wildguardmix",axis:"guardrail",pool:"novel",
+  n:800,uns:400,safe:400,role:"novel / OOD (test only)",cite:"Han et al., 2024",
+  desc:"Broad prompt-harm labels from AI2's WildGuardMix. Source-family disjoint.",
+  tests:"Out-of-distribution guardrail generalization to an unseen family.",
+  comp:"Balanced 400:400 (per-class cap 400).",
+  res:{base:.892,guard:.795,llama:.730}},
+ {id:"wildjailbreak",name:"WildJailbreak",repo:"allenai/wildjailbreak",axis:"red_team",pool:"novel",
+  n:420,uns:210,safe:210,role:"novel / OOD (test only)",cite:"Jiang et al., 2024",
+  desc:"Adversarial jailbreak prompts (eval split). Source-family disjoint.",
+  tests:"OOD robustness to adversarial red-team prompts.",
+  comp:"Balanced 210:210 (smaller — its eval split caps at 210/class).",
+  res:{base:.834,guard:.722,llama:.578}},
+ {id:"orbench_hard",name:"OR-Bench-Hard",repo:"bench-llm/or-bench",axis:"over_refusal",pool:"novel",
+  n:800,uns:400,safe:400,role:"novel / OOD (test only)",cite:"Cui et al., 2024",
+  desc:"Over-refusal at the hard end: benign refusal-bait vs. genuinely toxic prompts.",
+  tests:"Separating hard benign prompts from real toxic ones (over-refusal axis, OOD).",
+  comp:"Benign half = or-bench-hard-1k; unsafe half imported from or-bench-toxic; balanced 400:400.",
+  res:{base:.938,guard:.836,llama:.725},
+  caveat:"NOT fully source-family-disjoint: training draws 1,000 safe prompts from a different config (or-bench-80k) of the same bench-llm/or-bench family. Training-unseen at the row level, but family-overlapping."},
+ {id:"harmbench",name:"HarmBench",repo:"walledai/HarmBench",axis:"red_team",pool:"novel",
+  n:200,uns:200,safe:0,role:"novel / OOD (test only)",cite:"Mazeika et al., 2024",
+  desc:"All-harmful stress set (no negatives). A recall/severity probe.",
+  tests:"Mean predicted P(unsafe) on 200 harmful prompts (base 0.967, guard 0.780, Llama 0.390).",
+  comp:"200 unsafe, 0 safe.",
+  meanp:{base:.967,guard:.780,llama:.390},
+  caveat:"No negatives → excluded from any AUPRC aggregate; scored by mean P(unsafe), which is calibration-dependent and only suggestive."},
+ {id:"expguard",name:"ExpGuardTest",repo:"6rightjade/expguardmix",axis:"guardrail",pool:"domain",
+  n:2275,uns:1256,safe:1019,role:"expert-annotated domain OOD",cite:"ExpGuardMix (2026), cc-by-4.0",
+  desc:"Expert-annotated prompt moderation across finance / healthcare / law. A grounded external domain benchmark.",
+  tests:"Whether the base-vs-tuned OOD finding replicates on a real, expert-labeled domain set.",
+  comp:"Test split: finance 964, healthcare 771, law 540. Binary prompt_label (we use the prompt half).",
+  res:{base:.955,guard:.943},
+  perdom:"Base ≥ tuned in every domain (finance 0.957/0.948, healthcare 0.953/0.927, law 0.956/0.960).",
+  caveat:"Base − tuned ΔAUPRC = +0.012 [0.005, 0.020] (CI excludes zero): the base-vs-tuned finding replicates on a grounded expert benchmark. Expert-verified (financial items by authors with banking experience)."},
+ {id:"mortgage",name:"Hardened Mortgage",repo:"guard_benchmark_hard.jsonl (this repo)",axis:"over_refusal",pool:"domain",
+  n:334,uns:195,safe:139,role:"domain case study",cite:"This work (illustrative)",
+  desc:"Trap-typed mortgage-compliance set: fair-lending, regulatory, security-misuse. De-saturates a domain benchmark.",
+  tests:"Whether an in-domain fine-tune beats the base / general guard on a hardened domain set.",
+  comp:"Trap types — hard_negative 0:75, minimal_pair 30:30, euphemism 52:0, business_justified 45:0, buried_injection 39:0, over_refusal_bait 0:20, dual_use 8:7, multi_turn 8:7, coded_proxy 13:0.",
+  res:{sft:.895,base:.890,shield:null,general:.820},
+  caveat:"Illustrative only: seed-scale (334), single-annotator, synthetic. Tie-aware, Mortgage-SFT (0.895) and base (0.890) are statistically indistinguishable — the ‘winner flips’ claim was retracted. For a grounded bar see FinGuard / ExpGuard."},
+ {id:"openai_mod",name:"OpenAI Moderation",repo:"(Markov et al., 2023)",axis:"guardrail",pool:"landscape",
+  n:null,uns:null,safe:null,role:"published landscape only",cite:"Markov et al., 2023",
+  desc:"OpenAI's moderation evaluation set — appears only in the published-landscape survey, not our controlled pipeline.",
+  tests:"Reference point for self-reported guard F1 (e.g., ShieldGemma 0.81); not measured under our protocol.",
+  comp:"Not evaluated on our frozen rows.",
+  caveat:"Self-reported / cross-protocol; included for landscape context only."},
+];
+const RES_SYS={base:["Untuned base","--base"],guard:["Tuned guard (SFT)","--guard"],sft:["Mortgage-SFT","--sft"],
+  general:["General guard","--shield"],llama:["Llama-Guard-3-1B","--llama"],shield:["ShieldGemma-2b","--shield"]};
+
+let fPool="all",fAxis="all";
+const $=s=>document.querySelector(s);
+function cvar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+
+function stats(){
+  const pools=new Set(B.map(b=>b.pool)), axes=new Set(B.map(b=>b.axis));
+  const rows=B.filter(b=>b.n).reduce((a,b)=>a+b.n,0);
+  $("#stats").innerHTML=[
+    ["13","benchmarks"],["3","safety axes"],["4","evaluation pools"],[rows.toLocaleString(),"scored rows"]
+  ].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+function chips(el,map,cur,set){
+  const mk=(k,label)=>`<span class="chip ${cur===k?'on':''}" data-k="${k}">${label}</span>`;
+  let h=mk("all","All");
+  for(const k in map) h+=mk(k,map[k][0]);
+  el.innerHTML=h;
+  el.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{set(c.dataset.k);render()});
+}
+function badge(txt,varname){return `<span class="b" style="background:${cvar(varname)}18;color:${cvar(varname)}">${txt}</span>`}
+function render(){
+  chips($("#pool"),POOL,fPool,v=>fPool=v); chips($("#axis"),AX,fAxis,v=>fAxis=v);
+  const list=B.filter(b=>(fPool==="all"||b.pool===fPool)&&(fAxis==="all"||b.axis===fAxis));
+  const g=$("#grid");
+  if(!list.length){g.innerHTML='<div class="empty">No benchmarks match those filters.</div>';return}
+  g.innerHTML=list.map(b=>{
+    const ax=AX[b.axis],pl=POOL[b.pool];
+    const bal=b.n?`<div class="balance"><div class="bar">
+        <div class="u" style="width:${100*b.uns/b.n}%"></div><div class="s" style="width:${100*b.safe/b.n}%"></div></div>
+        <div class="cap"><span>${b.uns} unsafe</span><span>${b.n} rows</span><span>${b.safe} safe</span></div></div>`:"";
+    return `<article class="card" onclick="openD('${b.id}')">
+      <div class="accent" style="background:${cvar(ax[1])}"></div>
+      <div class="body">
+        <h3>${b.name}</h3><div class="repo">${b.repo}</div>
+        <div class="badges">${badge(pl[0],pl[1])}${badge(ax[0],ax[1])}</div>
+        <div class="desc">${b.desc}</div>${bal}
+      </div></article>`;
+  }).join("");
+}
+function resBars(b){
+  const data=b.res||b.meanp; if(!data) return "";
+  const label=b.meanp?"Mean P(unsafe)":"Tie-aware AUPRC";
+  const ent=Object.entries(data).filter(([k,v])=>v!=null);
+  const max=Math.max(...ent.map(([k,v])=>v),.6);
+  const rows=ent.sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+    const sys=RES_SYS[k]||[k,"--muted"];
+    return `<div class="row"><span>${sys[0]}</span>
+      <span class="track"><span class="fill" style="width:${100*v/1}%;background:${cvar(sys[1])}"></span></span>
+      <span class="val">${v.toFixed(3)}</span></div>`;
+  }).join("");
+  return `<h4>${label} on this set</h4><div class="res">${rows}</div>`;
+}
+function openD(id){
+  const b=B.find(x=>x.id===id); const ax=AX[b.axis],pl=POOL[b.pool];
+  const hf=b.repo.includes("/")&&!b.repo.includes(" ")?`https://huggingface.co/datasets/${b.repo.split(" ")[0]}`:null;
+  $("#drawer").innerHTML=`
+    <div class="dhead"><button class="close" onclick="closeD()">×</button>
+      <h2>${b.name}</h2><div class="badges">${badge(pl[0],pl[1])}${badge(ax[0],ax[1])}</div></div>
+    <div class="dbody">
+      <p>${b.desc}</p>
+      <h4>What it tests</h4><p>${b.tests||"—"}</p>
+      <h4>Details</h4>
+      <div class="kv">
+        <span class="k">Source</span><span>${hf?`<a href="${hf}" target="_blank" rel="noopener">${b.repo} ↗</a>`:b.repo}</span>
+        <span class="k">Safety axis</span><span>${ax[0]}</span>
+        <span class="k">Pool</span><span>${pl[0]} — <span class="tag">${pl[2]}</span></span>
+        <span class="k">Split role</span><span>${b.role}</span>
+        ${b.n?`<span class="k">Test size</span><span>${b.n.toLocaleString()} rows · ${b.uns} unsafe / ${b.safe} safe</span>`:""}
+        <span class="k">Citation</span><span>${b.cite||"—"}</span>
+      </div>
+      <h4>Composition</h4><p>${b.comp||"—"}</p>
+      ${b.perdom?`<p><b>Per domain:</b> ${b.perdom}</p>`:""}
+      ${resBars(b)}
+      ${b.caveat?`<h4>Caveat</h4><div class="note">${b.caveat}</div>`:""}
+    </div>`;
+  $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
+}
+function closeD(){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on")}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeD()});
+stats();render();
+</script>
+</body>
+</html>
