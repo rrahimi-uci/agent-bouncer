@@ -22,7 +22,7 @@ PAPER_DIR        = paper-a
 .DEFAULT_GOAL := help
 .PHONY: help install install-all manifests manifests-legacy audit lock relock \
         verify-lock verify-legacy-lock train validate-runs eval analyze analyze-legacy repro \
-        repro-legacy paper-sync paper-verify selftest test paper paper-html \
+        repro-legacy paper-sync paper-verify composition selftest test paper paper-html \
         legacy-explorer clean
 
 help:  ## show this help
@@ -82,6 +82,8 @@ paper-verify:  ## fail if a paper-consumed generated file is stale
 	cmp $(PAPER_ANALYSIS)/figures/specialization_plane.pdf $(PAPER_DIR)/figures/specialization_plane.pdf
 
 ## --- verification / documents ---------------------------------------------
+composition:  ## base+tuned composition ("compose, don't tune") analysis from committed scores
+	$(PY) experiments/analyze_composition.py --scores $(LEGACY_SCORES) --out $(LEGACY_ANALYSIS)/composition
 selftest:   ## synthetic end-to-end analysis check
 	$(PY) experiments/analyze_paper_a_sft.py --self-test
 test:       ## run unit and release-integrity tests
