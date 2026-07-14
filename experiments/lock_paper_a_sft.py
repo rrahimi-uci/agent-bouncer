@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Create artifacts/paper_a_sft/LOCK.json (plan sec 14.1).
+"""Create artifacts/paper_a_sft_v2/LOCK.json (plan sec 14.1).
 
 The lock is created AFTER manifests/tests/smoke validation and BEFORE final
 training. It freezes every input to the fixed-panel base-vs-LoRA-SFT study so
@@ -10,9 +10,8 @@ Records (plan sec 14.1):
   manifest hashes; source inclusions/exclusions; license branch; prompt
   template + hash (model-independent spec hash plus per-checkpoint rendered
   template hashes and decision token ids); training recipe; seeds; metrics;
-  target FPR + confidence method; primary contrasts; analysis_mode
-  (powered_confirmatory | precision_focused); power-report hash + seed-count
-  decision; statistical resampling rules; table/figure specs; failure handling;
+  target FPR + confidence method; primary contrasts; precision-focused analysis
+  mode; statistical resampling rules; table/figure specs; failure handling;
   artifact paths.
 
 Refuses to overwrite an existing lock without --force.
@@ -20,15 +19,16 @@ Refuses to overwrite an existing lock without --force.
 Usage:
   python experiments/lock_paper_a_sft.py \
     --config configs/paper_a_sft.yaml \
-    --manifest artifacts/paper_a_sft/manifests/manifest.json \
-    --audit artifacts/paper_a_sft/audit/audit.json \
-    --power artifacts/paper_a_sft/design/power_report.json \
-    --out artifacts/paper_a_sft/LOCK.json
+    --manifest artifacts/paper_a_sft_v2/manifests/manifest.json \
+    --audit artifacts/paper_a_sft_v2/audit/audit.json \
+    --out artifacts/paper_a_sft_v2/LOCK.json
 """
 from __future__ import annotations
 
 import argparse
+import copy
 import os
+import re
 import sys
 import pathlib
 
@@ -40,19 +40,11 @@ for _p in (str(_HERE.parent), str(_HERE)):
 
 import paper_a_common as C  # noqa: E402
 
-MANIFEST_FILES = [
-    "train.jsonl", "calibration.jsonl", "id_test.jsonl", "transfer_test.jsonl",
-    "orbench_safe_stress.jsonl", "harmbench_positive_stress.jsonl",
-]
+MANIFEST_FILES = list(C.LOCK_MANIFEST_FILES)
 
 
 def _obj_sha256(obj) -> str:
-    try:
-        from guard_research.provenance import sha256_of_obj  # type: ignore
-        return sha256_of_obj(obj)
-    except Exception:
-        import json
-        return C.sha256_text(json.dumps(obj, sort_keys=True, separators=(",", ":")))
+    return C.canonical_obj_sha256(obj)
 
 
 def resolve_models(config: dict) -> dict:
@@ -109,16 +101,64 @@ def probe_tokenizers(models: dict, require: bool) -> dict:
 
 
 def build_lock(args) -> dict:
+    development_override = bool(getattr(args, "development_override", False))
     config = C.load_config(args.config)
     prompt = C.prompt_identity()
     models = resolve_models(config)
+    issues = []
+
+    def require(condition, message):
+        if condition:
+            return
+        if development_override:
+            issues.append(message)
+        else:
+            raise C.ArtifactContractError(message)
+
+    for model_key, model in models.items():
+        require(isinstance(model.get("model_revision"), str)
+                and re.fullmatch(C.FULL_COMMIT_SHA_RE, model["model_revision"]) is not None,
+                f"{model_key} model_revision must be a full 40-hex commit SHA")
+        require(isinstance(model.get("tokenizer_revision"), str)
+                and re.fullmatch(C.FULL_COMMIT_SHA_RE, model["tokenizer_revision"]) is not None,
+                f"{model_key} tokenizer_revision must be a full 40-hex commit SHA")
+        require(model.get("dtype") in C.SUPPORTED_TORCH_DTYPES,
+                f"{model_key} dtype must be one of {C.SUPPORTED_TORCH_DTYPES}")
+
+    try:
+        config_rel = pathlib.Path(args.config).resolve().relative_to(C.REPO_ROOT).as_posix()
+    except ValueError:
+        config_rel = None
+    require(config_rel == "configs/paper_a_sft.yaml",
+            "final lock config must be the tracked configs/paper_a_sft.yaml")
+
+    out_arg = getattr(args, "out", None) or C.DEFAULT_ARTIFACTS_V2["lock"]
+    artifact_root = (getattr(args, "artifact_root", None)
+                     or os.path.dirname(os.fspath(out_arg))
+                     or C.DEFAULT_ARTIFACTS_V2["root"])
+    artifact_paths = C.artifact_paths_for_root(artifact_root)
+
+    def resolved(path):
+        value = pathlib.Path(path)
+        return value.resolve() if value.is_absolute() else (C.REPO_ROOT / value).resolve()
+
+    require(not C.path_is_within(artifact_root, C.DEFAULT_ARTIFACTS["root"]),
+            "v2 lock may not use or nest inside the historical artifacts/paper_a_sft namespace")
+    require(C.path_is_within(artifact_root, C.REPO_ROOT),
+            "final v2 artifact root must resolve inside the repository")
+    require(resolved(out_arg) == resolved(artifact_paths["lock"]),
+            "--out must be <artifact-root>/LOCK.json")
 
     # -- manifests: hash the index + each split file that exists --
     manifests_dir = args.manifests_dir or (
-        os.path.dirname(args.manifest) if args.manifest else C.DEFAULT_ARTIFACTS["manifests"])
+        os.path.dirname(args.manifest) if args.manifest else artifact_paths["manifests"])
+    require(resolved(manifests_dir) == resolved(artifact_paths["manifests"]),
+            "v2 manifests must live under the bound v2 artifact root")
     manifests = {"dir": manifests_dir, "index": None, "splits": {}}
     if args.manifest and os.path.exists(args.manifest):
         manifests["index"] = {"path": args.manifest, "sha256": C.sha256_file(args.manifest)}
+    require(manifests["index"] is not None,
+            "final lock requires the manifest index supplied by --manifest")
     for fn in MANIFEST_FILES:
         p = os.path.join(manifests_dir, fn)
         if os.path.exists(p):
@@ -126,31 +166,86 @@ def build_lock(args) -> dict:
                                        "rows": sum(1 for _ in open(p, "r", encoding="utf-8") if _.strip())}
         else:
             manifests["splits"][fn] = {"path": p, "sha256": None, "rows": None, "missing": True}
+            require(False, f"final lock requires manifest split: {p}")
     train_manifest_sha256 = manifests["splits"].get("train.jsonl", {}).get("sha256")
 
     # -- audit / power provenance --
     audit = None
+    audit_obj = None
     if args.audit and os.path.exists(args.audit):
+        require(resolved(os.path.dirname(args.audit)) == resolved(artifact_paths["audit"]),
+                "v2 audit must live under the bound v2 artifact root")
         audit = {"path": args.audit, "sha256": C.sha256_file(args.audit)}
+        audit_obj = C.read_json(args.audit)
+        require(audit_obj.get("all_hard_assertions_pass") is True,
+                "final lock requires audit all_hard_assertions_pass=true")
+        hard = audit_obj.get("hard_assertions")
+        require(isinstance(hard, dict) and hard and all(v is True for v in hard.values()),
+                "final lock requires a nonempty, fully passing hard-assertion set")
+        require(audit_obj.get("audit_contract_version") == C.AUDIT_CONTRACT_VERSION,
+                "final lock requires the current audit contract version")
+        require(isinstance(hard, dict) and set(hard) == set(C.AUDIT_HARD_ASSERTION_KEYS),
+                "final lock requires the exact hard-assertion schema")
+        require((audit_obj.get("manifest_index") or {}).get("observed_sha256")
+                == (manifests.get("index") or {}).get("sha256"),
+                "audit manifest-index hash must match the manifest index bound by the lock")
+        audit_files = audit_obj.get("file_integrity") or {}
+        for filename, locked_split in manifests["splits"].items():
+            stem = filename[:-len(".jsonl")]
+            audited = audit_files.get(stem) or {}
+            require(audited.get("sha256_matches") is True
+                    and audited.get("row_count_matches") is True,
+                    f"audit did not pass file integrity for {filename}")
+            require(audited.get("observed_sha256") == locked_split.get("sha256"),
+                    f"audit digest for {filename} differs from the manifest being locked")
+            require(audited.get("observed_rows") == locked_split.get("rows"),
+                    f"audit row count for {filename} differs from the manifest being locked")
+    else:
+        require(False, "final lock requires a present --audit artifact")
+    public_manifest_path = os.path.join(artifact_paths["public_manifests"], "manifest.json")
+    public_release = None
+    if os.path.isfile(public_manifest_path):
+        public_release = {
+            "manifest_path": public_manifest_path,
+            "manifest_sha256": C.sha256_file(public_manifest_path),
+        }
+        public_validation = ((audit_obj or {}).get("public_release_validation") or {})
+        require(public_validation.get("ok") is True,
+                "final lock requires a passing public-release audit")
+        require(public_validation.get("manifest_sha256") == public_release["manifest_sha256"],
+                "audit public-manifest digest differs from the release being locked")
+    else:
+        require(False, f"final lock requires public manifest: {public_manifest_path}")
     power = None
     seed_count_decision = None
     analysis_mode = args.analysis_mode or config.get("analysis_mode") or "precision_focused"
+    if args.power:
+        raise C.ArtifactContractError(
+            "--power is disabled with powered-confirmatory mode; omit it for precision mode")
     if args.power and os.path.exists(args.power):
         preport = C.read_json(args.power)
         power = {"path": args.power, "sha256": C.sha256_file(args.power)}
         seed_count_decision = preport.get("seed_count_decision") or preport.get("decision")
         if args.analysis_mode is None and preport.get("analysis_mode"):
             analysis_mode = preport["analysis_mode"]
-    if analysis_mode not in ("precision_focused", "powered_confirmatory"):
-        raise SystemExit(f"invalid analysis_mode: {analysis_mode!r}")
+    if analysis_mode != "precision_focused":
+        raise C.ArtifactContractError(
+            "powered_confirmatory mode is disabled until a schema-bound power report and "
+            "null-calibrated multiplicity implementation exist")
 
     git = C.git_provenance()
-    if args.require_clean and git.get("git_tracked_dirty"):
-        raise SystemExit(
-            "refusing to lock: tracked working tree is dirty and --require-clean was set. "
-            "Commit changes or drop --require-clean.")
+    execution_git = C.execution_git_provenance()
+    require(execution_git.get("execution_clean") is True,
+            "final lock requires clean tracked and untracked execution state: "
+            f"dirty={execution_git.get('dirty_entries')} "
+            f"missing_from_HEAD={execution_git.get('required_sources_missing_from_head')}")
+    try:
+        execution_sources = C.execution_source_hashes()
+    except C.ArtifactContractError as exc:
+        require(False, str(exc))
+        execution_sources = {"files": {}, "aggregate_sha256": C.canonical_obj_sha256({})}
 
-    recipe = dict(C.DEFAULT_RECIPE)
+    recipe = copy.deepcopy(C.DEFAULT_RECIPE)
     # overlay config recipe values when present
     for k_cfg, k_lock in (("max_steps", "max_steps"), ("max_length", "max_length"),
                           ("learning_rate", "learning_rate"), ("warmup_ratio", "warmup_ratio"),
@@ -170,27 +265,40 @@ def build_lock(args) -> dict:
 
     tok_probe = {}
     if args.probe_tokenizers:
-        tok_probe = probe_tokenizers(models, require=args.require_tokenizer_probe)
+        tok_probe = probe_tokenizers(
+            models, require=(not development_override or args.require_tokenizer_probe))
+        require(set(tok_probe) == set(C.MODEL_KEYS)
+                and all(v.get("status") == "ok" for v in tok_probe.values()),
+                "final lock requires successful tokenizer probes for all models")
+    else:
+        require(False, "final lock requires successful tokenizer probes for all models")
 
     lock = {
+        "lock_contract_version": C.LOCK_CONTRACT_VERSION,
+        "finalization_status": ("development_unverified" if development_override else "final"),
+        "development_issues": issues,
         "schema_version": config.get("schema_version", 1),
         "study_id": config.get("study_id", "paper_a_sft"),
         "created_utc": C.utcnow(),
         "config": {"path": args.config, "sha256": C.sha256_file(args.config),
                    "obj_sha256": _obj_sha256(config)},
-        "git": {**git, "dirty_state_policy": ("require_clean_tracked" if args.require_clean
-                                              else "recorded_not_enforced")},
+        "git": {**git, **execution_git,
+                "dirty_state_policy": ("development_override" if development_override
+                                       else "require_clean_execution_state")},
+        "execution_sources": execution_sources,
         "license_branch": config.get("data_branch", config.get("license_branch",
                                                                "academic_noncommercial")),
         "data": {
             "data_seed": data_seed,
             "data_order_seed": data_order_seed,
-            "train_sources": config.get("train_sources",
-                                        C.REGIME_BENCHMARKS["represented"]),
-            "excluded_train_sources": config.get("excluded_train_sources",
-                                                 ["beavertails", "or_bench"]),
-            "rows_per_source": config.get("rows_per_source", 400),
-            "rows_per_source_label": config.get("rows_per_source_label", 200),
+            "train_sources": config.get(
+                "train_sources", C.DEFAULT_DATA_CONTRACT["train_sources"]),
+            "excluded_train_sources": config.get(
+                "excluded_train_sources", C.DEFAULT_DATA_CONTRACT["excluded_train_sources"]),
+            "rows_per_source": config.get(
+                "rows_per_source", C.DEFAULT_DATA_CONTRACT["rows_per_source"]),
+            "rows_per_source_label": config.get(
+                "rows_per_source_label", C.DEFAULT_DATA_CONTRACT["rows_per_source_label"]),
         },
         "models": models,
         "tokenizer_probe": tok_probe,
@@ -216,10 +324,8 @@ def build_lock(args) -> dict:
             "primary_metric": config.get("primary_metric", "macro_average_precision"),
         },
         "operating_point": {
+            **copy.deepcopy(C.DEFAULT_OPERATING_POINT),
             "target_fpr": target_fpr,
-            "threshold_module": "guard_research.thresholds.select_threshold",
-            "confidence_method": "clopper_pearson_one_sided_95_on_pooled_calibration_negatives",
-            "no_feasible_sentinel": "NO_FEASIBLE_THRESHOLD",
         },
         "regime_benchmarks": C.REGIME_BENCHMARKS,
         "primary_contrasts": {
@@ -235,36 +341,24 @@ def build_lock(args) -> dict:
         "seed_count_decision": seed_count_decision,
         "confidence_method": "hierarchical_paired_poisson_family_bootstrap",
         "resampling_rules": {
-            "method": "hierarchical_paired_poisson_family_bootstrap",
+            **copy.deepcopy(C.DEFAULT_RESAMPLING_RULES),
             "replicates": reps,
             "rng_seed": boot_seed,
-            "checkpoints": "fixed_4_identities_never_resampled",
-            "seed_resample": "5_seed_indices_with_replacement_within_each_checkpoint",
-            "family_weight": ("one_Poisson(1)_weight_per_global_family_id, applied to all "
-                              "rows of that family across every evaluation dataset"),
-            "ap": "weighted_tie_aware_average_precision_per_benchmark",
-            "weighting_impl": "integer_weight_row_replication_through_canonical_ap",
-            "macro": "mean_over_benchmarks_within_regime",
-            "delta": "per_checkpoint_delta_then_mean_over_4_checkpoints_no_ckpt_resample",
-            "one_sided_lcb_percentile": 5.0,
-            "one_sided_ucb_percentile": 95.0,
-            "two_sided_percentiles": [2.5, 97.5],
-            "zero_effective_class": "reject_replicate_and_redraw_all_family_weights_record_retries",
         },
         "sensitivity": {
             "leave_one_transfer_benchmark_out": True,
             "leave_one_base_out": True,
             "sign_stable_definition": "every leave-one-out estimate shares the full aggregate sign",
         },
-        "claim_gates": {
-            "gate_a": "LCB95(mean_delta_represented) > 0",
-            "gate_b": ("UCB95(mean_delta_transfer) < 0 AND leave-one-transfer-benchmark-out "
-                       "sign-stable AND leave-one-base-out sign-stable"),
-            "specialization": "gate_a AND gate_b (intersection-union at alpha 0.05)",
-            "multiplicity": "Holm across the two component tests if claimed standalone",
+        "descriptive_criteria": {
+            "represented": "one-sided 95% lower bound above zero",
+            "transfer": ("one-sided 95% upper bound below zero with leave-one-transfer-"
+                         "benchmark-out and leave-one-checkpoint-out sign stability"),
+            "joint_pattern": "both descriptive criteria hold",
+            "formal_rejection_authorized": False,
             "rq4": "descriptive_only",
-            "precision_focused_language": (analysis_mode == "precision_focused"),
         },
+        "claim_gates": None,
         "tables": {
             "table3_primary": {"path": "analysis/tables/table3_primary.tex",
                                "content": "per-base represented/transfer base, SFT mean, "
@@ -287,14 +381,17 @@ def build_lock(args) -> dict:
             "no_feasible_threshold_is_reportable": True,
         },
         "audit": audit,
+        "public_release": public_release,
         "manifests": manifests,
         "train_manifest_sha256": train_manifest_sha256,
-        "artifact_paths": dict(C.DEFAULT_ARTIFACTS),
-        "score_code_version": "paper_a_sft_scorer_v1",
-        "analysis_code_version": "paper_a_sft_analysis_v1",
+        "artifact_paths": artifact_paths,
+        "score_code_version": "paper_a_sft_scorer_v2",
+        "analysis_code_version": "paper_a_sft_analysis_v2",
         "software_versions": C.software_versions(),
     }
     lock["lock_sha256"] = _obj_sha256({k: v for k, v in lock.items() if k != "lock_sha256"})
+    C.verify_lock(lock, allow_development=development_override,
+                  verify_files=not development_override)
     return lock
 
 
@@ -306,12 +403,21 @@ def main(argv=None) -> int:
                     help="directory holding the split jsonl files (default: --manifest parent)")
     ap.add_argument("--audit", default=None, help="audit/audit.json")
     ap.add_argument("--power", default=None, help="design/power_report.json")
-    ap.add_argument("--out", default=C.DEFAULT_ARTIFACTS["lock"], help="output LOCK.json path")
+    ap.add_argument("--out", default=C.DEFAULT_ARTIFACTS_V2["lock"],
+                    help="output LOCK.json path (defaults to the isolated v2 namespace)")
+    ap.add_argument("--artifact-root", default=None,
+                    help="strict v2 artifact root; --out must be ROOT/LOCK.json")
     ap.add_argument("--analysis-mode", default=None,
-                    choices=["precision_focused", "powered_confirmatory"])
+                    choices=["precision_focused"],
+                    help="confirmatory mode is disabled pending a bound test/multiplicity schema")
     ap.add_argument("--force", action="store_true", help="overwrite an existing lock")
-    ap.add_argument("--require-clean", action="store_true",
-                    help="refuse to lock when the tracked working tree is dirty")
+    ap.add_argument("--require-clean", action="store_true", default=True,
+                    help="deprecated compatibility flag; final locks are clean by default")
+    ap.add_argument(
+        "--development-override", action="store_true",
+        help=("write an explicitly development_unverified lock despite missing/dirty inputs; "
+              "such a lock is rejected by final training/evaluation"),
+    )
     probe = ap.add_mutually_exclusive_group()
     probe.add_argument("--probe-tokenizers", dest="probe_tokenizers", action="store_true",
                        default=True, help="load each tokenizer to freeze decision tokens (default)")
@@ -331,11 +437,18 @@ def main(argv=None) -> int:
         print(f"[lock] config not found: {args.config}", file=sys.stderr)
         return 2
 
-    lock = build_lock(args)
+    try:
+        lock = build_lock(args)
+    except (C.ArtifactContractError, RuntimeError) as exc:
+        print(f"[lock] refusing to create lock: {exc}", file=sys.stderr)
+        return 2
     C.write_json(out, lock)
     probed = sum(1 for v in lock["tokenizer_probe"].values() if v.get("status") == "ok")
     print(f"[lock] wrote {out}")
-    print(f"[lock]   git_sha={lock['git']['git_sha']} dirty={lock['git']['git_dirty']}")
+    print(f"[lock]   contract=v{lock['lock_contract_version']} "
+          f"status={lock['finalization_status']}")
+    print(f"[lock]   git_sha={lock['git']['git_sha']} "
+          f"execution_clean={lock['git']['execution_clean']}")
     print(f"[lock]   analysis_mode={lock['analysis_mode']} "
           f"cells={lock['n_final_cells']} seeds={lock['seeds']}")
     print(f"[lock]   prompt_spec_sha256={lock['prompt']['prompt_spec_sha256'][:16]}... "

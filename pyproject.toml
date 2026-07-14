@@ -27,6 +27,7 @@ dependencies = [
     "pyarrow>=14",          # scores.parquet I/O
     "pyyaml>=6.0",          # config
     "transformers>=4.40",   # frozen prompt / chat-template rendering, decision tokens
+    "matplotlib>=3.8",      # analysis always regenerates the specialization figure
 ]
 
 [project.optional-dependencies]
@@ -39,10 +40,8 @@ train = [
     "accelerate>=0.29",
     "safetensors>=0.4",
 ]
-figures = ["matplotlib>=3.8"]           # regenerate the specialization-plane figure
-hash = ["datasketch>=1.6"]              # optional faster MinHash backend (numpy fallback otherwise)
 dev = ["pytest>=8.0"]
-all = ["guard-research[train,figures,hash,dev]"]
+all = ["guard-research[train,dev]"]
 
 [project.urls]
 Repository = "https://github.com/rezarahimi/guard-ranking-fragility"

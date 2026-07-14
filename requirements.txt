@@ -1,10 +1,12 @@
-# Exact environment for reproducing Paper A ("The Benchmark Chooses the Winner").
-# Python 3.11+ (see .python-version). Pinned to the versions the committed results
-# were produced with. The paper itself compiles with `tectonic` and needs none of these.
+# Fully pinned environment for the current CPU analysis and corrected pipeline.
+# Python 3.12 (see .python-version). This is NOT the historical GPU environment:
+# legacy run metadata records Python 3.10.12 and the package versions documented
+# in docs/reproducibility-environments.md, but omitted several driver/runtime fields.
+# The paper itself compiles with `tectonic` and needs none of these Python packages.
 #
 # Full install:      pip install -r requirements.txt
-# Library only:      pip install -e .                 # core (CPU analysis + tests)
-# With GPU training: pip install -e ".[train,figures,dev]"
+# Library only:      pip install -e .                 # core CPU analysis
+# With GPU training: pip install -e ".[train,dev]"
 #
 # CPU-only reproduction of every table/figure from the committed scores.parquet
 # needs just the "core analysis" block below.
@@ -30,6 +32,5 @@ safetensors==0.8.0
 # --- dev / test ---
 pytest==9.1.1
 
-# --- optional: faster MinHash backend for near-duplicate detection ---
-# provenance.py falls back to a compact numpy implementation when this is absent.
-# datasketch==1.6.5
+# MinHash is deliberately implemented by the pinned NumPy backend in
+# guard_research/provenance.py; installing another package must not change hashes.

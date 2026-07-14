@@ -1,5 +1,5 @@
 {
-  "analysis_code_version": "paper_a_sft_analysis_v1",
+  "analysis_code_version": "paper_a_sft_analysis_v2",
   "analysis_mode": "precision_focused",
   "benchmarks_present": {
     "represented": [
@@ -22,9 +22,6 @@
           0.37929553975517083
         ],
         "lcb95_one_sided": 0.2805015116527519,
-        "mean": 0.32488157817512564,
-        "p_ge_0": 1.0,
-        "p_le_0": 0.0,
         "std": 0.027242849709614034,
         "ucb95_one_sided": 0.3697496018294335
       },
@@ -34,9 +31,6 @@
           -0.024953608086686067
         ],
         "lcb95_one_sided": -0.071706831327982,
-        "mean": -0.04980494119014819,
-        "p_ge_0": 0.0,
-        "p_le_0": 1.0,
         "std": 0.013086262029313038,
         "ucb95_one_sided": -0.028830456598702578
       }
@@ -50,9 +44,6 @@
             0.42546166047030043
           ],
           "lcb95_one_sided": 0.2955463923911899,
-          "mean": 0.35572004717203526,
-          "p_ge_0": 1.0,
-          "p_le_0": 0.0,
           "std": 0.036358313108533616,
           "ucb95_one_sided": 0.41441713975925687
         },
@@ -62,9 +53,6 @@
             0.1543950562685286
           ],
           "lcb95_one_sided": 0.06550354185547849,
-          "mean": 0.10218212224087306,
-          "p_ge_0": 1.0,
-          "p_le_0": 0.0,
           "std": 0.024201458702154028,
           "ucb95_one_sided": 0.14402003819359105
         },
@@ -74,9 +62,6 @@
             0.580240005432951
           ],
           "lcb95_one_sided": 0.4719137490375069,
-          "mean": 0.5232804533197668,
-          "p_ge_0": 1.0,
-          "p_le_0": 0.0,
           "std": 0.030271345571615486,
           "ucb95_one_sided": 0.5713719022313005
         },
@@ -86,9 +71,6 @@
             0.38517790916503364
           ],
           "lcb95_one_sided": 0.26305964620521893,
-          "mean": 0.3183436899678275,
-          "p_ge_0": 1.0,
-          "p_le_0": 0.0,
           "std": 0.033926583731250896,
           "ucb95_one_sided": 0.3750176234336639
         }
@@ -100,9 +82,6 @@
             0.018171452246666553
           ],
           "lcb95_one_sided": -0.07036242453840061,
-          "mean": -0.03020896937929572,
-          "p_ge_0": 0.1159,
-          "p_le_0": 0.8841,
           "std": 0.024701056050584303,
           "ucb95_one_sided": 0.010966341751030412
         },
@@ -112,9 +91,6 @@
             -0.07528256968047707
           ],
           "lcb95_one_sided": -0.12423855523758708,
-          "mean": -0.10127116203880585,
-          "p_ge_0": 0.0,
-          "p_le_0": 1.0,
           "std": 0.013750594203783523,
           "ucb95_one_sided": -0.07934798548375731
         },
@@ -124,9 +100,6 @@
             0.08239018414971143
           ],
           "lcb95_one_sided": 0.023429376949573723,
-          "mean": 0.05046574220564188,
-          "p_ge_0": 0.9985,
-          "p_le_0": 0.0015,
           "std": 0.016435906116002007,
           "ucb95_one_sided": 0.07732842782705547
         },
@@ -136,9 +109,6 @@
             -0.08288882654478495
           ],
           "lcb95_one_sided": -0.14966622349403044,
-          "mean": -0.11820537554813308,
-          "p_ge_0": 0.0,
-          "p_le_0": 1.0,
           "std": 0.01868999008611962,
           "ucb95_one_sided": -0.08842909558629641
         }
@@ -149,7 +119,6 @@
     "reps": 10000,
     "rng_seed": 20260712
   },
-  "created_utc": "2026-07-13T18:51:47.401057+00:00",
   "lock_sha256": "08c47c0459adbcdf6b51267c320320c9a7f33a5710fa7c9ecc4e72248f48ead0",
   "model_keys": [
     "qwen25_15b",
@@ -160,20 +129,38 @@
   "n_families": 2235,
   "operating_point": {
     "represented": {
+      "aggregation": "benchmark macro, then fixed-model-panel mean; SFT also mean over seeds",
       "base_macro_fpr": 0.01721311475409836,
       "base_macro_tpr": 0.13403224861558194,
+      "base_pooled_fpr": 0.02197802197802198,
+      "delta_fpr": -0.0068169398907103815,
+      "delta_pooled_fpr": -0.0021978021978022004,
       "delta_tpr": 0.6324292605542606,
+      "n_negative_rows": 364,
+      "n_positive_rows": 312,
+      "n_rows": 676,
+      "pooled_fpr_aggregation": "pool negative rows across locked benchmarks, then fixed-model-panel mean; SFT also mean over seeds",
       "realized_fpr_note": "calibration-targeted; realized test FPR is reported, not assumed",
       "sft_macro_fpr": 0.01039617486338798,
-      "sft_macro_tpr": 0.7664615091698426
+      "sft_macro_tpr": 0.7664615091698426,
+      "sft_pooled_fpr": 0.01978021978021978
     },
     "transfer": {
+      "aggregation": "benchmark macro, then fixed-model-panel mean; SFT also mean over seeds",
       "base_macro_fpr": 0.08337053571428571,
       "base_macro_tpr": 0.5263318452380952,
+      "base_pooled_fpr": 0.04430379746835443,
+      "delta_fpr": 0.05369642857142856,
+      "delta_pooled_fpr": 0.10196202531645567,
       "delta_tpr": 0.02765029761904758,
+      "n_negative_rows": 790,
+      "n_positive_rows": 790,
+      "n_rows": 1580,
+      "pooled_fpr_aggregation": "pool negative rows across locked benchmarks, then fixed-model-panel mean; SFT also mean over seeds",
       "realized_fpr_note": "calibration-targeted; realized test FPR is reported, not assumed",
       "sft_macro_fpr": 0.13706696428571427,
-      "sft_macro_tpr": 0.5539821428571428
+      "sft_macro_tpr": 0.5539821428571428,
+      "sft_pooled_fpr": 0.1462658227848101
     }
   },
   "point_estimates": {
@@ -340,6 +327,32 @@
       }
     }
   },
+  "score_artifact": {
+    "bound": false,
+    "legacy": true,
+    "metadata_filename": "metadata.json",
+    "metadata_sha256": "c263a2cfd5a25034e48d5d1cec2f36c85d470a3c955e4bc078f37d39ff2af21b",
+    "scores_sha256": "d4179244163f1d99f99c6a9dcad5226d90ce9e9ea3b162dd10abf885e81ad2d7"
+  },
+  "score_validation": {
+    "model_keys": [
+      "qwen25_15b",
+      "smollm2_17b",
+      "smollm3_3b",
+      "qwen3_4b"
+    ],
+    "n_bundles": 24,
+    "n_manifest_rows_joined": null,
+    "n_rows": 79392,
+    "n_samples_per_bundle": 3308,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ]
+  },
   "seeds": [
     42,
     43,
@@ -349,13 +362,21 @@
   ],
   "stress": {
     "harmbench_recall": {
+      "aggregation": "fixed-model-panel mean; SFT also mean over seeds",
       "base_panel_mean": 0.78375,
+      "delta": -0.20924999999999994,
+      "gold_class": 1,
+      "n_rows": 200,
       "note": "single-class stress set; NO AP/AUROC computed",
       "one_class": true,
       "sft_panel_mean": 0.5745
     },
     "orbench_benign_fpr": {
+      "aggregation": "fixed-model-panel mean; SFT also mean over seeds",
       "base_panel_mean": 0.12687500000000002,
+      "delta": -0.027250000000000024,
+      "gold_class": 0,
+      "n_rows": 400,
       "note": "single-class stress set; NO AP/AUROC computed",
       "one_class": true,
       "sft_panel_mean": 0.09962499999999999

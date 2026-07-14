@@ -1,46 +1,40 @@
 {
   "analysis_mode": "precision_focused",
-  "gate_a": {
-    "criterion": "LCB95(mean_delta_represented) > 0",
-    "lcb95": 0.2805015116527519,
-    "passed": true,
-    "represented_delta_mean": 0.32488157817512564,
-    "wording": "the estimated represented-source macro-AP change was +0.3249 (95% one-sided LCB +0.2805)"
-  },
-  "gate_b": {
-    "criterion": "UCB95(mean_delta_transfer) < 0 AND LOO sign-stable",
-    "full_transfer_negative": true,
-    "loo_base_sign_stable": true,
-    "loo_benchmark_sign_stable": true,
-    "passed": true,
-    "transfer_delta_mean": -0.04980494119014819,
-    "ucb95": -0.028830456598702578,
-    "wording": "the estimated transfer macro-AP change was -0.0498 (95% one-sided UCB -0.0288)"
-  },
-  "holm_two_component": {
-    "alpha": 0.05,
-    "components": {
-      "gate_a": {
-        "holm_threshold": 0.025,
-        "p": 0.0,
-        "reject": true
-      },
-      "gate_b": {
-        "holm_threshold": 0.05,
-        "p": 0.0,
-        "reject": true
-      }
-    },
-    "note": "bootstrap crossing-fraction proxies for one-sided component nulls"
-  },
+  "formal_rejection_claimed": false,
+  "interval_method": "paired hierarchical percentile bootstrap",
   "precision_focused_language": true,
+  "represented_criterion": {
+    "ci95_two_sided": [
+      0.27175625164807643,
+      0.37929553975517083
+    ],
+    "criterion": "LCB95(observed fixed-panel represented delta) > 0",
+    "descriptive_criterion_met": true,
+    "estimate": 0.3326732236993049,
+    "lcb95_one_sided": 0.2805015116527519,
+    "wording": "the estimated represented-source macro-AP change was +0.3327 (95% two-sided percentile interval [+0.2718, +0.3793])"
+  },
   "rq4": {
     "note": "operating-point TPR/FPR is a deployment diagnostic, not a confirmatory test",
     "status": "descriptive_only"
   },
-  "specialization": {
-    "criterion": "gate_a AND gate_b (intersection-union, alpha 0.05)",
-    "passed": true,
+  "specialization_pattern": {
+    "criterion": "represented criterion AND transfer criterion",
+    "descriptive_criterion_met": true,
     "wording": "estimation-only mode: report the joint (represented, transfer) estimate and intervals; no formal specialization rejection is claimed"
+  },
+  "transfer_criterion": {
+    "ci95_two_sided": [
+      -0.07602914768052153,
+      -0.024953608086686067
+    ],
+    "criterion": "UCB95(observed fixed-panel transfer delta) < 0 AND LOO sign-stable",
+    "descriptive_criterion_met": true,
+    "estimate": -0.05033444578466437,
+    "full_transfer_negative": true,
+    "loo_base_sign_stable": true,
+    "loo_benchmark_sign_stable": true,
+    "ucb95_one_sided": -0.028830456598702578,
+    "wording": "the estimated transfer macro-AP change was -0.0503 (95% two-sided percentile interval [-0.0760, -0.0250])"
   }
 }

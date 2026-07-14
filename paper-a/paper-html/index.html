@@ -143,8 +143,7 @@ footer.pf{border-top:1px solid var(--line);margin-top:20px;padding:22px 0 60px;c
     <button type="button" class="menu-btn" id="menuBtn" aria-label="Toggle contents">☰</button>
     <div class="tb-title">The Benchmark Chooses the Winner <span>· Small-LLM Safety Guards</span></div>
     <nav class="tb-links">
-      <a href="explorer/index.html">Benchmark Explorer</a>
-      <a class="primary" href="../paper-a/benchmark_chooses_the_winner.pdf">PDF ↓</a>
+      <a class="primary" href="../benchmark_chooses_the_winner.pdf">PDF ↓</a>
     </nav>
   </div>
 </header>
@@ -228,38 +227,35 @@ Fine-Tuning Specialization Across Safety-Guard Benchmarks</h1>
       <div class="abstract"><div class="abstract-title">Abstract</div><p>Small
 language models are increasingly adapted into binary prompt-safety
 guards, but improvement on benchmark sources represented during training
-does not establish transferable guard capability. We measure what
-LoRA-SFT adds beyond the untuned base using paired base-versus-adapted
-comparisons on four checkpoints from 1.5B to 4B parameters. We hold the
-prompt interface, training manifest, LoRA capacity, and evaluation rows
-fixed; repeat training across five seeds; and separate
-represented-source tests from dataset-held-out benchmark transfer.
-Evaluation uses macro average precision, per-source effects,
-calibration-only operating points, and uncertainty over both training
-runs and evaluation datasets.</p>
-<p>Under the locked protocol, SFT changes represented-source macro AP by
-<span class="math inline">\(+0.325\)</span> (95% one-sided lower bound
-<span class="math inline">\(+0.281\)</span>) and transfer macro AP by
-<span class="math inline">\(-0.050\)</span> (95% one-sided upper bound
-<span class="math inline">\(-0.029\)</span>). The transfer effect is
-heterogeneous across checkpoints—from <span
-class="math inline">\(+0.05\)</span> on one base to <span
-class="math inline">\(-0.12\)</span> on another—though the panel-level
-degradation is sign-stable under every leave-one-checkpoint-out and
-leave-one-benchmark-out resampling. At a calibration-targeted 5% FPR,
-the adapted guard’s realized false-positive rate rises to 13.7% on
-transfer benchmarks (versus 8.3% for the untuned base), so the
-calibrated operating point does not transfer, with realized test FPR
-reported rather than assumed.</p>
+does not establish transfer to other datasets. We retrospectively
+analyze a fixed legacy run that compares four untuned checkpoints
+(1.5B–4B parameters) with five LoRA-SFT seeds per checkpoint. The
+training rows, semantic classification instruction, LoRA capacity, and
+evaluation rows are fixed; rendered chat serialization is
+model-specific. We separate represented-source tests from four
+dataset-held-out transfer benchmarks and report macro average precision
+(AP), per-source effects, and calibration-only operating points.</p>
+<p>The fixed-panel base-to-SFT changes are <span
+class="math inline">\(+0.3327\)</span> in represented-source macro AP
+(95% two-sided paired-bootstrap interval <span
+class="math inline">\([+0.2718,+0.3793]\)</span>) and <span
+class="math inline">\(-0.0503\)</span> in transfer macro AP (<span
+class="math inline">\([-0.0760,-0.0250]\)</span>). Transfer is
+heterogeneous across checkpoints, but every leave-one-checkpoint-out and
+leave-one-transfer-benchmark-out sensitivity estimate remains negative.
+At calibration-targeted thresholds, benchmark-macro transfer FPR rises
+from 8.3% (base) to 13.7% (SFT), while pooled-negative FPR rises from
+4.4% to 14.6%; HarmBench recall falls from 78.4% to 57.5%.</p>
 <p>Prior work has established policy overfitting, calibration
 sensitivity, and safety degradation after fine-tuning. Our contribution
-is narrower: a same-checkpoint, same-training-manifest, multi-seed
-attribution of how compact prompt guards specialize across benchmark
-sources. The results show that adapting a guard is, on this panel, an
-<em>in-source specialization</em>—it reliably sharpens discrimination on
-represented benchmark sources while, on average and stably across
-leave-one-out checks, slightly <em>degrading</em> dataset-held-out
-transfer—rather than a general moderation upgrade.</p></div>
+is narrower: a same-checkpoint, same-training-manifest characterization
+of how compact prompt guards move across benchmark sources. Conditional
+on these four checkpoints and seven fixed AP datasets, the estimates are
+consistent with in-source specialization, not a general moderation
+upgrade. Because the committed scores predate the strengthened
+provenance and lock contract released with this paper, we treat the
+result as estimation-only and identify the clean rerun required for
+confirmatory use.</p></div>
 <section id="sec:intro" class="level2" data-number="1">
 <h2 data-number="1"><span class="header-section-number">1</span>
 Introduction</h2>
@@ -267,37 +263,32 @@ Introduction</h2>
 guard with a short parameter-efficient fine-tune, then report the
 adapted guard’s score on a public benchmark suite. A post-adaptation
 leaderboard number, however, hides the quantity a practitioner actually
-needs: what the fine-tune <em>added</em> relative to the same checkpoint
-before adaptation, and whether that addition is competence that
-transfers to data the guard was not trained on, or specialization toward
-the sources that happened to be represented during training. Because an
-adapted guard is usually compared only against <em>other</em> models —
-never against its own untuned base — a gain measured on benchmark
-sources represented during training is easily mistaken for transferable
-guard capability.</p>
+needs: what changed relative to the same checkpoint before adaptation,
+and whether that change transfers to datasets not represented during
+training. Because an adapted guard is often compared only against
+<em>other</em> models, a gain on represented benchmark sources can be
+mistaken for broader discrimination or policy agreement.</p>
 <p>This paper asks one question: <em>what does LoRA-SFT add beyond the
 untuned base model, and does that gain transfer to evaluation datasets
-whose rows were not used for SFT?</em> To answer it we run a controlled,
-same-checkpoint, same-training-manifest, multi-seed study on a fixed
-four-checkpoint panel (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B)
-and one frozen LoRA-SFT recipe, comparing every adapted guard against
-its own untuned base across two evaluation regimes: benchmark sources
-<em>represented</em> during training and <em>dataset-held-out</em>
-benchmarks whose rows were withheld from SFT.</p>
-<p>Our result-neutral thesis, stated before any scoring, is the
-following.</p>
+whose rows were not used for SFT?</em> We retrospectively analyze a
+controlled, same-checkpoint, same-training-manifest, multi-seed run on a
+fixed four-checkpoint panel (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B,
+Qwen3-4B) and one frozen LoRA-SFT recipe, comparing every adapted guard
+against its own untuned base across two evaluation regimes: benchmark
+sources <em>represented</em> during training and
+<em>dataset-held-out</em> benchmarks whose rows were withheld from
+SFT.</p>
+<p>We organize the analysis around the following deliberately
+panel-limited question.</p>
 <blockquote>
 <p>For a fixed four-checkpoint panel and one frozen LoRA-SFT recipe,
-guard adaptation changes performance differently on represented-source
-and dataset-held-out tests. Comparing every guard with its own untuned
-base reveals whether adaptation adds transferable competence or
-redistributes performance toward sources represented during
-training.</p>
+does guard adaptation change discrimination differently on
+represented-source and dataset-held-out tests?</p>
 </blockquote>
-<p>After scoring, the conclusion follows the preregistered decision
-rules of <a class="xref" href="#sec:conclusion">§6</a>; a heterogeneous or inconclusive
-outcome is reported as such and is not forced into a negative-transfer
-narrative.</p>
+<p>The design and analysis were not publicly preregistered, and the
+committed run is analyzed retrospectively. We therefore report
+estimates, intervals, heterogeneity, and sensitivity checks without
+confirmatory rejection language.</p>
 <section id="scope." class="level5" data-number="1.0.0.1">
 <h5 data-number="1.0.0.1"><span
 class="header-section-number">1.0.0.1</span> Scope.</h5>
@@ -320,21 +311,21 @@ likewise out of scope.</p>
 Contributions</h3>
 <p>The paper makes exactly three contributions.</p>
 <ul>
-<li><p><strong>Controlled base-to-guard attribution.</strong> For each
-checkpoint, we compare the untuned base with five independently trained
-SFT adapters on identical examples, prompts, score definitions, and
-metrics, so any measured change is attributable to the adaptation rather
-than to a different model, threshold, or evaluation set.</p></li>
+<li><p><strong>Controlled base-to-guard comparison.</strong> For each
+checkpoint, we compare the untuned base with five SFT adapters on
+identical evaluation rows, semantic instructions, score definitions, and
+metrics, isolating the within-checkpoint change in this executed
+run.</p></li>
 <li><p><strong>Fixed-panel transfer characterization.</strong> We
 estimate represented-source and dataset-held-out changes separately,
 report per-base and per-benchmark heterogeneity, and restrict every
 conclusion to the named four-checkpoint panel and frozen
 recipe.</p></li>
-<li><p><strong>Auditable measurement package.</strong> We release
-immutable manifests or redistributable identifiers, source revisions,
-content hashes, seed-level results, keyed scores, direct paired
-intervals, generated tables and figures, and an executable
-cached-analysis path.</p></li>
+<li><p><strong>Auditable measurement package.</strong> We release a
+text-free public manifest index, source revisions, content hashes,
+seed-level results, keyed scores, paired intervals, generated tables and
+figures, and an executable cached-analysis path. Raw third-party rows
+remain local according to their licenses.</p></li>
 </ul>
 <p>Operating-point evaluation (<a href="#subsec:operating-point"
 data-reference-type="ref+Label"
@@ -346,8 +337,8 @@ guarantee.</p>
 <section id="sec:rqs" class="level3" data-number="1.2">
 <h3 data-number="1.2"><span class="header-section-number">1.2</span>
 Research questions</h3>
-<p>The single question above is operationalized as four preregistered
-research questions.</p>
+<p>The single question above is operationalized as four research
+questions.</p>
 <dl>
 <dt>RQ1 (represented-source effect).</dt>
 <dd>
@@ -389,57 +380,58 @@ data-cites="inan2023llamaguard meta2024llamaguard3_1b">(Inan et al.
 2023; Meta AI 2024)</span>, ShieldGemma <span class="citation"
 data-cites="zeng2024shieldgemma">(Zeng et al. 2024)</span>, Granite
 Guardian <span class="citation"
-data-cites="padhi2024graniteguardian">(Padhi et al. 2025)</span>, and
+data-cites="padhi2024graniteguardian">(Padhi et al. 2025)</span>,
 WildGuard <span class="citation" data-cites="han2024wildguard">(Han et
-al. 2024)</span> — typically framing moderation as supervised
-classification that emits a verdict token or score. Efficiency-oriented
-work argues that small, cheap classifiers can serve as practical guards
-<span class="citation" data-cites="majhi2025gpuguard">(Majhi et al.
-2025)</span>, and GuardBench shows that a general instruction-tuned
-model can rival guard-specific fine-tunes on a large suite <span
-class="citation" data-cites="bassani2024guardbench">(Bassani and Sanchez
-2024)</span>. Our guard formulation is deliberately minimal — a
-single-token {safe, unsafe} logprob head read in one forward pass,
-LoRA-tuned from a compact instruction base <span class="citation"
+al. 2024)</span>, and LoRA-Guard <span class="citation"
+data-cites="elesedy2024loraguard">(Elesedy et al. 2024)</span> —
+typically framing moderation as supervised classification that emits a
+verdict token or score. Efficiency-oriented work argues that small,
+cheap classifiers can serve as practical guards <span class="citation"
+data-cites="majhi2025gpuguard">(Majhi et al. 2025)</span>, and
+GuardBench shows that a general instruction-tuned model can rival
+guard-specific fine-tunes on a large suite <span class="citation"
+data-cites="bassani2024guardbench">(Bassani and Sanchez 2024)</span>.
+Our guard formulation is deliberately minimal — a single-token {safe,
+unsafe} logprob head read in one forward pass, LoRA-tuned from a compact
+instruction base <span class="citation"
 data-cites="bakouch2025smollm3 hu2021lora">(Bakouch et al. 2025; Hu et
 al. 2021)</span> — because the object of study is the
 <em>before-versus-after</em> effect of adaptation, not a new
 architecture.</p>
 <p><strong>Fine-tuning degradation and benchmark/policy
-transfer.</strong> Prior work establishes that fine-tuning can degrade
-or collapse a model’s safety behavior, and analyzes when this happens
-through alignment/fine-tuning similarity <span class="citation"
+transfer.</strong> Prior work establishes that fine-tuning can degrade a
+model’s safety behavior and analyzes when this happens through
+alignment/fine-tuning similarity <span class="citation"
 data-cites="hsiung2025guardrails">(Hsiung et al. 2026)</span>.
 Policy-overfitting and unseen-policy adaptation are studied directly by
 augmented policy training for domain-generalizable guardrails <span
 class="citation" data-cites="liu2026domaingeneralizable">(Liu et al.
-2026)</span>, and specialized-domain moderation is the subject of
-expert-annotated benchmarks such as ExpGuard <span class="citation"
-data-cites="expguard2026">(<em><span>ExpGuard</span></em> 2026)</span>.
-Detector rankings have been shown to be regime-dependent, with no single
-model dominating across deployment settings <span class="citation"
+2026)</span>; surface-heuristic reliance and robustness failures further
+limit out-of-distribution claims <span class="citation"
+data-cites="li2026surfaceheuristics bassani2025robustness">(Li et al.
+2026; Bassani and Sanchez 2025)</span>. Specialized-domain moderation is
+evaluated by expert-annotated benchmarks such as ExpGuard <span
+class="citation" data-cites="expguard2026">(Choi et al. 2026)</span>.
+Detector rankings are regime-dependent <span class="citation"
 data-cites="akinrele2026regime">(Akinrele and Gowda 2026)</span>, and
 fine-tuning objectives themselves shape safety and robustness <span
 class="citation" data-cites="vennemeyer2026objective">(Vennemeyer et al.
-2026)</span>. We credit these results as prior art: policy overfitting,
-transfer instability, and objective- and data-dependent degradation are
-established. Our study does not re-derive them; it isolates and
-quantifies one narrow slice — the paired base-to-SFT change on a fixed
-panel, reported separately for represented and dataset-held-out
-sources.</p>
+2026)</span>. We therefore claim only a paired base-to-SFT
+characterization on a fixed panel, separated into represented and
+dataset-held-out sources.</p>
 <p><strong>Calibration and operating points.</strong> Guard scores
 require calibration to be read as probabilities or thresholds;
 temperature scaling <span class="citation"
 data-cites="guo2017calibration">(Guo et al. 2017)</span> and
 guard-specific calibration analyses <span class="citation"
 data-cites="liu2025calibration">(Liu et al. 2025)</span> are standard,
-as is continuous risk scoring with strictness-adaptive thresholds <span
-class="citation" data-cites="flexguard2026">(Ding et al. 2026)</span>.
-Calibrated ensembles can mitigate accuracy trade-offs under distribution
-shift <span class="citation" data-cites="kumar2022calibrated">(Kumar et
-al. 2022)</span>. We use calibration only as a secondary operating-point
-diagnostic (<a href="#subsec:operating-point"
-data-reference-type="ref+Label"
+while FlexGuard studies continuous risk scoring and cross-strictness
+behavior <span class="citation" data-cites="flexguard2026">(Ding et al.
+2026)</span>. Calibrated ensembles can mitigate accuracy trade-offs
+under distribution shift <span class="citation"
+data-cites="kumar2022calibrated">(Kumar et al. 2022)</span>. We use
+calibration only as a secondary operating-point diagnostic (<a
+href="#subsec:operating-point" data-reference-type="ref+Label"
 data-reference="subsec:operating-point">4.3</a>) fit on held-back
 calibration rows, never on transfer or stress data, and we do not
 propose a new calibration method.</p>
@@ -457,42 +449,53 @@ discrimination and dataset-held-out benchmark transfer.</p>
 <section id="sec:design" class="level2" data-number="3">
 <h2 data-number="3"><span class="header-section-number">3</span>
 Controlled Study Design</h2>
-<p><a class="xref" href="#fig:design">Figure&nbsp;1</a> summarizes the pipeline: pinned source
-snapshots are compiled into frozen manifests, audited for overlap and
-license, and locked; four bases are each adapted with five SFT seeds;
-the base and adapted guards are scored on the represented-source,
-transfer, and stress manifests; and paired deltas feed the preregistered
-claim gates. No stage reads evaluation labels before the final scoring
-pass.</p>
-<figure id="fig:design" data-latex-placement="t">
+<p><a class="xref" href="#fig:design">Figure&nbsp;1</a> summarizes the intended pipeline:
+pinned source snapshots are compiled into manifests, audited, and
+locked; four bases are each adapted with five SFT seeds; the base and
+adapted guards are scored on represented-source, transfer, and stress
+manifests; and paired deltas feed estimation and sensitivity analyses.
+Training does not read evaluation rows. Manifest construction, audit,
+threshold fitting on calibration data, and analysis necessarily read
+their corresponding labels. The committed score table is from a legacy
+contract; the corrected builder and lock verifier require a new GPU run
+before claims can be called clean-run results.</p>
+<figure id="fig:design" data-latex-placement="t"><img src="figures/study_design.svg" alt="Five-stage clean-rerun study design" loading="lazy"/>
 
-<figcaption><span class="tnum">Figure&nbsp;1.</span> Study design. Source snapshots are frozen and audited before
-any training; evaluation manifests are scored only after all twenty
-adapters and four base bundles exist. Paired base-versus-SFT deltas
-drive the preregistered claim gates (<a class="xref" href="#sec:conclusion">§6</a>);
-this figure carries no result numbers.</figcaption>
+<figcaption><span class="tnum">Figure&nbsp;1.</span> Study design for a clean rerun. Source snapshots are frozen
+and audited before training; evaluation manifests are scored only after
+all twenty adapters and four base bundles exist. Paired base-versus-SFT
+deltas drive estimation and sensitivity analyses.</figcaption>
 </figure>
 <section id="subsec:task" class="level3" data-number="3.1">
 <h3 data-number="3.1"><span class="header-section-number">3.1</span>
 Prompt-safety task and label mapping</h3>
 <p>The guard is a binary classifier that emits a single-token verdict,
 <code>safe</code> or <code>unsafe</code>. A prompt is
-<code>unsafe</code> if it should be blocked (harmful content, successful
-jailbreak/injection, policy-violating request) and <code>safe</code>
-otherwise. Each source’s native label is mapped to this binary target by
-a frozen rule: ToxicChat <code>toxicity</code><span
+<code>unsafe</code> when the source annotation maps it to harmful,
+jailbreak, prompt-injection, or policy-violating content; a labeled
+attempt need not have succeeded against a target model. Each source’s
+native label is mapped by a fixed rule: ToxicChat <span class="citation"
+data-cites="lin2023toxicchat">(Lin et al. 2023)</span>
+<code>toxicity</code><span
 class="math inline">\(=1\!\to\!\)</span>unsafe;
 <code>deepset/prompt-injections</code> <code>label</code><span
 class="math inline">\(=1\!\to\!\)</span>unsafe;
 <code>jailbreak-classification</code> <code>type</code> beginning
 <em>jailbreak</em><span class="math inline">\(\to\!\)</span>unsafe;
-JailbreakBench harmful/benign splits; XSTest contrast prompts<span
-class="math inline">\(\to\!\)</span>unsafe; WildGuardTest
-<code>prompt_harm_label</code>; WildJailbreak integer label;
-OR-Bench-Hard benign portion (safe); HarmBench (unsafe). All
-native-to-binary maps, text fields, and per-source deterministic targets
-are fixed in <code>configs/paper_a_sft.yaml</code> and recorded in the
-manifest.</p>
+JailbreakBench <span class="citation"
+data-cites="chao2024jailbreakbench">(Chao et al. 2024)</span>
+harmful/benign splits; XSTest <span class="citation"
+data-cites="rottger2024xstest">(Röttger et al. 2024)</span> contrast
+prompts<span class="math inline">\(\to\!\)</span>unsafe; WildGuardTest
+<span class="citation" data-cites="han2024wildguard">(Han et al.
+2024)</span> <code>prompt_harm_label</code>; WildJailbreak <span
+class="citation" data-cites="jiang2024wildteaming">(Jiang et al.
+2024)</span> integer label; OR-Bench-Hard <span class="citation"
+data-cites="cui2024orbench">(Cui et al. 2025)</span> benign portion
+(safe); and HarmBench <span class="citation"
+data-cites="mazeika2024harmbench">(Mazeika et al. 2024)</span> behaviors
+(unsafe). These heterogeneous mappings do not define one universal
+moderation policy.</p>
 </section>
 <section id="subsec:guard" class="level3" data-number="3.2">
 <h3 data-number="3.2"><span class="header-section-number">3.2</span>
@@ -506,80 +509,68 @@ verdict tokens. Let <span
 class="math inline">\(z_{\text{safe}}(x,t)\)</span> and <span
 class="math inline">\(z_{\text{unsafe}}(x,t)\)</span> be those logits at
 the final prompt position <span class="math inline">\(t\)</span>. The
-stored canonical score is the logit difference <span
-class="math display">\[\begin{equation}
-\label{eq:score}
-s(x) = z_{\text{unsafe}}(x,t) - z_{\text{safe}}(x,t),
-\end{equation}\]</span> and the derived probability is the two-way
-softmax <span class="math display">\[\begin{equation}
-\label{eq:prob}
-p(\text{unsafe}\mid x) =
+stored canonical score is the logit difference <span id="eq:score" class="math display">\[s(x) = z_{\text{unsafe}}(x,t) - z_{\text{safe}}(x,t),\]</span> and the derived probability is the two-way
+softmax <span id="eq:prob" class="math display">\[p(\text{unsafe}\mid x) =
 \frac{\exp(z_{\text{unsafe}})}{\exp(z_{\text{safe}}) +
-\exp(z_{\text{unsafe}})}.
-\end{equation}\]</span> Raw <code>safe</code>/<code>unsafe</code> logits
-are the canonical stored values; probabilities and any
-temperature-scaled calibration are derived from them. Generated verdict
-text is never used as the primary score. For each checkpoint we verify
-that the decision tokens are distinct single tokens under a fixed
-convention (leading-space <code>" safe"</code>/<code>" unsafe"</code>
-first, no-leading-space fallback), and we store token IDs, token
-strings, truncation state, and scored/original token counts. Training,
-scoring, and tests import the same prompt/token specification.</p>
+\exp(z_{\text{unsafe}})}.\]</span> Raw <code>safe</code>/<code>unsafe</code> logits
+are the canonical stored values; probabilities and temperature-scaled
+values are derived from them. Generated verdict text is never used as
+the primary score. For each checkpoint we verify that the decision
+tokens are distinct single tokens under a fixed convention
+(leading-space <code>" safe"</code>/<code>" unsafe"</code> first,
+no-leading-space fallback), and store token IDs, token strings,
+truncation state, and scored/original token counts. The semantic system
+instruction is shared, but model-specific chat templates produce three
+distinct rendered-template hashes across the four checkpoints. The
+corrected runner preserves the classification instruction under
+truncation; the legacy scores include left-truncated examples,
+quantified in <a class="xref" href="#sec:limitations">§5</a>.</p>
 </section>
 <section id="subsec:manifest" class="level3" data-number="3.3">
 <h3 data-number="3.3"><span class="header-section-number">3.3</span>
 Training manifest and exclusions</h3>
 <p>Training reads one frozen 1<span>,</span>200-row manifest and never
-resamples live datasets. The manifest draws <strong>400 rows
+resamples live datasets during a run. It draws <strong>400 rows
 each</strong> from three represented sources — ToxicChat,
 Prompt-Injections, and Jailbreak-Classification — with <strong>200 safe
-and 200 unsafe</strong> rows per source, selected deterministically by a
-frozen SHA-256 hash-ranking rule salted with <code>data_seed</code> and
-shared as one fixed row order across every checkpoint and training seed.
-At effective batch size 4, 1<span>,</span>200 rows produce exactly 300
-optimizer updates for one complete exposure of the manifest.</p>
+and 200 unsafe</strong> rows per source, selected by a SHA-256 hash rank
+salted with <code>data_seed</code> and shared as one fixed row order
+across every checkpoint and training seed. At effective batch size 4,
+1<span>,</span>200 rows produce exactly 300 optimizer updates for one
+complete exposure.</p>
 <p><strong>BeaverTails and OR-Bench are excluded from training.</strong>
 BeaverTails’ <code>is_safe</code> annotation labels the prompt–response
 interaction rather than the prompt alone, and OR-Bench is reserved for
 the benign stress set and shares an evaluation family; including either
 would confound the prompt-only, dataset-held-out design. The study uses
 the non-commercial academic data branch (ToxicChat is CC BY-NC 4.0), so
-any released adapter is marked non-commercial and third-party raw text
-is redistributed as pinned identifiers, revisions, and content hashes
-rather than under the repository license.</p>
-<p><strong>Decontamination audit.</strong> Before locking, an audit
-compiles union family clusters across all candidate rows: an edge is
-added between rows sharing an authoritative upstream
-family/conversation/pair/scenario ID and between rows whose character
-5-gram MinHash (256 permutations) estimates Jaccard similarity <span
-class="math inline">\(\ge 0.85\)</span>; connected components define
-<code>family_id</code>; every component crossing train and any
-evaluation split is adjudicated, and the train-side member of an
-unresolved cross-split component is removed. The audit enforces hard
-assertions — <code>or_bench_train_count</code><span
-class="math inline">\(=0\)</span>,
-<code>beavertails_train_count</code><span
-class="math inline">\(=0\)</span>, exact train/eval overlap <span
-class="math inline">\(=0\)</span>, conflicting-label overlap <span
-class="math inline">\(=0\)</span>, and complete
-revision/hash/near-duplicate-disposition coverage — and reports
-sensitivity counts at similarity 0.80 and 0.90. On the current build the
-audit reports <strong>0 exact train/eval overlap</strong>, <strong>0
-conflicting-label overlap</strong>, and the removal of <strong>4
-WildJailbreak conflict rows</strong> from the training candidates.
-Because these are audited data-pipeline properties rather than model
-outcomes, they are stated here; all post-audit split counts are
-published in the manifest report.</p>
-<div id="tab:data-roles" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;1.</span> Data sources and manifest roles. Train counts are locked design
-values (400 per source; 200 safe / 200 unsafe). Transfer and stress
-counts are the deterministic per-label targets from
-<code>configs/paper_a_sft.yaml</code>; represented-source test rows are
-split 40/60 into calibration and represented-source ID, and their final
-post-audit counts are published in the manifest report. Model-checkpoint
-revisions are in <a class="xref" href="#tab:panel-recipe">Table&nbsp;2</a>;
-dataset revisions and content hashes are pinned in the config. “see
-manifest” marks a license that is recorded and snapshotted at lock
-time.</div><div class="tscroll"><table>
+any released adapter is marked non-commercial. We do not redistribute
+third-party raw text; the release provides pinned identifiers,
+revisions, and content hashes.</p>
+<p><strong>Decontamination audit.</strong> The corrected builder
+preserves authoritative upstream conversation/pair/scenario identifiers,
+adds deterministic character 5-gram MinHash edges, constructs connected
+components before splitting represented-source calibration and ID rows,
+and fails closed if any family crosses train/evaluation or
+calibration/any reported test or stress boundary. It also hard-asserts
+source exclusions, exact/conflicting-label overlap, source revisions,
+content hashes, selection provenance, and near-duplicate dispositions.
+The historical audit associated with the committed scores reported zero
+exact and conflicting-label train/evaluation overlaps, but its family
+keys failed to join 36 JailbreakBench matched-index pairs and 58 XSTest
+safe/unsafe pairs; two represented-source families also crossed
+calibration and ID. Its six approximate train/evaluation pairs at the
+0.80 sensitivity threshold were reported rather than adjudicated.
+Consequently, the historical family bootstrap and operating-point split
+are descriptive artifacts; the repaired family graph must be used in a
+clean rerun.</p>
+<div id="tab:data-roles" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;1.</span> Data sources and roles in the legacy score artifact. Train
+counts are 400 per source (200 safe / 200 unsafe). Dataset revisions,
+content hashes, redistribution fields, and license evidence are recorded
+in the text-free public manifest index. WildGuardTest and WildJailbreak
+counts are legacy seed-7 cohorts; the corrected builder defaults to
+pinned-source hash ranking, so a clean rerun will produce different
+cohorts.</div><div class="tscroll"><table>
 
 <thead>
 <tr>
@@ -606,7 +597,8 @@ style="text-align: left;"><code>deepset/prompt-injections</code></td>
 <td style="text-align: left;">train <span
 class="math inline">\(+\)</span> calibration/ID</td>
 <td style="text-align: left;">400 train (200:200)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">metadata conflict<span
+class="math inline">\(^\dagger\)</span></td>
 </tr>
 <tr>
 <td
@@ -615,7 +607,7 @@ style="text-align: left;"><code>jackhhao/jailbreak-classification</code></td>
 <td style="text-align: left;">train <span
 class="math inline">\(+\)</span> calibration/ID</td>
 <td style="text-align: left;">400 train (200:200)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">Apache-2.0</td>
 </tr>
 <tr>
 <td
@@ -623,7 +615,7 @@ style="text-align: left;"><code>JailbreakBench/JBB-Behaviors</code></td>
 <td style="text-align: left;">harmful/benign split</td>
 <td style="text-align: left;">transfer (test only)</td>
 <td style="text-align: left;">120 (60:60)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">MIT</td>
 </tr>
 <tr>
 <td
@@ -631,7 +623,7 @@ style="text-align: left;"><code>natolambert/xstest-v2-copy</code></td>
 <td style="text-align: left;">contrast prompt</td>
 <td style="text-align: left;">transfer (test only)</td>
 <td style="text-align: left;">240 (120:120)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">CC BY 4.0</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>allenai/wildguardmix</code></td>
@@ -645,8 +637,7 @@ class="math inline">\(+\)</span> AI2</td>
 <td style="text-align: left;"><code>allenai/wildjailbreak</code></td>
 <td style="text-align: left;">adversarial label</td>
 <td style="text-align: left;">transfer (test only)</td>
-<td style="text-align: left;">420 (<span
-class="math inline">\(\approx\)</span>210:210)</td>
+<td style="text-align: left;">420 (210:210)</td>
 <td style="text-align: left;">ODC-BY <span
 class="math inline">\(+\)</span> AI2</td>
 </tr>
@@ -656,46 +647,47 @@ class="math inline">\(+\)</span> AI2</td>
 <td style="text-align: left;">benign over-refusal</td>
 <td style="text-align: left;">stress: benign FPR only</td>
 <td style="text-align: left;">400 (0:400)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">CC BY 4.0</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>walledai/HarmBench</code></td>
 <td style="text-align: left;">harmful</td>
 <td style="text-align: left;">stress: recall only</td>
 <td style="text-align: left;">200 (200:0)</td>
-<td style="text-align: left;">see manifest</td>
+<td style="text-align: left;">MIT</td>
 </tr>
 </tbody>
 </table></div></div>
+<p><span class="math inline">\(^\dagger\)</span>At the pinned
+Prompt-Injections revision, top-level card metadata says Apache-2.0
+while nested dataset metadata says CC BY 4.0; the public index records
+the conflict rather than silently choosing one.</p>
 </section>
 <section id="subsec:panel" class="level3" data-number="3.4">
 <h3 data-number="3.4"><span class="header-section-number">3.4</span>
 Model panel and frozen SFT recipe</h3>
 <p>The estimand is a fixed, purposively chosen four-checkpoint panel; we
-do not bootstrap model identities or infer over model families. All four
-checkpoints, their pinned revisions, and the locked LoRA-SFT recipe are
-in <a class="xref" href="#tab:panel-recipe">Table&nbsp;2</a>. Each base is adapted with five
-training seeds (42–46) sharing a fixed data-order seed (42), giving 20
-adapters; the four untuned bases are scored once each and reused across
-comparisons (<span class="math inline">\(4\)</span> bases <span
-class="math inline">\(+ 20\)</span> adapters <span
-class="math inline">\(= 24\)</span> model bundles). The recipe is frozen
-before final scoring: completion-only SFT with the loss on the verdict
-token plus the appended EOS token, LoRA <span
-class="math inline">\(r{=}32\)</span>, <span
+do not bootstrap model identities or infer over model families. All
+checkpoints, revisions, and the LoRA-SFT recipe are in <a class="xref" href="#tab:panel-recipe">Table&nbsp;2</a>. Each base is adapted with five
+training seeds (42–46) sharing data-order seed 42, giving 20 adapters;
+four untuned bases are scored once and reused (<span
+class="math inline">\(4+20=24\)</span> model bundles). The executed
+recipe uses completion-only loss on the verdict and appended EOS tokens,
+LoRA <span class="math inline">\(r{=}32\)</span>, <span
 class="math inline">\(\alpha{=}64\)</span>, dropout <span
-class="math inline">\(0.05\)</span> on the q/k/v/o/gate/up/down
-projections, 300 optimizer updates, learning rate <span
+class="math inline">\(0.05\)</span> on q/k/v/o/gate/up/down projections,
+300 steps, learning rate <span
 class="math inline">\(2\times10^{-4}\)</span> with cosine schedule and
-0.03 warmup, per-device batch 1 with gradient accumulation 4 (effective
-batch 4), and maximum sequence length 1<span>,</span>024.</p>
-<div id="tab:panel-recipe" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;2.</span> Fixed model panel and frozen LoRA-SFT recipe. Revisions are
-pinned; the run fails rather than falling back to a moving
-<code>main</code>. Decision tokens are verified distinct single tokens
-per checkpoint under the leading-space-first convention (exact token IDs
-recorded in <code>LOCK.json</code>). Trainable-parameter counts,
-training tokens, and wall time are per-run metadata filled from run logs
-after training; they are not evaluation results.</div><div class="tscroll"><table>
+0.03 warmup, effective batch 4, and maximum sequence length
+1<span>,</span>024. The historical tokenizer left-truncated overlength
+inputs; the corrected runner preserves the system instruction and
+records the truncation strategy.</p>
+<div id="tab:panel-recipe" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;2.</span> Fixed model panel and executed LoRA-SFT recipe. Revisions are
+pinned and decision tokens are verified as distinct single tokens.
+Training-token and wall-time values are medians across five legacy runs;
+run metadata also records the A100 device, peak memory, and per-run
+timing, but not every software/driver field required by the new
+contract.</div><div class="tscroll"><table>
 
 <thead>
 <tr>
@@ -719,21 +711,21 @@ after training; they are not evaluation results.</div><div class="tscroll"><tabl
 <td style="text-align: left;">1.7B</td>
 <td style="text-align: left;"><code>31b70e2…46d38674</code></td>
 <td style="text-align: left;">{ safe, unsafe } single-token</td>
-<td style="text-align: left;">226k / 6.8 min</td>
+<td style="text-align: left;">226k / 6.2 min</td>
 </tr>
 <tr>
 <td style="text-align: left;">HuggingFaceTB/SmolLM3-3B</td>
 <td style="text-align: left;">3B</td>
 <td style="text-align: left;"><code>a07cc9a…335b0ac1</code></td>
 <td style="text-align: left;">{ safe, unsafe } single-token</td>
-<td style="text-align: left;">259k / 10.3 min</td>
+<td style="text-align: left;">259k / 9.2 min</td>
 </tr>
 <tr>
 <td style="text-align: left;">Qwen/Qwen3-4B</td>
 <td style="text-align: left;">4B</td>
 <td style="text-align: left;"><code>1cfa9a7…03b3df60c</code></td>
 <td style="text-align: left;">{ safe, unsafe } single-token</td>
-<td style="text-align: left;">220k / 11.8 min</td>
+<td style="text-align: left;">220k / 10.4 min</td>
 </tr>
 <tr>
 <td colspan="5" style="text-align: left;"><em>Recipe (all cells):</em>
@@ -785,104 +777,83 @@ Estimands and statistical protocol</h3>
 <p>For regime <span class="math inline">\(R\)</span>, checkpoint <span
 class="math inline">\(b\)</span>, and training seed <span
 class="math inline">\(r\)</span>, the per-regime metric is the macro
-average precision over that regime’s benchmarks, <span
-class="math display">\[\begin{equation}
-\label{eq:regime-metric}
-M_R(b,r) = \frac{1}{|K_R|}\sum_{k\in K_R} \mathrm{AP}_k(b,r),
-\end{equation}\]</span> computed with the tie-aware, non-interpolated
+average precision over that regime’s benchmarks, <span id="eq:regime-metric" class="math display">\[M_R(b,r) = \frac{1}{|K_R|}\sum_{k\in K_R} \mathrm{AP}_k(b,r),\]</span> computed with the tie-aware, non-interpolated
 <code>scikit-learn</code> definition. The base-to-SFT change for a cell
-is <span class="math display">\[\begin{equation}
-\label{eq:delta}
-\Delta_R(b,r) = M_R(\mathrm{SFT}_{b,r}) - M_R(\mathrm{base}_b),
-\end{equation}\]</span> and the fixed-panel aggregate averages the four
-checkpoint deltas without resampling checkpoint identities, <span
-class="math display">\[\begin{equation}
-\label{eq:agg}
-\bar\Delta_R = \frac{1}{4}\sum_b\Big[\tfrac{1}{5}\textstyle\sum_r
-M_R(\mathrm{SFT}_{b,r}) - M_R(\mathrm{base}_b)\Big].
-\end{equation}\]</span> The primary result is the joint vector <span
+is <span id="eq:delta" class="math display">\[\Delta_R(b,r) = M_R(\mathrm{SFT}_{b,r}) - M_R(\mathrm{base}_b),\]</span> and the fixed-panel aggregate averages the four
+checkpoint deltas without resampling checkpoint identities, <span id="eq:agg" class="math display">\[\bar\Delta_R = \frac{1}{4}\sum_b\Big[\tfrac{1}{5}\textstyle\sum_r
+M_R(\mathrm{SFT}_{b,r}) - M_R(\mathrm{base}_b)\Big].\]</span> The primary result is the joint vector <span
 class="math inline">\(\theta = (\bar\Delta_{\text{represented}},
-\bar\Delta_{\text{transfer}})\)</span>; we do not collapse it into a
-single scalar “specialization score” except as an optional
-visualization.</p>
-<p><strong>Uncertainty.</strong> We separate training-seed uncertainty
-from conditional evaluation-set uncertainty with a hierarchical paired
-bootstrap: 10<span>,</span>000 replicates (RNG seed 20260712), the four
-checkpoint identities fixed in every replicate, five SFT seed indices
-resampled with replacement within each checkpoint, and one Poisson(1)
-weight drawn per global <code>family_id</code> and applied to all of
-that family’s rows across datasets (preserving cross-label,
-cross-dataset, and paired base/SFT dependence). We report all five seed
-values, per-base and fixed-panel intervals,
-leave-one-transfer-benchmark-out and leave-one-base-out sensitivities
-(descriptive, not population inference), and per-base/per-benchmark
-heterogeneity tables.</p>
-<p><strong>Claim family and mode.</strong> The primary family is the
-pair (represented-source macro-AP delta, transfer macro-AP delta), and
-the specialization claim is an intersection–union test in which both
-one-sided component nulls must be rejected at <span
-class="math inline">\(\alpha{=}0.05\)</span>. <code>LOCK.json</code>
-records <code>analysis_mode</code> as <code>powered_confirmatory</code>
-or <code>precision_focused</code>; in the latter, the same intervals are
-computed but reported with estimation language rather than formal
-rejection claims. We do not use McNemar as a test of AP, infer
-significance from non-overlapping marginal intervals, treat seeds as
-model families, or select any benchmark, seed, base, or threshold after
-viewing final results.</p>
+\bar\Delta_{\text{transfer}})\)</span>; we retain both dimensions and
+visualize them as a plane rather than collapsing them into a scalar
+“specialization score.”</p>
+<p><strong>Uncertainty.</strong> We use 10<span>,</span>000 paired
+hierarchical-bootstrap replicates (RNG seed 20260712): checkpoint
+identities remain fixed, SFT seed indices are resampled within
+checkpoint, and one Poisson(1) weight is applied per recorded global
+<code>family_id</code>. Because training rows and order are fixed, seed
+variation reflects initialization, dropout, and execution
+nondeterminism, not training-sample or order uncertainty. The intervals
+are conditional on the named checkpoints, constructed evaluation
+subsets, and datasets; they do not support inference to a population of
+model families or benchmarks. The legacy family-link defects above mean
+these intervals can understate dependence, so they are sensitivity
+summaries pending a clean rerun. Leave-one-transfer-benchmark-out and
+leave-one-base-out values are deterministic sensitivity analyses, not
+resampling or population inference.</p>
+<p><strong>Analysis mode.</strong> The legacy lock records
+<code>analysis_mode</code> as <code>precision_focused</code> and no
+valid power report. Accordingly, the joint represented/transfer result
+is descriptive: we report observed fixed-panel points, two-sided
+bootstrap intervals, and leave-one-out sensitivities, but no formal
+intersection–union rejection, Holm correction, bootstrap-derived <span
+class="math inline">\(p\)</span>-value, or pass/fail claim gate. A
+future confirmatory analysis would require a clean lock, prospective
+protocol, justified null-calibrated test, and rerun under the repaired
+manifests.</p>
 </section>
 </section>
 <section id="sec:results" class="level2" data-number="4">
 <h2 data-number="4"><span class="header-section-number">4</span>
 Results</h2>
-<p><em>Every value in this section is generated from the locked-run
-artifacts under <code>artifacts/paper_a_sft/analysis</code>; the
-cached-analysis path regenerates every table and figure from the
-row-keyed scores, and no number is hand-transcribed. The earlier pilot
-figures (e.g. the 0.884 vs. 0.780 base/SFT aggregate from the prior
-exploratory run) are not reused as evidence here.</em></p>
+<p><em>Tables, figures, JSON, and CSV outputs are generated from the
+row-keyed legacy scores under
+<code>artifacts/paper_a_sft/analysis</code>; the repository’s paper
+target verifies that its copied table/figure files match those outputs.
+Narrative aggregate, operating-point, and stress values are generated as
+macros from the same analysis. Strict analysis rejects the legacy lock
+unless the explicit legacy-reproduction flag is supplied.</em></p>
 <section id="subsec:primary" class="level3" data-number="4.1">
 <h3 data-number="4.1"><span class="header-section-number">4.1</span>
 Primary fixed-panel result (RQ1, RQ2)</h3>
 <p><a class="xref" href="#tab:primary">Table&nbsp;3</a> reports, per base, the untuned-base
-and mean-SFT macro AP in each regime, the paired base-to-SFT delta with
-its one-sided 95% interval, and the fixed-panel aggregate <span
-class="math inline">\(\theta = (\bar\Delta_{\text{represented}},
-\bar\Delta_{\text{transfer}})\)</span>. Per-seed values for every cell
-are in the appendix seed table.</p>
-<p>The pattern is uniform on represented sources and heterogeneous on
-transfer. Every checkpoint’s SFT variant reaches <span
-class="math inline">\(\approx\!0.98\)</span> represented-source macro AP
-regardless of its base (which ranges 0.45–0.88), so the represented gain
-is largest for the weakest base (SmolLM2-1.7B, <span
-class="math inline">\(+0.534\)</span>) and smallest for the strongest
-(Qwen3-4B, <span class="math inline">\(+0.104\)</span>); the fixed-panel
-aggregate is <span
-class="math inline">\(\bar\Delta_{\text{represented}}=+0.325\)</span>
-(95% one-sided LCB <span class="math inline">\(+0.281\)</span>). On
-dataset-held-out transfer the effect reverses and varies by checkpoint:
-SFT <em>lowers</em> the transfer macro AP of the two strongest transfer
-bases (SmolLM3-3B <span class="math inline">\(-0.120\)</span>, Qwen3-4B
-<span class="math inline">\(-0.102\)</span>), leaves Qwen2.5-1.5B
-statistically unchanged (<span class="math inline">\(-0.030\)</span>,
-interval crossing zero), and <em>raises</em> the weakest (SmolLM2-1.7B
-<span class="math inline">\(+0.051\)</span>); the fixed-panel aggregate
-is <span
-class="math inline">\(\bar\Delta_{\text{transfer}}=-0.050\)</span> (95%
-one-sided UCB <span class="math inline">\(-0.029\)</span>). Both
-intersection-union gates therefore hold (§<a class="xref" href="#sec:conclusion">6</a>), and
-the aggregate transfer degradation is sign-stable under every
-leave-one-checkpoint-out and leave-one-benchmark-out resampling. SFT
-thus equalizes represented-source discrimination across bases while
-pulling their divergent transfer abilities toward a common, lower band —
-a convergence toward specialization rather than a uniform capability
-gain.</p>
-<div id="tab:primary" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;3.</span> Primary fixed-panel result. Base and mean-SFT benchmark-macro
-AP, with paired base-to-SFT deltas and one-sided 95% intervals, for the
-represented-source and dataset-held-out transfer regimes. The last row
-is the fixed-panel aggregate <span
-class="math inline">\(\theta\)</span>. All values are filled from
-<code>artifacts/paper_a_sft/analysis</code> after the locked run; full
-five-seed values per cell are in the appendix.</div><div class="tscroll"><table>
+and mean-SFT macro AP in each regime, the observed paired base-to-SFT
+delta with a two-sided 95% bootstrap interval, and the fixed-panel
+aggregate <span class="math inline">\(\theta =
+(\bar\Delta_{\text{represented}},
+\bar\Delta_{\text{transfer}})\)</span>. Per-seed deltas are in <a class="xref" href="#tab:seed-values">Table&nbsp;5</a>.</p>
+<p>On the constructed evaluation subsets, the represented-source point
+estimate is positive for every checkpoint. Mean SFT macro AP is
+approximately 0.98 while the untuned checkpoints differ substantially;
+<a class="xref" href="#tab:primary">Table&nbsp;3</a> gives every per-checkpoint value. The
+observed fixed-panel aggregate is <span
+class="math inline">\(\bar\Delta_{\text{represented}}=+0.3327\)</span>
+(95% two-sided bootstrap interval <span
+class="math inline">\([+0.2718,+0.3793]\)</span>). Transfer is
+heterogeneous: three checkpoint estimates are negative and one is
+positive; Qwen2.5-1.5B is one of the negative estimates, but its
+interval spans zero. The fixed-panel transfer estimate is <span
+class="math inline">\(-0.0503\)</span> (<span
+class="math inline">\([-0.0760,-0.0250]\)</span>). Every
+leave-one-checkpoint-out and leave-one-transfer-benchmark-out estimate
+remains negative, but these are sensitivity checks, not formal rejection
+tests. The observed pattern is consistent with specialization on this
+legacy panel; it does not establish a general mechanism.</p>
+<div id="tab:primary" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;3.</span> Legacy fixed-panel result. Base and mean-SFT benchmark-macro
+AP, with observed paired base-to-SFT deltas and two-sided 95%
+hierarchical-bootstrap intervals. The last row is the observed
+fixed-panel aggregate <span class="math inline">\(\theta\)</span>;
+intervals are descriptive because the legacy family graph is
+incomplete.</div><div class="tscroll"><table>
 
 <thead>
 <tr>
@@ -890,11 +861,13 @@ five-seed values per cell are in the appendix.</div><div class="tscroll"><table>
 <th style="text-align: right;">Rep base</th>
 <th style="text-align: right;">Rep SFT</th>
 <th style="text-align: right;"><span
-class="math inline">\(\Delta\)</span> Rep [95% CI]</th>
+class="math inline">\(\Delta\)</span> Rep [two-sided 95% percentile
+CI]</th>
 <th style="text-align: right;">Tr base</th>
 <th style="text-align: right;">Tr SFT</th>
 <th style="text-align: right;"><span
-class="math inline">\(\Delta\)</span> Tr [95% CI]</th>
+class="math inline">\(\Delta\)</span> Tr [two-sided 95% percentile
+CI]</th>
 </tr>
 </thead>
 <tbody>
@@ -938,10 +911,10 @@ class="math inline">\(\Delta\)</span> Tr [95% CI]</th>
 <td style="text-align: left;">Fixed-panel aggregate</td>
 <td style="text-align: right;">–</td>
 <td style="text-align: right;">–</td>
-<td style="text-align: right;">0.3249 [0.2718, 0.3793]</td>
+<td style="text-align: right;">0.3327 [0.2718, 0.3793]</td>
 <td style="text-align: right;">–</td>
 <td style="text-align: right;">–</td>
-<td style="text-align: right;">-0.0498 [-0.0760, -0.0250]</td>
+<td style="text-align: right;">-0.0503 [-0.0760, -0.0250]</td>
 </tr>
 </tbody>
 </table></div></div>
@@ -962,122 +935,174 @@ post-hoc subgroup is promoted to a confirmatory endpoint.</p>
 <h3 data-number="4.3"><span class="header-section-number">4.3</span>
 Secondary operating point at a calibration-targeted 5% FPR (RQ4)</h3>
 <p>As a deployment diagnostic only, we fit one positive temperature per
-base and per adapter on calibration rows (never on transfer or stress
-rows), then select the threshold that maximizes calibration recall
-subject to a one-sided 95% Clopper–Pearson upper bound of at most 5% on
-pooled calibration-negative FPR; if none is feasible the cell reports
-<code>NO_FEASIBLE_THRESHOLD</code>. We report the realized
-represented-source and transfer FPR (with intervals) rather than
-describing test FPR as matched, and we report the paired <span
-class="math inline">\(\Delta\mathrm{TPR}\)</span> between SFT and base
-per regime. The lower panel of <a class="xref" href="#tab:sensitivity">Table&nbsp;4</a>
-carries these values.</p>
+base and adapter on calibration rows (never on transfer or stress rows),
+then select the threshold that maximizes calibration recall subject to a
+one-sided 95% Clopper–Pearson upper bound of at most 5% on <em>pooled
+calibration-negative</em> FPR; if none is feasible the cell reports
+<code>NO_FEASIBLE_THRESHOLD</code>. This row-level bound assumes
+independent Bernoulli negatives even though related families can remain,
+so it is a pooled diagnostic rather than an exact family-aware or
+production guarantee. <a class="xref" href="#tab:sensitivity">Table&nbsp;4</a>
+distinguishes pooled from benchmark-macro test FPR and reports base,
+SFT, changes, and sample sizes. Because two legacy families cross
+calibration and ID, clean operating-point results require rerunning the
+corrected split.</p>
 </section>
 <section id="subsec:stress" class="level3" data-number="4.4">
 <h3 data-number="4.4"><span class="header-section-number">4.4</span>
 Stress-set results</h3>
-<p>The two single-class stress sets are reported as one-sided
-diagnostics only: the OR-Bench-Hard benign false-positive rate
-(over-refusal stress) and HarmBench recall at the frozen threshold
-(positive stress). Neither contributes to any AP aggregate. These appear
-in the lower panel of <a class="xref" href="#tab:sensitivity">Table&nbsp;4</a>.</p>
+<p>The two single-class stress sets are diagnostics only. OR-Bench-Hard
+benign FPR changes from 12.7% (base) to 10.0% (SFT), whereas HarmBench
+recall changes from 78.4% to 57.5% at the frozen per-bundle thresholds.
+Thus the stress results do not support a uniformly improved adapted
+guard. Neither set contributes to an AP aggregate.</p>
+<p>Except for rows explicitly labeled pooled-negative, operating-point
+rates are first averaged across benchmarks and then across the fixed
+four-checkpoint panel; SFT rates additionally average the five seeds.
+Stress rates are fixed-panel means, again averaging seeds for SFT. In
+each rate row, <span class="math inline">\(N\)</span> is the unique
+positive- or negative-row denominator in one bundle, not the number of
+model predictions across checkpoints and seeds.</p>
 <div id="tab:sensitivity" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;4.</span> Per-benchmark and operating-point sensitivity. Upper panel:
-per-source paired base-to-SFT AP delta for each represented and transfer
-benchmark. Lower panel: calibration-targeted 5% FPR operating point (TPR
-and realized FPR, base vs. SFT) and single-class stress diagnostics. All
-values are filled from <code>artifacts/paper_a_sft/analysis</code> after
-the locked run.</div><div class="tscroll"><table>
+per-source observed paired base-to-SFT AP delta. Lower panel:
+calibration-targeted 5% FPR operating point and single-class stress
+diagnostics, reporting base, SFT, change, and <span
+class="math inline">\(N\)</span>. Values are generated from the legacy
+score artifact.</div><div class="tscroll"><table>
 
 <thead>
 <tr>
 <th style="text-align: left;">Regime / benchmark</th>
 <th style="text-align: left;">Metric</th>
-<th style="text-align: right;">Value</th>
+<th style="text-align: right;">Base</th>
+<th style="text-align: right;">SFT</th>
+<th style="text-align: right;"><span
+class="math inline">\(\Delta\)</span></th>
+<th style="text-align: right;"><span
+class="math inline">\(N\)</span></th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;">represented / toxicchat</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">0.1874</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">represented / prompt_injections</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">0.3752</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">represented /
 jailbreak_classification</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">0.4355</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer / jailbreakbench</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">-0.0726</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer / xstest</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">-0.0102</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer / wildguardtest</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">-0.0392</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer / wildjailbreak</td>
-<td style="text-align: left;">paired <span
-class="math inline">\(\Delta\)</span>AP</td>
+<td style="text-align: left;">AP</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
 <td style="text-align: right;">-0.0793</td>
+<td style="text-align: right;">–</td>
 </tr>
 <tr>
 <td style="text-align: left;">represented</td>
-<td style="text-align: left;">SFT TPR@target FPR</td>
+<td style="text-align: left;">TPR@target FPR</td>
+<td style="text-align: right;">0.1340</td>
 <td style="text-align: right;">0.7665</td>
+<td style="text-align: right;">0.6324</td>
+<td style="text-align: right;">312</td>
 </tr>
 <tr>
 <td style="text-align: left;">represented</td>
-<td style="text-align: left;">realized FPR (SFT)</td>
-<td style="text-align: right;">0.0104</td>
-</tr>
-<tr>
-<td style="text-align: left;">represented</td>
-<td style="text-align: left;">realized FPR (base)</td>
+<td style="text-align: left;">benchmark-macro realized FPR</td>
 <td style="text-align: right;">0.0172</td>
+<td style="text-align: right;">0.0104</td>
+<td style="text-align: right;">-0.0068</td>
+<td style="text-align: right;">364</td>
+</tr>
+<tr>
+<td style="text-align: left;">represented</td>
+<td style="text-align: left;">pooled-negative realized FPR</td>
+<td style="text-align: right;">0.0220</td>
+<td style="text-align: right;">0.0198</td>
+<td style="text-align: right;">-0.0022</td>
+<td style="text-align: right;">364</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer</td>
-<td style="text-align: left;">SFT TPR@target FPR</td>
+<td style="text-align: left;">TPR@target FPR</td>
+<td style="text-align: right;">0.5263</td>
 <td style="text-align: right;">0.5540</td>
+<td style="text-align: right;">0.0277</td>
+<td style="text-align: right;">790</td>
 </tr>
 <tr>
 <td style="text-align: left;">transfer</td>
-<td style="text-align: left;">realized FPR (SFT)</td>
-<td style="text-align: right;">0.1371</td>
-</tr>
-<tr>
-<td style="text-align: left;">transfer</td>
-<td style="text-align: left;">realized FPR (base)</td>
+<td style="text-align: left;">benchmark-macro realized FPR</td>
 <td style="text-align: right;">0.0834</td>
+<td style="text-align: right;">0.1371</td>
+<td style="text-align: right;">0.0537</td>
+<td style="text-align: right;">790</td>
 </tr>
 <tr>
-<td style="text-align: left;">Stress</td>
-<td style="text-align: left;">OR-Bench benign FPR (SFT)</td>
+<td style="text-align: left;">transfer</td>
+<td style="text-align: left;">pooled-negative realized FPR</td>
+<td style="text-align: right;">0.0443</td>
+<td style="text-align: right;">0.1463</td>
+<td style="text-align: right;">0.1020</td>
+<td style="text-align: right;">790</td>
+</tr>
+<tr>
+<td style="text-align: left;">Stress / OR-Bench</td>
+<td style="text-align: left;">benign FPR</td>
+<td style="text-align: right;">0.1269</td>
 <td style="text-align: right;">0.0996</td>
+<td style="text-align: right;">-0.0273</td>
+<td style="text-align: right;">400</td>
 </tr>
 <tr>
-<td style="text-align: left;">Stress</td>
-<td style="text-align: left;">HarmBench recall (SFT)</td>
+<td style="text-align: left;">Stress / HarmBench</td>
+<td style="text-align: left;">recall</td>
+<td style="text-align: right;">0.7837</td>
 <td style="text-align: right;">0.5745</td>
+<td style="text-align: right;">-0.2092</td>
+<td style="text-align: right;">200</td>
 </tr>
 </tbody>
 </table></div></div>
@@ -1094,18 +1119,13 @@ transfer-favored). The fixed-panel mean is drawn separately. The point
 cloud is populated from analysis artifacts after the locked run; the
 axes and quadrant interpretation are result-independent.</p>
 <figure id="fig:plane" data-latex-placement="t">
-<img src="figures/specialization_plane.svg" alt="Figure" loading="lazy"/>
+<img src="figures/specialization_plane.svg" alt="Scatter plot of twenty seed-level represented-source and transfer AP changes; fourteen points are in the specialization quadrant and six in uniform gain." loading="lazy"/>
 <figcaption><span class="tnum">Figure&nbsp;2.</span> Specialization plane. Each point is one (checkpoint, seed):
-horizontal axis is the represented-source macro-AP delta <span
-class="math inline">\(\bar\Delta_{\text{represented}}\)</span>, vertical
-axis is the transfer macro-AP delta <span
-class="math inline">\(\bar\Delta_{\text{transfer}}\)</span>, colour
-denotes checkpoint, and the zero lines create four quadrants (uniform
-gain, specialization, uniform loss, transfer-favored). Most seeds lie in
-the lower-right <em>specialization</em> quadrant (represented up,
-transfer down); the SmolLM2-1.7B seeds are the exception, landing in
-uniform-gain (transfer also improved). Generated from
-<code>artifacts/paper_a_sft/analysis/figures</code>.</figcaption>
+horizontal axis is represented-source macro-AP change and vertical axis
+is transfer macro-AP change. Fourteen of twenty seeds lie in the
+lower-right specialization quadrant; six lie in uniform gain—all five
+SmolLM2-1.7B seeds and Qwen2.5-1.5B seed 43. The fixed-panel observed
+point is shown separately.</figcaption>
 </figure>
 </section>
 </section>
@@ -1122,11 +1142,35 @@ rather than measuring one fixed policy.</p>
 purposively chosen checkpoints spanning two model lineages (Qwen and
 SmolLM); the estimand is this panel, and results do not extrapolate to
 other architectures, scales, or vendors.</p>
-<p><strong>Previously inspected benchmarks.</strong> The evaluation
-datasets are public and have been examined during pipeline development,
-so they are held out from <em>training</em> but are not novel to the
-field; measured transfer is dataset-held-out, not a guarantee against
-distributional familiarity.</p>
+<p><strong>Previously inspected benchmarks.</strong> The public or gated
+benchmark datasets have been examined during pipeline development, so
+they are held out from SFT but were not prospectively unseen during
+development; measured transfer is dataset-held-out, not a guarantee
+against distributional familiarity.</p>
+<p><strong>Retrospective legacy artifact.</strong> The committed lock
+predates the strengthened code/artifact contract and records a dirty
+source tree. WildGuardTest and WildJailbreak use frozen seed-7 cohorts
+rather than the corrected pinned-source hash selection. Local HPO code
+and logs show that the frozen-cache evaluation pathway was repeatedly
+scored during development, although the optimization objective used
+represented-source development AP; the logs do not fingerprint the cache
+bytes. This creates adaptive-exposure risk even though the final SFT
+loss did not consume transfer rows. Rebuilding by the declared hash rule
+replaces 605 of the 1<span>,</span>220 WildGuard/WildJailbreak cohort
+rows but retains 615 previously inspected rows, so it repairs selection
+provenance without creating a genuinely untouched confirmatory set. The
+repaired pipeline invalidates the old lock; prospective confirmation
+requires a new uninspected cohort or benchmark.</p>
+<p><strong>Family links and truncation.</strong> The historical manifest
+failed to join 36 JailbreakBench matched-index pairs and 58 XSTest
+safe/unsafe pairs, and two represented-source families cross calibration
+and ID. In addition, 26 unique evaluation prompts were truncated (21–25
+per checkpoint); nearly every truncated model rendering lost the full
+system instruction. Depending on the chat template, 16–17 training rows
+per checkpoint exceed the legacy prompt budget and are left-truncated,
+generally removing the system instruction. Corrected code preserves the
+family relationships and instruction, but only a new manifest, training
+run, and evaluation can replace the reported estimates.</p>
 <p><strong>Balanced prevalence.</strong> Represented-source and transfer
 test pools are near-balanced, whereas inline screening usually runs at
 much lower unsafe prevalence; precision, F1, and AP are
@@ -1150,99 +1194,198 @@ aggregate as a population estimate.</p>
 <section id="sec:conclusion" class="level2" data-number="6">
 <h2 data-number="6"><span class="header-section-number">6</span>
 Conclusion</h2>
-<p>This paper measures one thing carefully: what a frozen LoRA-SFT
-recipe adds beyond the untuned base on a fixed four-checkpoint panel,
-reported separately for represented-source and dataset-held-out
-transfer. The interpretation follows the preregistered decision tree
-rather than a preferred narrative, and the mode recorded in
-<code>LOCK.json</code> governs whether the language is confirmatory or
-estimation-only.</p>
-<ul>
-<li><p><strong>Gate A (represented-source).</strong> If the one-sided
-95% lower bound of <span
-class="math inline">\(\bar\Delta_{\text{represented}}\)</span> exceeds
-0, we state that, for this fixed panel and recipe, SFT improved
-represented-source macro AP; otherwise we state that the study did not
-establish a panel-wide represented-source improvement.</p></li>
-<li><p><strong>Gate B (transfer).</strong> If the one-sided 95% upper
-bound of <span
-class="math inline">\(\bar\Delta_{\text{transfer}}\)</span> is below 0
-<em>and</em> no leave-one-transfer-benchmark-out or leave-one-base-out
-aggregate reverses the sign, we state that SFT reduced dataset-held-out
-transfer macro AP; otherwise we report the measured
-heterogeneity.</p></li>
-<li><p><strong>Specialization trade-off.</strong> Only if Gates A and B
-both pass do we state that the fixed panel exhibits an
-in-source/transfer specialization trade-off under the frozen recipe. We
-do not claim that fine-tuning universally hurts transfer, that SFT is
-intrinsically non-robust, that all guard models specialize, or that a
-causal mechanism is proven.</p></li>
-</ul>
-<p>The takeaway is concrete: adaptation is not a guaranteed uniform
-upgrade, and a guard should always be evaluated against its own untuned
-base across both represented-source and dataset-held-out transfer
-regimes before its benchmark number is read as capability. The final
-gated statement is that, for this fixed four-checkpoint panel and frozen
-recipe, LoRA-SFT is an <em>in-source specialization</em>: it improved
-represented-source macro AP by <span
-class="math inline">\(+0.325\)</span> (95% one-sided LCB <span
-class="math inline">\(+0.281\)</span>) and reduced dataset-held-out
-transfer macro AP by <span class="math inline">\(-0.050\)</span> (95%
-one-sided UCB <span class="math inline">\(-0.029\)</span>), with the
-transfer degradation sign-stable under every leave-one-checkpoint-out
-and leave-one-benchmark-out resampling. We do not claim that fine-tuning
-universally harms transfer—the transfer effect is heterogeneous across
-checkpoints, and one base’s transfer even improved—but the panel-level
-specialization trade-off is robust.</p>
+<p>This paper estimates what one LoRA-SFT recipe changed relative to its
+untuned bases on a fixed four-checkpoint panel. In the legacy artifact,
+the observed represented-source change is <span
+class="math inline">\(+0.3327\)</span> and the observed dataset-held-out
+transfer change is <span class="math inline">\(-0.0503\)</span>; all
+leave-one-checkpoint-out and leave-one-transfer-benchmark-out transfer
+estimates remain negative. The per-checkpoint effects are heterogeneous,
+one checkpoint improves on transfer, and HarmBench recall falls
+substantially. These facts support an estimation-only description of
+<em>in-source specialization on this panel</em>, not a universal claim
+that fine-tuning harms transfer or a confirmatory rejection.</p>
+<p>The practical takeaway survives the narrower wording: evaluate an
+adapted guard against its own base on represented sources,
+dataset-held-out benchmarks, and safety/over-refusal stress sets. The
+corrected fail-closed pipeline makes the remaining evidentiary boundary
+explicit: a new manifest, training run, and scoring run are required
+before this panel-limited result can be promoted from legacy-artifact
+status to a clean-run result.</p>
 </section>
 <section id="app:provenance" class="level2" data-number="7">
 <h2 data-number="7"><span class="header-section-number">7</span>
 Provenance and Statistical Appendix</h2>
-<p>The released artifact tree under <code>artifacts/paper_a_sft/</code>
-contains the material that regenerates every result: the frozen
-manifests (<code>train</code>, <code>calibration</code>,
-<code>id_test</code>, <code>transfer_test</code>, and the two stress
-manifests) with the canonical per-row schema (sample ID, source,
-revision, split, label and provenance, content hash, family ID, license,
-redistribution class, and overlap disposition); the decontamination
-audit (<code>audit.json</code>/<code>audit.md</code>) with
-exact-overlap, conflicting-label, near-duplicate, family-cluster, and
-license inventories plus 0.80/0.90 sensitivity counts;
-<code>LOCK.json</code> recording git SHA, model/tokenizer/data
-revisions, manifest and prompt hashes, the recipe, seeds, metrics,
-target FPR, primary contrasts, <code>analysis_mode</code>, and the
-power/precision report hash; per-run metadata and adapter hashes for all
-twenty cells and four base bundles; the keyed per-row score table
-(Parquet plus immutable metadata) with the full score schema; and the
-analysis outputs (<code>results.json</code>,
-<code>claim_checks.json</code>, <code>seed_values.csv</code>,
-<code>per_benchmark.csv</code>, <code>sensitivity.json</code>, and
-generated tables and figures). Full five-seed values per cell, full
-per-source tables, calibration diagnostics (NLL and Brier before/after
-temperature scaling, per-source and macro FPR with a family-weighted
-upper bound), model/tokenizer/prompt hashes, and implementation/hardware
-details are placed here rather than in the main text. All main-text
-tables and figures are generated from these artifacts;
-<code>[RESULT]</code> placeholders are filled by the cached-analysis
-path after the locked run.</p>
+<p>The release separates two artifact contracts. The historical
+<code>LOCK.json</code>, row-keyed score table, score metadata, run
+metadata, and analysis outputs reproduce the legacy estimates only when
+the explicit legacy flag is supplied. New locks are self-hashed and bind
+the configuration, every manifest, audit, text-free public release,
+prompt rendering, source state, and expected score schema/code version.
+Score metadata then binds the lock, adapters/manifests, cache-producer
+runtime, batch size, and score-file digest; analysis rejoins score
+identities to locked manifests and revalidates adapters, calibration,
+thresholds, and predictions before reading the matrix. Training,
+evaluation, and analysis fail closed on missing or mismatched inputs. A
+separate recursively redacted public-manifest directory exposes
+identifiers, revisions, hashes, family links, license evidence,
+selection provenance, and counts without raw or normalized prompt text.
+The analysis emits deterministic <code>results.json</code>,
+runtime/source attestation in <code>analysis_metadata.json</code>,
+descriptive <code>claim_checks.json</code>,
+<code>seed_values.csv</code>, <code>per_benchmark.csv</code>,
+<code>sensitivity.json</code>, generated tables, and the
+specialization-plane figure. The main-text table and figure copies are
+verified byte-for-byte during the paper build.</p>
+<div id="tab:seed-values" class="tblock"><div class="tcap"><span class="tnum">Table&nbsp;5.</span> Observed represented-source and transfer macro-AP changes for
+every legacy SFT seed. This table is generated from the same validated
+score matrix as <a class="xref" href="#tab:primary">Table&nbsp;3</a>.</div><div class="tscroll"><table>
+
+<thead>
+<tr>
+<th style="text-align: left;">Checkpoint</th>
+<th style="text-align: right;">Seed</th>
+<th style="text-align: right;"><span
+class="math inline">\(\Delta\)</span> represented AP</th>
+<th style="text-align: right;"><span
+class="math inline">\(\Delta\)</span> transfer AP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Qwen2.5-1.5B</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">0.3657</td>
+<td style="text-align: right;">-0.0790</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen2.5-1.5B</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">0.3679</td>
+<td style="text-align: right;">0.0368</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen2.5-1.5B</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">0.3652</td>
+<td style="text-align: right;">-0.0457</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen2.5-1.5B</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">0.3622</td>
+<td style="text-align: right;">-0.0366</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen2.5-1.5B</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: right;">0.3668</td>
+<td style="text-align: right;">-0.0261</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM2-1.7B</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">0.5363</td>
+<td style="text-align: right;">0.0733</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM2-1.7B</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">0.5331</td>
+<td style="text-align: right;">0.0746</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM2-1.7B</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">0.5301</td>
+<td style="text-align: right;">0.0341</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM2-1.7B</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">0.5333</td>
+<td style="text-align: right;">0.0377</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM2-1.7B</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: right;">0.5366</td>
+<td style="text-align: right;">0.0363</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM3-3B</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">0.3283</td>
+<td style="text-align: right;">-0.1405</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM3-3B</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">0.3278</td>
+<td style="text-align: right;">-0.0748</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM3-3B</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">0.3266</td>
+<td style="text-align: right;">-0.1330</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM3-3B</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">0.3269</td>
+<td style="text-align: right;">-0.1460</td>
+</tr>
+<tr>
+<td style="text-align: left;">SmolLM3-3B</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: right;">0.3250</td>
+<td style="text-align: right;">-0.1064</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-4B</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">0.1037</td>
+<td style="text-align: right;">-0.1139</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-4B</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">0.1085</td>
+<td style="text-align: right;">-0.0856</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-4B</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">0.1053</td>
+<td style="text-align: right;">-0.1249</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-4B</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">0.1021</td>
+<td style="text-align: right;">-0.0867</td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-4B</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: right;">0.1022</td>
+<td style="text-align: right;">-0.1002</td>
+</tr>
+</tbody>
+</table></div></div>
 </section>
 <section id="app:external" class="level2" data-number="8">
 <h2 data-number="8"><span class="header-section-number">8</span>
 Optional External Validation: ExpGuard</h2>
 <p>The expert-annotated specialized-domain moderation benchmark ExpGuard
-<span class="citation"
-data-cites="expguard2026">(<em><span>ExpGuard</span></em> 2026)</span>
-provides an independent, differently sourced prompt-moderation set
-(finance, healthcare, law) that would make a natural external
-replication target: re-running the same paired base-versus-SFT
-comparison on ExpGuard — scoring the input prompt only, with the
-identical single-token logprob head — would test whether the panel’s
-represented/transfer pattern reproduces on an external expert-labeled
-source. We flag this as future external validation rather than a result
-of the present study: it is outside the locked claim family, and we
-deliberately did not score the panel on ExpGuard here to keep the
-confirmatory analysis confined to the preregistered represented/transfer
-benchmarks.</p>
+<span class="citation" data-cites="expguard2026">(Choi et al.
+2026)</span> provides a differently sourced prompt-moderation set
+(finance, healthcare, law) and is a natural replication target.
+Re-running the paired base-versus-SFT comparison on ExpGuard with a
+prospectively locked protocol would test whether the observed
+represented/transfer pattern recurs on an external expert-labeled
+source. We report no ExpGuard result here.</p>
 <div id="refs" class="references csl-bib-body hanging-indent"
 role="list">
 <div id="ref-akinrele2026regime" class="csl-entry" role="listitem">
@@ -1263,17 +1406,48 @@ Bassani, Elias, and Ignacio Sanchez. 2024.
 Models.”</span> <em>Proceedings of the 2024 Conference on Empirical
 Methods in Natural Language Processing (EMNLP)</em>, 18393–409.
 </div>
-<div id="ref-flexguard2026" class="csl-entry" role="listitem">
-Ding, Li, Lu, and Shi. 2026. <span>“<span>FlexGuard</span>: Continuous
-Risk Scoring for Strictness-Adaptive <span>LLM</span> Content
-Moderation.”</span> <em>Proceedings of the 64th Annual Meeting of the
-Association for Computational Linguistics (ACL 2026)</em>. <a
-href="https://arxiv.org/abs/2602.23636">https://arxiv.org/abs/2602.23636</a>.
+<div id="ref-bassani2025robustness" class="csl-entry" role="listitem">
+Bassani, Elias, and Ignacio Sanchez. 2025. <span>“On Guardrail Models’
+Robustness to Mutations and Adversarial Attacks.”</span> <em>Findings of
+the Association for Computational Linguistics: EMNLP 2025</em> (Suzhou,
+China), 16995–7006. <a
+href="https://doi.org/10.18653/v1/2025.findings-emnlp.922">https://doi.org/10.18653/v1/2025.findings-emnlp.922</a>.
+</div>
+<div id="ref-chao2024jailbreakbench" class="csl-entry" role="listitem">
+Chao, Patrick, Edoardo Debenedetti, Alexander Robey, et al. 2024.
+<span>“JailbreakBench: An Open Robustness Benchmark for Jailbreaking
+Large Language Models.”</span> <em>NeurIPS 2024 (Datasets &amp;
+Benchmarks)</em>. <a
+href="https://arxiv.org/abs/2404.01318">https://arxiv.org/abs/2404.01318</a>.
 </div>
 <div id="ref-expguard2026" class="csl-entry" role="listitem">
+Choi, Minseok, Dongjin Kim, Seungbin Yang, et al. 2026.
 <em><span>ExpGuard</span>: <span>LLM</span> Content Moderation in
-Specialized Domains</em>. 2026. <a
+Specialized Domains</em>. <a
 href="https://arxiv.org/abs/2603.02588">https://arxiv.org/abs/2603.02588</a>.
+</div>
+<div id="ref-cui2024orbench" class="csl-entry" role="listitem">
+Cui, Justin, Wei-Lin Chiang, Ion Stoica, and Cho-Jui Hsieh. 2025.
+<span>“OR-Bench: An over-Refusal Benchmark for Large Language
+Models.”</span> <em>ICML 2025 (PMLR 267)</em>, 11515–42. <a
+href="https://arxiv.org/abs/2405.20947">https://arxiv.org/abs/2405.20947</a>.
+</div>
+<div id="ref-flexguard2026" class="csl-entry" role="listitem">
+Ding, Zhihao, Jinming Li, Ze Lu, and Jieming Shi. 2026.
+<span>“<span>FlexGuard</span>: Continuous Risk Scoring for
+Strictness-Adaptive <span>LLM</span> Content Moderation.”</span>
+<em>Proceedings of the 64th Annual Meeting of the Association for
+Computational Linguistics (Volume 1: Long Papers)</em> (San Diego,
+California, United States), 5825–51. <a
+href="https://doi.org/10.18653/v1/2026.acl-long.263">https://doi.org/10.18653/v1/2026.acl-long.263</a>.
+</div>
+<div id="ref-elesedy2024loraguard" class="csl-entry" role="listitem">
+Elesedy, Hayder, Pedro M. Esperanca, Silviu Vlad Oprea, and Mete Ozay.
+2024. <span>“<span>LoRA</span>-Guard: Parameter-Efficient Guardrail
+Adaptation for Content Moderation of Large Language Models.”</span>
+<em>Proceedings of the 2024 Conference on Empirical Methods in Natural
+Language Processing</em> (Miami, Florida, USA), 11746–65. <a
+href="https://doi.org/10.18653/v1/2024.emnlp-main.656">https://doi.org/10.18653/v1/2024.emnlp-main.656</a>.
 </div>
 <div id="ref-guo2017calibration" class="csl-entry" role="listitem">
 Guo, Chuan, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. 2017.
@@ -1308,11 +1482,31 @@ Guard: LLM-Based Input-Output Safeguard for Human-AI
 Conversations.”</span> <em>arXiv Preprint</em>. <a
 href="https://arxiv.org/abs/2312.06674">https://arxiv.org/abs/2312.06674</a>.
 </div>
+<div id="ref-jiang2024wildteaming" class="csl-entry" role="listitem">
+Jiang, Liwei, Kavel Rao, Seungju Han, et al. 2024. <span>“WildTeaming at
+Scale: From in-the-Wild Jailbreaks to (Adversarially) Safer Language
+Models.”</span> <em>NeurIPS 2024</em>. <a
+href="https://arxiv.org/abs/2406.18510">https://arxiv.org/abs/2406.18510</a>.
+</div>
 <div id="ref-kumar2022calibrated" class="csl-entry" role="listitem">
 Kumar, Ananya, Tengyu Ma, Percy Liang, and Aditi Raghunathan. 2022.
 <span>“Calibrated Ensembles Can Mitigate Accuracy Tradeoffs Under
 Distribution Shift.”</span> <em>Uncertainty in Artificial Intelligence
 (UAI), PMLR 180</em>, 1041–51.
+</div>
+<div id="ref-li2026surfaceheuristics" class="csl-entry" role="listitem">
+Li, Li, Chenxiao Yu, Zhiyu Ni, et al. 2026. <span>“Defenses Against
+Prompt Attacks Learn Surface Heuristics.”</span> <em>Proceedings of the
+64th Annual Meeting of the Association for Computational Linguistics
+(Volume 1: Long Papers)</em> (San Diego, California, United States),
+10970–87. <a
+href="https://doi.org/10.18653/v1/2026.acl-long.502">https://doi.org/10.18653/v1/2026.acl-long.502</a>.
+</div>
+<div id="ref-lin2023toxicchat" class="csl-entry" role="listitem">
+Lin, Zi, Zihan Wang, Yongqi Tong, et al. 2023. <span>“ToxicChat:
+Unveiling Hidden Challenges of Toxicity Detection in Real-World User-AI
+Conversation.”</span> <em>Findings of EMNLP 2023</em>, 4694–702. <a
+href="https://arxiv.org/abs/2310.17389">https://arxiv.org/abs/2310.17389</a>.
 </div>
 <div id="ref-liu2025calibration" class="csl-entry" role="listitem">
 Liu, Hongfu, Hengguan Huang, Xiangming Gu, Hao Wang, and Ye Wang. 2025.
@@ -1322,10 +1516,13 @@ Learning Representations (ICLR)</em>.
 </div>
 <div id="ref-liu2026domaingeneralizable" class="csl-entry"
 role="listitem">
-Liu, Baldini, Rabinowitz, Rosenberg, Gehrmann, and Dredze. 2026.
-<span>“Domain Generalizable <span>AI</span> Guardrails with Augmented
-Policy Training.”</span> <em>Proceedings of the 64th Annual Meeting of
-the Association for Computational Linguistics (ACL 2026)</em>.
+Liu, Minqian, Ioana Baldini, David Rabinowitz, David S. Rosenberg,
+Sebastian Gehrmann, and Mark Dredze. 2026. <span>“Domain Generalizable
+<span>AI</span> Guardrails with Augmented Policy Training.”</span>
+<em>Proceedings of the 64th Annual Meeting of the Association for
+Computational Linguistics (Volume 1: Long Papers)</em> (San Diego,
+California, United States), 16452–69. <a
+href="https://doi.org/10.18653/v1/2026.acl-long.748">https://doi.org/10.18653/v1/2026.acl-long.748</a>.
 </div>
 <div id="ref-majhi2025gpuguard" class="csl-entry" role="listitem">
 Majhi, Vasudev, Dhruv Gupta, Advait Singh, Matthew Barker, and Dhruv
@@ -1333,6 +1530,12 @@ Kumar. 2025. <span>“Do You Really Need a GPU to Guard Your LLM?
 CPU-Class Classifiers and Multi-Stage Pipelines for Safety Enforcement
 at Scale.”</span> <em>arXiv Preprint</em>. <a
 href="https://arxiv.org/abs/2512.19011">https://arxiv.org/abs/2512.19011</a>.
+</div>
+<div id="ref-mazeika2024harmbench" class="csl-entry" role="listitem">
+Mazeika, Mantas, Long Phan, Xuwang Yin, et al. 2024. <span>“HarmBench: A
+Standardized Evaluation Framework for Automated Red Teaming and Robust
+Refusal.”</span> <em>ICML 2024 (PMLR 235)</em>, 35181–224. <a
+href="https://arxiv.org/abs/2402.04249">https://arxiv.org/abs/2402.04249</a>.
 </div>
 <div id="ref-meta2024llamaguard3_1b" class="csl-entry" role="listitem">
 Meta AI. 2024. <em>Llama Guard 3-1B Model Card</em>. Hugging Face model
@@ -1344,6 +1547,13 @@ Padhi, Inkit, Manish Nagireddy, Giandomenico Cornacchia, et al. 2025.
 <span>“Granite Guardian: Comprehensive LLM Safeguarding.”</span>
 <em>NAACL 2025 (Industry Track)</em>, 607–15. <a
 href="https://arxiv.org/abs/2412.07724">https://arxiv.org/abs/2412.07724</a>.
+</div>
+<div id="ref-rottger2024xstest" class="csl-entry" role="listitem">
+Röttger, Paul, Hannah Rose Kirk, Bertie Vidgen, Giuseppe Attanasio,
+Federico Bianchi, and Dirk Hovy. 2024. <span>“XSTest: A Test Suite for
+Identifying Exaggerated Safety Behaviours in Large Language
+Models.”</span> <em>NAACL 2024 (Long Papers)</em>, 5377–400. <a
+href="https://arxiv.org/abs/2308.01263">https://arxiv.org/abs/2308.01263</a>.
 </div>
 <div id="ref-vennemeyer2026objective" class="csl-entry" role="listitem">
 Vennemeyer, Daniel, Punya Syon Pandey, Phan Anh Duong, Michael Umeokoli,
@@ -1362,7 +1572,7 @@ href="https://arxiv.org/abs/2407.21772">https://arxiv.org/abs/2407.21772</a>.
       <footer class="pf">
         HTML edition generated from the LaTeX source with <code>pandoc</code>; figures are vector SVG.
         Tables and numbers mirror the paper's primary tie-aware results. For the canonical typeset version, see the
-        <a href="../paper-a/benchmark_chooses_the_winner.pdf">PDF</a>.
+        <a href="../benchmark_chooses_the_winner.pdf">PDF</a>.
       </footer>
     </article>
   </main>

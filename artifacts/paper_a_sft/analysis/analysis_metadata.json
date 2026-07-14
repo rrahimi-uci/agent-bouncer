@@ -1,0 +1,69 @@
+{
+  "actual_execution_sources": {
+    "aggregate_sha256": "fd48b1ca9b85f062f9465ad6cb3de6f21063f4d6a221e348734a52eb92e8d537",
+    "files": {
+      "configs/paper_a_sft.yaml": "68848e71a2c0315d7b271ed9942bfa335d8ac3a798b6e349f6dcd58f34dc08d8",
+      "experiments/analyze_paper_a_sft.py": "010a730aee1889bcd4e8234670ad861a6ae1c61db1f0196f2196bd48edf83a2a",
+      "experiments/audit_paper_a_splits.py": "47683f65846ee6d931eecc03bd7629f88b3067c9aa4c015dead46cfd0036cbb1",
+      "experiments/eval_paper_a_sft.py": "b100da3a7683542ed0af95e7589b8e0b2deda54b4eb40fbd2d072e74e45c7dd4",
+      "experiments/lock_paper_a_sft.py": "054290e6cb78a0f86d6c3c9d76f47e9afa3b35cd08a6ae09798415e64a36fc7a",
+      "experiments/paper_a_common.py": "c5503da8dcaa557103645c2f5e5e70ad2cab207eb6061e00e17c6ab2e43915d3",
+      "experiments/paper_a_manifest_lib.py": "80e18d873e565c5bae69e170ca8706192b2902cf995a87b20ea920450cbe7625",
+      "experiments/prepare_paper_a_manifests.py": "2ab98cc6a743ef1a2f455fe8d5b21196d26d4a178fcb91c5c839dac207049f06",
+      "experiments/run_paper_a_sft.py": "35d21920fe66ffe6b353df0ebacd06f702dc54b3cfec93b6f317e865e22b9dda",
+      "guard_research/__init__.py": "dd2d1fe5220bee6ddee51ebd00ede5eef2dcacc2dba2d3e2479cce6f36ace8ca",
+      "guard_research/metrics.py": "bd5d73929e414cfeb9b88b79fb964854ab6ce79d64fd951d1d3cfdce20693ae9",
+      "guard_research/prompts.py": "26246c8d71597e3d989fa191eb8ff8e65814f20f446df1b26850297b4bdc2316",
+      "guard_research/provenance.py": "cb7700e274a0b3f97ff3e5baec175201fb2a2a90dba78b21bbffedd51208fbee",
+      "guard_research/thresholds.py": "b9a4937fdf8ae663444dee13b026ad8d4c58bf5249ddbe640ae8540336dcef04",
+      "pyproject.toml": "96d1ef6b0f36fcebd13e1ba144afdce47e3b63738f9b1c5ccf8b5249e892e93e",
+      "requirements.txt": "3709ed5acea873bdcd5f24525381247941cfaf723b17a4b1627eb83230802a28"
+    }
+  },
+  "analysis_artifact_contract_version": 2,
+  "analysis_code_version": "paper_a_sft_analysis_v2",
+  "analysis_runtime_environment": {
+    "mps_available": true,
+    "requested_device": "cpu",
+    "software_versions": {
+      "accelerate": "1.14.0",
+      "cuda_runtime": null,
+      "cudnn": null,
+      "datasets": "5.0.0",
+      "matplotlib": "3.11.0",
+      "numpy": "2.5.0",
+      "os": "posix",
+      "pandas": "3.0.3",
+      "peft": "0.19.1",
+      "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+      "pyarrow": "24.0.0",
+      "python": "3.14.4",
+      "python_implementation": "CPython",
+      "safetensors": "0.8.0",
+      "scipy": "1.18.0",
+      "sklearn": "1.9.0",
+      "torch": "2.12.1",
+      "transformers": "5.12.1",
+      "trl": "1.7.0"
+    },
+    "torch_cuda_available": false
+  },
+  "analysis_runtime_sha256": "1e11533392faaebc2f9fa89abfe9e498111a11d66aa4859621d0bd82836c9e3a",
+  "execution_sources_sha256": null,
+  "lock_sha256": "08c47c0459adbcdf6b51267c320320c9a7f33a5710fa7c9ecc4e72248f48ead0",
+  "outputs": {
+    "claim_checks.json": "65c318f5a38349f9e788407f8ca0415ffe8d4e9f8ac7b3767b743b13c9eccc65",
+    "figures/specialization_plane.pdf": "4b456c3f5a0a71e328e956f8dce63e99089e489e8ec81442977458873361bfbe",
+    "per_benchmark.csv": "d6bcc82785350a4b8b5ea7d64fa3967881e6c959107d8d983af5e3c994a654fd",
+    "results.json": "eb4a00b5e3870f5f11e6072a17bf59b4c86498b87ec1761e8f3e9b362e2c1906",
+    "seed_values.csv": "cbb4514f67cd370d2cb544a89abe0bc119794d636328af21b06f32e1bcf2cdba",
+    "sensitivity.json": "0187c8b3f8885ef7bad2715815673465aa0431cb21533903756f707a84e8a124",
+    "tables/results_macros.tex": "92281011df44319f59e8adc9fe9ce657356fe575fb30a26a7477951bb31e2a0a",
+    "tables/table3_primary.tex": "9fc479954f72a62349ecb025c157b9eec7bf4e9b8176dc31bcf48b9e0a295d0b",
+    "tables/table4_per_benchmark.tex": "5e11198b0bf4eb1f2bc60e9ece2ea72191c4013f0a5b6606275e7426d263a42d",
+    "tables/table5_seed_values.tex": "57046acf4daa1b18ebc1e2bc5d7bf7181ddb62170937757d4a9ae28c86d10e82"
+  },
+  "scores_metadata_filename": "metadata.json",
+  "scores_metadata_sha256": "c263a2cfd5a25034e48d5d1cec2f36c85d470a3c955e4bc078f37d39ff2af21b",
+  "scores_sha256": "d4179244163f1d99f99c6a9dcad5226d90ce9e9ea3b162dd10abf885e81ad2d7"
+}

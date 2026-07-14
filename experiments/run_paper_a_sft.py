@@ -76,7 +76,7 @@ def load_train_rows(path: str) -> list[dict]:
 # --------------------------------------------------------------------------------------
 # run metadata (plan sec 9.4)
 # --------------------------------------------------------------------------------------
-def base_run_meta(lock, model_key, seed, train_path) -> dict:
+def base_run_meta(lock, model_key, seed, train_path, run_kind="final") -> dict:
     models = C.lock_model_panel(lock)
     m = models.get(model_key, {})
     return {
@@ -86,19 +86,30 @@ def base_run_meta(lock, model_key, seed, train_path) -> dict:
         "model_id": m.get("model_id"),
         "model_revision": m.get("model_revision"),
         "tokenizer_revision": m.get("tokenizer_revision"),
+        "model_runtime": {k: m.get(k) for k in (
+            "model_id", "model_revision", "tokenizer_revision", "dtype",
+            "attn_implementation", "trust_remote_code")},
         "condition": "sft",
+        "run_kind": run_kind,
+        "lock_contract_status": (
+            "legacy_unverified" if int(lock.get("lock_contract_version", 1)) <
+            C.LOCK_CONTRACT_VERSION else lock.get("finalization_status")),
         "seed": seed,
         "training_seed": seed,
         "data_order_seed": lock.get("data", {}).get("data_order_seed", C.DEFAULT_DATA_ORDER_SEED),
         "train_manifest": train_path,
         "train_manifest_sha256": C.sha256_file(train_path) if os.path.exists(train_path) else None,
         "config_sha256": lock.get("config", {}).get("sha256"),
+        "config_obj_sha256": lock.get("config", {}).get("obj_sha256"),
         "prompt_spec_sha256": lock.get("prompt", {}).get("prompt_spec_sha256"),
         "prompt_template_sha256": lock.get("prompt", {}).get("per_model_template_sha256", {}).get(model_key),
         "lock_sha256": lock.get("lock_sha256"),
         "recipe": lock.get("recipe"),
         "git_sha": lock.get("git", {}).get("git_sha"),
+        "execution_sources_sha256": lock.get(
+            "execution_sources", {}).get("aggregate_sha256"),
         "software_versions": C.software_versions(),
+        "runtime_environment": None,
         "device": None,
         "start_utc": None,
         "completion_utc": None,
@@ -129,11 +140,12 @@ def _device() -> str:
 # training core (self-contained; reuses train_guard.py idioms; manifest-only)
 # --------------------------------------------------------------------------------------
 def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
-                   dry_run=False, device=None) -> dict:
+                   dry_run=False, device=None, run_kind="final") -> dict:
     os.makedirs(out_dir, exist_ok=True)
-    meta = base_run_meta(lock, model_key, seed, train_path)
+    meta = base_run_meta(lock, model_key, seed, train_path, run_kind=run_kind)
     meta["out_dir"] = out_dir
     meta["device"] = device or _device()
+    meta["runtime_environment"] = C.runtime_environment(meta["device"])
     recipe = lock.get("recipe", C.DEFAULT_RECIPE)
     max_steps = int(steps if steps is not None else recipe.get("max_steps", 300))
     max_len = int(recipe.get("max_length", 1024))
@@ -170,8 +182,9 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
         models = C.lock_model_panel(lock)[model_key]
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
 
-        tok = AutoTokenizer.from_pretrained(models["model_id"], revision=models["tokenizer_revision"],
-                                            trust_remote_code=True)
+        tok = AutoTokenizer.from_pretrained(
+            models["model_id"], revision=models["tokenizer_revision"],
+            trust_remote_code=bool(models.get("trust_remote_code", True)))
         if tok.pad_token is None:
             tok.pad_token = tok.eos_token
         tok.padding_side = "right"; tok.truncation_side = "left"
@@ -195,14 +208,24 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
             def __init__(self, rws):
                 self.ex = []
                 self.total_tokens = 0
+                self.truncated_examples = 0
+                self.wrapper_preserved = True
                 for r in rws:
-                    p = tok(build_prompt(tok, r["text"]), add_special_tokens=False,
-                            truncation=True, max_length=max_len - 8)["input_ids"]
                     c = list(verdict_ids[r["gold"]]) + [eos]
-                    ids = (p + c)[:max_len]
-                    lab = ([-100] * len(p) + c)[:max_len]
+                    rendered, trunc = C.budgeted_prompt(
+                        tok, build_prompt, r["text"], max_len, reserved_tokens=len(c))
+                    p = tok(rendered, add_special_tokens=False,
+                            truncation=False)["input_ids"]
+                    if len(p) + len(c) > max_len or not trunc["wrapper_preserved"]:
+                        raise C.ArtifactContractError(
+                            "training prompt budget violated or classifier wrapper lost")
+                    ids = p + c
+                    lab = [-100] * len(p) + c
                     self.ex.append({"input_ids": ids, "labels": lab})
                     self.total_tokens += len(ids)
+                    self.truncated_examples += int(trunc["truncated"])
+                    self.wrapper_preserved = self.wrapper_preserved and bool(
+                        trunc["wrapper_preserved"])
 
             def __len__(self): return len(self.ex)
             def __getitem__(self, i): return self.ex[i]
@@ -220,11 +243,25 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
 
         ds = GuardSFT(rows)
         mean_tok = ds.total_tokens / max(1, len(ds))
+        meta["truncation"] = {
+            "strategy": C.TRUNCATION_STRATEGY,
+            "n_truncated": ds.truncated_examples,
+            "n_examples": len(ds),
+            "classifier_wrapper_preserved": bool(ds.wrapper_preserved),
+            "assistant_generation_prefix_preserved": bool(ds.wrapper_preserved),
+        }
 
         dev = meta["device"]
-        model = AutoModelForCausalLM.from_pretrained(
-            models["model_id"], revision=models["model_revision"],
-            dtype=torch.bfloat16, trust_remote_code=True)
+        dtype_name = str(models.get("dtype", "bfloat16"))
+        torch_dtype = C.torch_dtype_from_name(torch, dtype_name)
+        model_kwargs = {
+            "revision": models["model_revision"],
+            "torch_dtype": torch_dtype,
+            "trust_remote_code": bool(models.get("trust_remote_code", True)),
+        }
+        if models.get("attn_implementation"):
+            model_kwargs["attn_implementation"] = models["attn_implementation"]
+        model = AutoModelForCausalLM.from_pretrained(models["model_id"], **model_kwargs)
         model.config.use_cache = False
         model = get_peft_model(model, LoraConfig(
             r=int(lora["r"]), lora_alpha=int(lora["alpha"]), lora_dropout=float(lora["dropout"]),
@@ -242,7 +279,9 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
             output_dir=out_dir, per_device_train_batch_size=per_dev,
             gradient_accumulation_steps=accum, max_steps=max_steps, num_train_epochs=1,
             learning_rate=lr, lr_scheduler_type=recipe.get("scheduler", "cosine"),
-            warmup_ratio=warmup, bf16=(dev == "cuda"), fp16=False,
+            warmup_ratio=warmup,
+            bf16=(dev == "cuda" and dtype_name in ("bfloat16", "bf16")),
+            fp16=(dev == "cuda" and dtype_name in ("float16", "fp16", "half")),
             gradient_checkpointing=(dev == "cuda"), logging_steps=10,
             save_strategy="no", remove_unused_columns=False, report_to=[], seed=seed)
         trainer = FixedOrderTrainer(model=model, args=args, train_dataset=ds, data_collator=collate)
@@ -276,11 +315,54 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
 # subcommand: train
 # --------------------------------------------------------------------------------------
 def cmd_train(args) -> int:
-    lock = C.load_lock(args.lock)
+    manifest_override_dir = os.path.dirname(os.path.abspath(args.manifest)) if args.manifest else None
+    try:
+        lock = C.load_lock(args.lock, allow_legacy=args.allow_legacy_lock,
+                           verify_files=True, manifests_dir=manifest_override_dir)
+    except (C.ArtifactContractError, FileNotFoundError) as exc:
+        print(f"[train] lock verification failed: {exc}", file=sys.stderr)
+        return 2
+    strict_lock = int(lock.get("lock_contract_version", 1)) >= C.LOCK_CONTRACT_VERSION
+    if not strict_lock and not args.nonfinal:
+        print("[train] historical v1 runs are immutable; legacy training requires --nonfinal "
+              "and an output outside all canonical artifact roots", file=sys.stderr)
+        return 2
+    if strict_lock and not args.nonfinal and args.manifest:
+        expected_train = os.path.join(C.artifact_paths(lock)["manifests"], "train.jsonl")
+        if pathlib.Path(C.abspath(args.manifest)).resolve() != pathlib.Path(
+                C.abspath(expected_train)).resolve():
+            print(f"[train] final v2 train manifest path is lock-authoritative: "
+                  f"{expected_train}", file=sys.stderr)
+            return 2
+    if args.max_steps is not None and not (args.nonfinal or args.dry_run):
+        print("[train] --max-steps is prohibited for final runs; use --nonfinal with an "
+              "explicit --out directory", file=sys.stderr)
+        return 2
+    if args.dry_run and not args.nonfinal:
+        print("[train] --dry-run requires --nonfinal with one cell and an explicit --out",
+              file=sys.stderr)
+        return 2
+    if args.nonfinal and not (args.out and args.model_key and args.seed is not None):
+        print("[train] --nonfinal requires --out, --model-key, and exactly one --seed",
+              file=sys.stderr)
+        return 2
     runs_root = C.abspath(C.artifact_paths(lock)["runs"])
+    if args.nonfinal:
+        protected_roots = {
+            C.artifact_paths(lock)["root"],
+            C.DEFAULT_ARTIFACTS["root"],
+            C.DEFAULT_ARTIFACTS_V2["root"],
+        }
+        if any(C.path_is_within(args.out, root) for root in protected_roots):
+            print("[train] --nonfinal output must be outside canonical v1/v2 artifact roots",
+                  file=sys.stderr)
+            return 2
     train_path = train_manifest_path(lock, args.manifest)
     if not args.dry_run and not os.path.exists(train_path):
         print(f"[train] train manifest missing: {train_path}", file=sys.stderr)
+        return 2
+    if os.path.exists(train_path) and C.sha256_file(train_path) != lock.get("train_manifest_sha256"):
+        print("[train] refusing mismatched train manifest", file=sys.stderr)
         return 2
 
     model_keys = [args.model_key] if args.model_key else list(C.MODEL_KEYS)
@@ -293,6 +375,11 @@ def cmd_train(args) -> int:
         seeds = [int(args.seed)]
     else:
         seeds = C.lock_seeds(lock)
+    unknown_seeds = sorted(set(seeds) - set(C.lock_seeds(lock)))
+    if unknown_seeds and not args.nonfinal:
+        print(f"[train] final run requested seeds not present in lock: {unknown_seeds}",
+              file=sys.stderr)
+        return 2
 
     print(f"[train] {len(model_keys)}x{len(seeds)} cells | manifest={train_path} | dry_run={args.dry_run}")
     n_ok = n_fail = n_skip = 0
@@ -300,14 +387,28 @@ def cmd_train(args) -> int:
         for s in seeds:
             out_dir = args.out if (args.out and args.model_key and args.seed is not None) \
                 else C.run_dir(runs_root, mk, s)
+            expected_out = C.run_dir(runs_root, mk, s)
+            if strict_lock and not args.nonfinal and C.resolved_path(out_dir) != C.resolved_path(
+                    expected_out):
+                print(f"[train] final v2 run output is lock-authoritative: {expected_out}",
+                      file=sys.stderr)
+                return 2
             adir = C.adapter_dir(out_dir)
             meta_p = os.path.join(out_dir, "run_meta.json")
             if not args.force and C.adapter_is_present(adir) and os.path.exists(meta_p):
-                prev = C.read_json(meta_p)
-                if prev.get("status") == "completed":
-                    print(f"  [skip] {mk} seed {s} already completed"); n_skip += 1; continue
+                validation = C.validate_run_artifact(
+                    lock, mk, s, out_dir, allow_legacy=args.allow_legacy_lock)
+                if validation["valid"]:
+                    print(f"  [skip] {mk} seed {s} already completed and revalidated")
+                    n_skip += 1
+                    continue
+                print(f"[train] refusing stale/invalid completed cell {mk}/seed_{s}: "
+                      f"{validation['issues']} (use --force to retrain)", file=sys.stderr)
+                return 2
             meta = train_one_cell(lock, mk, s, out_dir, train_path,
-                                  steps=args.max_steps, dry_run=args.dry_run, device=args.device)
+                                  steps=args.max_steps, dry_run=args.dry_run, device=args.device,
+                                  run_kind=("dry_run" if args.dry_run else
+                                            "nonfinal" if args.nonfinal else "final"))
             tag = meta["status"]
             print(f"  [{tag}] {mk} seed {s} -> {out_dir} ({meta.get('wall_time_s')}s)")
             if tag in ("completed", "dry_run"):
@@ -323,7 +424,16 @@ def cmd_train(args) -> int:
 # subcommand: smoke  (separate path; must NOT satisfy a final-cell check)
 # --------------------------------------------------------------------------------------
 def cmd_smoke(args) -> int:
-    lock = C.load_lock(args.lock)
+    try:
+        lock = C.load_lock(
+            args.lock, allow_legacy=args.allow_legacy_lock,
+            allow_development=args.allow_development_lock,
+            verify_files=not args.allow_development_lock,
+            manifests_dir=(os.path.dirname(os.path.abspath(args.manifest))
+                           if args.manifest else None))
+    except (C.ArtifactContractError, FileNotFoundError) as exc:
+        print(f"[smoke] lock verification failed: {exc}", file=sys.stderr)
+        return 2
     smoke_root = C.abspath(C.artifact_paths(lock).get("smoke", C.DEFAULT_ARTIFACTS["smoke"]))
     train_path = train_manifest_path(lock, args.manifest)
     model_keys = list(C.MODEL_KEYS) if args.all_models else (
@@ -338,7 +448,7 @@ def cmd_smoke(args) -> int:
         out_dir = os.path.join(smoke_root, mk, "sft", "smoke")
         meta = train_one_cell(lock, mk, seed=lock.get("seeds", C.DEFAULT_SEEDS)[0],
                               out_dir=out_dir, train_path=train_path, steps=args.steps,
-                              dry_run=args.dry_run, device=args.device)
+                              dry_run=args.dry_run, device=args.device, run_kind="smoke")
         meta["smoke"] = True  # marker: never a final cell
         checks = {"trained_or_dry": meta["status"] in ("completed", "dry_run")}
         # prompt/token parity + synthetic-fixture scoring (real mode only)
@@ -362,7 +472,7 @@ def _smoke_validate_and_score(lock, model_key, out_dir) -> dict:
     from peft import PeftModel
     m = C.lock_model_panel(lock)[model_key]
     tok = AutoTokenizer.from_pretrained(m["model_id"], revision=m["tokenizer_revision"],
-                                        trust_remote_code=True)
+                                        trust_remote_code=bool(m.get("trust_remote_code", True)))
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
     build_prompt, _ = C.require_prompts()
@@ -370,8 +480,14 @@ def _smoke_validate_and_score(lock, model_key, out_dir) -> dict:
     parity = C.template_sha256(tok) == lock.get("prompt", {}).get(
         "per_model_template_sha256", {}).get(model_key, C.template_sha256(tok))
     dev = _device()
-    base = AutoModelForCausalLM.from_pretrained(m["model_id"], revision=m["model_revision"],
-                                                dtype=torch.bfloat16, trust_remote_code=True)
+    kwargs = {
+        "revision": m["model_revision"],
+        "torch_dtype": C.torch_dtype_from_name(torch, str(m.get("dtype", "bfloat16"))),
+        "trust_remote_code": bool(m.get("trust_remote_code", True)),
+    }
+    if m.get("attn_implementation"):
+        kwargs["attn_implementation"] = m["attn_implementation"]
+    base = AutoModelForCausalLM.from_pretrained(m["model_id"], **kwargs)
     model = PeftModel.from_pretrained(base, C.adapter_dir(out_dir)).eval().to(dev)
     fixtures = list(SYNTHETIC_FIXTURES)
     cal_path = os.path.join(C.artifact_paths(lock)["manifests"], "calibration.jsonl")
@@ -381,8 +497,12 @@ def _smoke_validate_and_score(lock, model_key, out_dir) -> dict:
     scores = []
     with torch.no_grad():
         for fx in fixtures:
-            enc = tok([build_prompt(tok, fx["text"])], return_tensors="pt", truncation=True,
-                      max_length=int(lock["recipe"]["max_length"]), add_special_tokens=False).to(dev)
+            rendered, trunc = C.budgeted_prompt(
+                tok, build_prompt, fx["text"], int(lock["recipe"]["max_length"]))
+            if not trunc["wrapper_preserved"]:
+                raise C.ArtifactContractError("smoke prompt lost classifier wrapper")
+            enc = tok([rendered], return_tensors="pt", truncation=False,
+                      add_special_tokens=False).to(dev)
             lg = model(**enc).logits
             last = enc["attention_mask"].sum(1) - 1
             row = lg[0, last[0]]
@@ -396,7 +516,12 @@ def _smoke_validate_and_score(lock, model_key, out_dir) -> dict:
 # subcommand: validate-runs (inspects run metadata / adapters only; no eval manifests)
 # --------------------------------------------------------------------------------------
 def cmd_validate_runs(args) -> int:
-    lock = C.load_lock(args.lock)
+    try:
+        lock = C.load_lock(args.lock, allow_legacy=args.allow_legacy_lock,
+                           verify_files=False)
+    except (C.ArtifactContractError, FileNotFoundError) as exc:
+        print(f"[validate-runs] lock verification failed: {exc}", file=sys.stderr)
+        return 2
     runs_root = args.runs_root or C.abspath(C.artifact_paths(lock)["runs"])
     seeds = C.lock_seeds(lock)
     recipe = lock.get("recipe", {})
@@ -415,26 +540,22 @@ def cmd_validate_runs(args) -> int:
             if not os.path.exists(meta_p):
                 cell["issues"].append("no_run_meta"); report["missing"].append(key)
                 report["cells"][key] = cell; continue
-            meta = C.read_json(meta_p)
-            cell["present"] = True; cell["status"] = meta.get("status")
-            if meta.get("status") != "completed":
-                cell["issues"].append(f"status={meta.get('status')}"); report["failed"].append(key)
+            validation = C.validate_run_artifact(
+                lock, mk, s, out_dir, allow_legacy=args.allow_legacy_lock)
+            meta = validation["metadata"] or {}
+            cell["present"] = True
+            cell["status"] = meta.get("status")
             cell["adapter_present"] = C.adapter_is_present(adir)
-            if not cell["adapter_present"]:
-                cell["issues"].append("adapter_missing")
-            else:
-                recomputed = C.sha256_dir(adir)
-                cell["adapter_sha256_ok"] = (recomputed == meta.get("adapter_sha256"))
-                if not cell["adapter_sha256_ok"]:
-                    cell["issues"].append("adapter_sha256_mismatch")
+            cell["adapter_sha256_ok"] = "adapter_sha256_mismatch" not in validation["issues"]
+            cell["hashes_ok"] = not any(issue.endswith("_mismatch")
+                                         for issue in validation["issues"])
+            cell["issues"].extend(validation["issues"])
+            if meta.get("status") != "completed":
+                report["failed"].append(key)
+            if cell["adapter_present"]:
                 cell.update(_check_adapter_config(adir, lora, recipe))
-            # hash parity vs lock
-            hok = (meta.get("train_manifest_sha256") == lock.get("train_manifest_sha256")
-                   and meta.get("config_sha256") == lock.get("config", {}).get("sha256")
-                   and meta.get("prompt_spec_sha256") == lock.get("prompt", {}).get("prompt_spec_sha256"))
-            cell["hashes_ok"] = bool(hok)
-            if not hok:
-                cell["issues"].append("hash_mismatch_vs_lock")
+                if not cell.get("config_ok", True):
+                    cell["issues"].append("adapter_config_mismatch")
             if args.load_adapters and cell["adapter_present"]:
                 cell["load_ok"] = _try_load_adapter(lock, mk, adir)
                 if not cell["load_ok"]:
@@ -459,20 +580,8 @@ def cmd_validate_runs(args) -> int:
 
 
 def _check_adapter_config(adir, lora, recipe) -> dict:
-    try:
-        cfg = C.read_json(os.path.join(adir, "adapter_config.json"))
-    except Exception as e:
-        return {"config_ok": False, "config_error": str(e)}
-    ok = True; issues = []
-    if lora:
-        if int(cfg.get("r", -1)) != int(lora.get("r", 32)):
-            ok = False; issues.append("r")
-        if int(cfg.get("lora_alpha", -1)) != int(lora.get("alpha", 64)):
-            ok = False; issues.append("alpha")
-        tm = set(cfg.get("target_modules") or [])
-        if tm and set(lora.get("target_modules", [])) - tm:
-            ok = False; issues.append("target_modules")
-    return {"config_ok": ok, "config_issues": issues}
+    issues = C.adapter_config_issues(adir, recipe)
+    return {"config_ok": not issues, "config_issues": issues}
 
 
 def _try_load_adapter(lock, model_key, adir) -> bool:
@@ -481,8 +590,11 @@ def _try_load_adapter(lock, model_key, adir) -> bool:
         from transformers import AutoModelForCausalLM
         from peft import PeftModel
         m = C.lock_model_panel(lock)[model_key]
-        base = AutoModelForCausalLM.from_pretrained(m["model_id"], revision=m["model_revision"],
-                                                    trust_remote_code=True)
+        kwargs = {"revision": m["model_revision"],
+                  "trust_remote_code": bool(m.get("trust_remote_code", True))}
+        if m.get("attn_implementation"):
+            kwargs["attn_implementation"] = m["attn_implementation"]
+        base = AutoModelForCausalLM.from_pretrained(m["model_id"], **kwargs)
         PeftModel.from_pretrained(base, adir)
         return True
     except Exception:
@@ -501,6 +613,10 @@ def main(argv=None) -> int:
     t.add_argument("--out", default=None, help="explicit out dir (single model-key+seed only)")
     t.add_argument("--manifest", default=None, help="override train manifest path")
     t.add_argument("--max-steps", type=int, default=None, help="override (recipe is authoritative)")
+    t.add_argument("--nonfinal", action="store_true",
+                   help="explicit development run; requires a single cell and --out")
+    t.add_argument("--allow-legacy-lock", action="store_true",
+                   help="explicitly use the historical v1 lock (never upgrades it)")
     t.add_argument("--device", default=None)
     t.add_argument("--force", action="store_true", help="retrain even if a completed cell exists")
     t.add_argument("--dry-run", action="store_true",
@@ -515,6 +631,8 @@ def main(argv=None) -> int:
     s.add_argument("--manifest", default=None)
     s.add_argument("--device", default=None)
     s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--allow-legacy-lock", action="store_true")
+    s.add_argument("--allow-development-lock", action="store_true")
     s.set_defaults(func=cmd_smoke)
 
     v = sub.add_parser("validate-runs", help="validate adapters/metadata/hashes/completeness")
@@ -522,6 +640,7 @@ def main(argv=None) -> int:
     v.add_argument("--runs-root", default=None)
     v.add_argument("--strict", action="store_true", help="exit nonzero unless 20/20 valid")
     v.add_argument("--load-adapters", action="store_true", help="attempt a real peft load (needs models)")
+    v.add_argument("--allow-legacy-lock", action="store_true")
     v.set_defaults(func=cmd_validate_runs)
 
     args = ap.parse_args(argv)

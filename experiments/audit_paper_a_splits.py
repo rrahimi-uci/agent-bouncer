@@ -25,8 +25,8 @@ Hard assertions (EXIT NONZERO if any fails):
 Usage:
   .venv/bin/python experiments/audit_paper_a_splits.py \
     --config configs/paper_a_sft.yaml \
-    --manifest artifacts/paper_a_sft/manifests/manifest.json \
-    --out artifacts/paper_a_sft/audit
+    --manifest artifacts/paper_a_sft_v2/manifests/manifest.json \
+    --out artifacts/paper_a_sft_v2/audit
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 
@@ -44,12 +45,77 @@ for _p in (_ROOT, _HERE):
         sys.path.insert(0, _p)
 
 import paper_a_manifest_lib as L  # noqa: E402
+import paper_a_common as C  # noqa: E402
+import prepare_paper_a_manifests as P  # noqa: E402
 
 TRAIN_SPLIT = L.SPLIT_TRAIN
 EVAL_SPLITS = [L.SPLIT_CALIBRATION, L.SPLIT_ID, L.SPLIT_TRANSFER, L.SPLIT_ORBENCH, L.SPLIT_HARMBENCH]
 REPRESENTED_SOURCES = {"toxicchat", "prompt_injections", "jailbreak_classification"}
 TRANSFER_SOURCES = {"jailbreakbench", "xstest", "wildguardtest", "wildjailbreak"}
 FORBIDDEN_TRAIN_SOURCES = {"orbench", "or_bench", "or-bench", "beavertails", "beaver_tails"}
+
+STEM_TO_SPLIT = {
+    "train": L.SPLIT_TRAIN,
+    "calibration": L.SPLIT_CALIBRATION,
+    "id_test": L.SPLIT_ID,
+    "transfer_test": L.SPLIT_TRANSFER,
+    "orbench_safe_stress": L.SPLIT_ORBENCH,
+    "harmbench_positive_stress": L.SPLIT_HARMBENCH,
+}
+
+# Exact expectations for the pinned revisions and deterministic target rules.
+EXPECTED_TRAIN_SOURCE_LABEL = {
+    ("toxicchat", "safe"): 200, ("toxicchat", "unsafe"): 200,
+    ("prompt_injections", "safe"): 200, ("prompt_injections", "unsafe"): 200,
+    ("jailbreak_classification", "safe"): 200,
+    ("jailbreak_classification", "unsafe"): 200,
+}
+EXPECTED_REPRESENTED_UNION_SOURCE_LABEL = {
+    ("toxicchat", "safe"): 400, ("toxicchat", "unsafe"): 354,
+    ("prompt_injections", "safe"): 56, ("prompt_injections", "unsafe"): 56,
+    ("jailbreak_classification", "safe"): 123,
+    ("jailbreak_classification", "unsafe"): 139,
+}
+EXPECTED_TRANSFER_SOURCE_LABEL = {
+    ("jailbreakbench", "safe"): 60, ("jailbreakbench", "unsafe"): 60,
+    ("xstest", "safe"): 120, ("xstest", "unsafe"): 120,
+    ("wildguardtest", "safe"): 400, ("wildguardtest", "unsafe"): 400,
+    ("wildjailbreak", "safe"): 210, ("wildjailbreak", "unsafe"): 210,
+}
+NULLABLE_SCHEMA_FIELDS = {"upstream_family_id"}
+PUBLIC_BANNED_CONTENT_KEYS = {
+    "text", "raw_text", "norm_text", "normalized_text",
+    "text_or_download_reference", "prompt", "response", "completion", "adversarial",
+}
+CONFIG_KEY_EMITTED = {
+    "toxicchat": "toxicchat", "toxicchat_test": "toxicchat",
+    "prompt_injections": "prompt_injections",
+    "prompt_injections_test": "prompt_injections",
+    "jailbreak_classification": "jailbreak_classification",
+    "jailbreak_classification_test": "jailbreak_classification",
+    "jailbreakbench": "jailbreakbench", "xstest": "xstest",
+    "wildguardtest": "wildguardtest", "wildjailbreak": "wildjailbreak",
+    "orbench_hard": "orbench", "harmbench": "harmbench",
+}
+
+
+def load_config(path):
+    import yaml
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def find_banned_public_keys(value, path="$"):
+    found = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if str(key).lower() in PUBLIC_BANNED_CONTENT_KEYS:
+                found.append(f"{path}.{key}")
+            found.extend(find_banned_public_keys(item, f"{path}.{key}"))
+    elif isinstance(value, list):
+        for i, item in enumerate(value):
+            found.extend(find_banned_public_keys(item, f"{path}[{i}]"))
+    return found
 
 
 def load_jsonl(path):
@@ -65,8 +131,24 @@ def read_manifests(manifest_dir):
     return out
 
 
-def audit(config_path, manifest_json_path, out_dir):
+def family_edge_mismatches(rows, edges):
+    """Return observed similarity edges whose endpoints carry different families."""
+    mismatches = []
+    for edge in edges:
+        left, right = int(edge[0]), int(edge[1])
+        if rows[left].get("family_id") != rows[right].get("family_id"):
+            mismatches.append({
+                "left_sample_id": rows[left].get("sample_id"),
+                "right_sample_id": rows[right].get("sample_id"),
+                "left_family_id": rows[left].get("family_id"),
+                "right_family_id": rows[right].get("family_id"),
+            })
+    return mismatches
+
+
+def audit(config_path, manifest_json_path, out_dir, public_manifest_path=None):
     os.makedirs(out_dir, exist_ok=True)
+    config = load_config(config_path)
     manifest_dir = os.path.dirname(manifest_json_path)
     manifest_meta = json.load(open(manifest_json_path))
     M = read_manifests(manifest_dir)
@@ -80,6 +162,36 @@ def audit(config_path, manifest_json_path, out_dir):
     report = {"manifest_dir": os.path.relpath(manifest_dir, _ROOT),
               "config_sha256": manifest_meta.get("config_sha256"),
               "provenance": manifest_meta.get("provenance")}
+    report["manifest_index"] = {
+        "path": os.path.relpath(manifest_json_path, _ROOT),
+        "observed_sha256": L.sha256_of_file(manifest_json_path),
+    }
+
+    # The --config argument is authoritative, not decorative.
+    expected_config_sha = L.sha256_of_obj(config)
+    report["config_validation"] = {
+        "expected_sha256": expected_config_sha,
+        "manifest_sha256": manifest_meta.get("config_sha256"),
+        "matches": expected_config_sha == manifest_meta.get("config_sha256"),
+        "source_mode": manifest_meta.get("source_mode"),
+        "pinned_hf_default": manifest_meta.get("source_mode") == "huggingface_pinned_revisions",
+    }
+
+    # Verify the manifest index's byte commitments and row counts.
+    file_integrity = {}
+    for stem, rows in M.items():
+        path = os.path.join(manifest_dir, f"{stem}.jsonl")
+        declared = manifest_meta.get("files", {}).get(stem, {})
+        observed_sha = L.sha256_of_file(path)
+        file_integrity[stem] = {
+            "declared_sha256": declared.get("sha256"),
+            "observed_sha256": observed_sha,
+            "sha256_matches": declared.get("sha256") == observed_sha,
+            "declared_rows": declared.get("n_rows"),
+            "observed_rows": len(rows),
+            "row_count_matches": declared.get("n_rows") == len(rows),
+        }
+    report["file_integrity"] = file_integrity
 
     # ---- 5. class + row counts ---------------------------------------------
     counts = {}
@@ -91,27 +203,102 @@ def audit(config_path, manifest_json_path, out_dir):
                            for s in sorted({r["source"] for r in rows})},
         }
     report["counts"] = counts
+    train_observed = Counter((r["source"], r["label"]) for r in train_rows)
+    represented_observed = Counter(
+        (r["source"], r["label"]) for r in M["calibration"] + M["id_test"])
+    transfer_observed = Counter((r["source"], r["label"]) for r in M["transfer_test"])
+    count_validation = {
+        "train_source_label_exact": dict(train_observed) == EXPECTED_TRAIN_SOURCE_LABEL,
+        "represented_union_source_label_exact": (
+            dict(represented_observed) == EXPECTED_REPRESENTED_UNION_SOURCE_LABEL),
+        "transfer_source_label_exact": dict(transfer_observed) == EXPECTED_TRANSFER_SOURCE_LABEL,
+        "orbench_exact_400_safe": (
+            len(M["orbench_safe_stress"]) == 400
+            and {r["label"] for r in M["orbench_safe_stress"]} == {"safe"}),
+        "harmbench_exact_200_unsafe": (
+            len(M["harmbench_positive_stress"]) == 200
+            and {r["label"] for r in M["harmbench_positive_stress"]} == {"unsafe"}),
+    }
+    count_validation["all_expected_counts_match"] = all(count_validation.values())
+    report["count_validation"] = count_validation
 
     # ---- 6/? every row has revision + content hash + all schema fields -----
     missing_rev = [r.get("sample_id") for r in all_rows if not r.get("source_revision")]
     missing_hash = [r.get("sample_id") for r in all_rows if not r.get("content_sha256")]
     schema_missing = defaultdict(list)
+    schema_exact_problems = []
+    type_problems = []
+    expected_fields = set(L.ROW_SCHEMA_FIELDS)
     for r in all_rows:
         for fld in L.ROW_SCHEMA_FIELDS:
-            if fld not in r or r.get(fld) in (None, ""):
-                # known_overlap_disposition == "none" is a valid present value
+            if fld not in r or (fld not in NULLABLE_SCHEMA_FIELDS and r.get(fld) in (None, "")):
                 schema_missing[fld].append(r.get("sample_id"))
+        if set(r) != expected_fields:
+            schema_exact_problems.append({
+                "sample_id": r.get("sample_id"),
+                "missing": sorted(expected_fields - set(r)),
+                "extra": sorted(set(r) - expected_fields),
+            })
+        if r.get("label") not in {"safe", "unsafe"} or r.get("gold") not in {0, 1}:
+            type_problems.append(f"{r.get('sample_id')}: invalid label/gold")
+        elif r["gold"] != L.to_gold(r["label"]):
+            type_problems.append(f"{r.get('sample_id')}: label/gold disagree")
+        for fld in ("content_sha256", "family_id"):
+            if re.fullmatch(r"[0-9a-f]{64}", str(r.get(fld, ""))) is None:
+                type_problems.append(f"{r.get('sample_id')}: malformed {fld}")
     report["schema_completeness"] = {
         "n_rows_total": len(all_rows),
         "rows_missing_source_revision": len(missing_rev),
         "rows_missing_content_sha256": len(missing_hash),
         "fields_with_missing_values": {k: len(v) for k, v in schema_missing.items()},
+        "exact_schema_problems": schema_exact_problems[:50],
+        "n_exact_schema_problems": len(schema_exact_problems),
+        "type_problems": type_problems[:50],
+        "n_type_problems": len(type_problems),
     }
 
     # content hash recomputation check (does stored hash match normalization?)
     hash_mismatch = [r["sample_id"] for r in all_rows
                      if r.get("content_sha256") != L.content_sha256(r["text_or_download_reference"])]
     report["schema_completeness"]["content_hash_recompute_mismatch"] = len(hash_mismatch)
+
+    sample_id_mismatch = [r.get("sample_id") for r in all_rows
+                          if r.get("sample_id") != f"{r.get('source')}::{r.get('source_row_id')}"]
+    split_mismatch = []
+    for stem, rows in M.items():
+        expected_split = STEM_TO_SPLIT[stem]
+        split_mismatch.extend(r.get("sample_id") for r in rows if r.get("split") != expected_split)
+    report["schema_completeness"]["sample_id_formula_mismatch"] = len(sample_id_mismatch)
+    report["schema_completeness"]["split_name_mismatch"] = len(split_mismatch)
+
+    role_for_split = {
+        L.SPLIT_TRAIN: "train", L.SPLIT_CALIBRATION: "represented_test",
+        L.SPLIT_ID: "represented_test", L.SPLIT_TRANSFER: "transfer",
+        L.SPLIT_ORBENCH: "stress_safe", L.SPLIT_HARMBENCH: "stress_unsafe",
+    }
+    expected_source = {}
+    for key, spec in config["sources"].items():
+        expected_source[(CONFIG_KEY_EMITTED[key], spec["role"])] = {
+            "revision": spec["revision"],
+            "license": L.resolved_license_metadata(spec),
+        }
+    source_metadata_problems = []
+    for r in all_rows:
+        expected = expected_source.get((r.get("source"), role_for_split.get(r.get("split"))))
+        if expected is None:
+            source_metadata_problems.append(f"{r.get('sample_id')}: unexpected source/role")
+            continue
+        if r.get("source_revision") != expected["revision"]:
+            source_metadata_problems.append(f"{r.get('sample_id')}: source revision drift")
+        if r.get("license_id") != expected["license"]["license_id"]:
+            source_metadata_problems.append(f"{r.get('sample_id')}: license id drift")
+        if r.get("redistribution_class") != expected["license"]["redistribution_class"]:
+            source_metadata_problems.append(f"{r.get('sample_id')}: redistribution class drift")
+    report["source_metadata_validation"] = {
+        "problems": source_metadata_problems[:50],
+        "n_problems": len(source_metadata_problems),
+        "ok": len(source_metadata_problems) == 0,
+    }
 
     # ---- one-to-one join check (unique sample_id across all manifests) -----
     sid_counts = Counter(r["sample_id"] for r in all_rows)
@@ -157,6 +344,23 @@ def audit(config_path, manifest_json_path, out_dir):
         "by_eval": overlap_by_eval,
         "conflict_records": conflict_records[:50],
     }
+    all_by_hash = defaultdict(list)
+    for row in all_rows:
+        all_by_hash[row["content_sha256"]].append(row)
+    cross_source_label_conflicts = []
+    for content_sha, rows in all_by_hash.items():
+        if len({r["source"] for r in rows}) < 2 or len({r["label"] for r in rows}) < 2:
+            continue
+        cross_source_label_conflicts.append({
+            "content_sha256": content_sha,
+            "rows": [{"sample_id": r["sample_id"], "source": r["source"],
+                      "split": r["split"], "label": r["label"],
+                      "family_id": r["family_id"]} for r in rows],
+            "one_global_family": len({r["family_id"] for r in rows}) == 1,
+        })
+    report["exact_overlap"]["cross_source_label_conflicts"] = cross_source_label_conflicts
+    report["exact_overlap"]["n_cross_source_label_conflicts"] = len(
+        cross_source_label_conflicts)
 
     # ---- 3. near-dup MinHash sensitivity 0.80/0.85/0.90 --------------------
     texts = [r["text_or_download_reference"] for r in all_rows]
@@ -165,8 +369,10 @@ def audit(config_path, manifest_json_path, out_dir):
     cand = L.lsh_candidate_pairs(sigs)
     sens = {}
     cross_pairs_by_thr = {}
+    edges_by_thr = {}
     for thr in (0.80, 0.85, 0.90):
         edges = L.edges_at_threshold(sigs, cand, thr)
+        edges_by_thr[f"{thr:.2f}"] = edges
         cross = [(i, j, e) for (i, j, e) in edges if sides[i] != sides[j]]
         within_train = sum(1 for (i, j, _) in edges if sides[i] == sides[j] == "train")
         within_eval = sum(1 for (i, j, _) in edges if sides[i] == sides[j] == "eval")
@@ -200,14 +406,72 @@ def audit(config_path, manifest_json_path, out_dir):
     train_fams = {r["family_id"] for r in train_rows}
     eval_fams = {r["family_id"] for r in eval_rows}
     shared_fams = sorted(train_fams & eval_fams)
+    calibration_fams = {r["family_id"] for r in M["calibration"]}
+    id_fams = {r["family_id"] for r in M["id_test"]}
+    shared_cal_id_fams = sorted(calibration_fams & id_fams)
+    reported_test_fams = {
+        r["family_id"]
+        for stem in ("id_test", "transfer_test", "orbench_safe_stress",
+                     "harmbench_positive_stress")
+        for r in M[stem]
+    }
+    shared_cal_reported_fams = sorted(calibration_fams & reported_test_fams)
     fam_all = Counter(r["family_id"] for r in all_rows)
+    exact_family_mismatch = [
+        content_sha for content_sha, rows in all_by_hash.items()
+        if len(rows) > 1 and len({row["family_id"] for row in rows}) != 1
+    ]
+    minhash_family_mismatch = family_edge_mismatches(all_rows, edges_by_thr["0.85"])
+    all_by_upstream = defaultdict(list)
+    for row in all_rows:
+        if row.get("upstream_family_id"):
+            all_by_upstream[row["upstream_family_id"]].append(row)
+    global_upstream_family_mismatch = [
+        family_id for family_id, rows in all_by_upstream.items()
+        if len(rows) > 1 and len({row["family_id"] for row in rows}) != 1
+    ]
+
+    transfer_by_upstream = defaultdict(list)
+    missing_required_upstream = []
+    for row in M["transfer_test"]:
+        if row["source"] in {"jailbreakbench", "xstest"}:
+            if not row.get("upstream_family_id"):
+                missing_required_upstream.append(row["sample_id"])
+            else:
+                transfer_by_upstream[row["upstream_family_id"]].append(row)
+    jbb_pairs = [rows for fid, rows in transfer_by_upstream.items()
+                 if fid.startswith("jailbreakbench:")
+                 and {r["label"] for r in rows} == {"safe", "unsafe"}]
+    xstest_pairs = [rows for fid, rows in transfer_by_upstream.items()
+                    if fid.startswith("xstest:direct-contrast:")
+                    and {r["label"] for r in rows} == {"safe", "unsafe"}]
+    upstream_family_mismatch = []
+    for fid, rows in transfer_by_upstream.items():
+        if len(rows) > 1 and len({r["family_id"] for r in rows}) != 1:
+            upstream_family_mismatch.append(fid)
     report["family_validation"] = {
         "n_families_total": len(fam_all),
         "n_train_families": len(train_fams),
         "n_eval_families": len(eval_fams),
         "train_eval_shared_families": len(shared_fams),
         "shared_family_ids_sample": shared_fams[:20],
+        "calibration_id_shared_families": len(shared_cal_id_fams),
+        "calibration_id_shared_family_ids_sample": shared_cal_id_fams[:20],
+        "calibration_reported_test_shared_families": len(shared_cal_reported_fams),
+        "calibration_reported_test_shared_family_ids_sample": shared_cal_reported_fams[:20],
         "all_rows_have_family_id": all(r.get("family_id") for r in all_rows),
+        "required_rows_missing_upstream_family_id": len(missing_required_upstream),
+        "jailbreakbench_selected_direct_pairs": len(jbb_pairs),
+        "xstest_selected_direct_pairs": len(xstest_pairs),
+        "upstream_groups_split_across_family_ids": len(upstream_family_mismatch),
+        "upstream_group_mismatch_sample": upstream_family_mismatch[:20],
+        "exact_content_groups_split_across_family_ids": len(exact_family_mismatch),
+        "exact_family_mismatch_sample": exact_family_mismatch[:20],
+        "minhash_085_edges_split_across_family_ids": len(minhash_family_mismatch),
+        "minhash_family_mismatch_sample": minhash_family_mismatch[:20],
+        "global_upstream_groups_split_across_family_ids": len(
+            global_upstream_family_mismatch),
+        "global_upstream_group_mismatch_sample": global_upstream_family_mismatch[:20],
         "family_stats_from_build": manifest_meta.get("family_stats"),
     }
 
@@ -220,6 +484,29 @@ def audit(config_path, manifest_json_path, out_dir):
         redist[r["source"]][r.get("redistribution_class", "unknown")] += 1
     report["license_inventory"] = {s: dict(v) for s, v in lic.items()}
     report["redistribution_inventory"] = {s: dict(v) for s, v in redist.items()}
+    unresolved_license_rows = [
+        r["sample_id"] for r in all_rows
+        if str(r.get("license_id", "unknown")).lower().startswith("unknown")]
+    source_license_metadata_problems = []
+    for key, spec in config["sources"].items():
+        expected = L.resolved_license_metadata(spec)
+        observed = manifest_meta.get("sources", {}).get(key, {}).get("license_metadata")
+        if observed != expected:
+            source_license_metadata_problems.append(key)
+    prompt_meta = manifest_meta.get("sources", {}).get(
+        "prompt_injections", {}).get("license_metadata", {})
+    prompt_conflict_recorded = (
+        prompt_meta.get("status") == "canonical_card_value_with_recorded_metadata_conflict"
+        and prompt_meta.get("metadata_values", {}).get("card_top_level") == "Apache-2.0"
+        and prompt_meta.get("metadata_values", {}).get("dataset_info_nested") == "CC-BY-4.0"
+    )
+    report["license_validation"] = {
+        "unresolved_license_rows": len(unresolved_license_rows),
+        "source_metadata_problems": source_license_metadata_problems,
+        "prompt_injections_conflict_recorded": prompt_conflict_recorded,
+        "ok": (not unresolved_license_rows and not source_license_metadata_problems
+               and prompt_conflict_recorded),
+    }
 
     # ---- 9. role validation ------------------------------------------------
     role_problems = []
@@ -269,8 +556,143 @@ def audit(config_path, manifest_json_path, out_dir):
             "known_wildjailbreak_overlaps", {}).get("count"),
     }
 
+    expected_provenance = {
+        "provenance_source": L.PROVENANCE_SOURCE,
+        "minhash_backend": L.MINHASH_BACKEND,
+        "minhash_algorithm_version": L.MINHASH_ALGORITHM_VERSION,
+        "minhash_seed": L.MINHASH_SEED,
+        "minhash_num_perm": L.NUM_PERM,
+        "minhash_ngram": L.NGRAM,
+        "minhash_jaccard_threshold": L.MINHASH_JACCARD_THRESHOLD,
+        "lsh_bands": L.LSH_BANDS,
+        "lsh_rows": L.LSH_ROWS,
+    }
+    observed_provenance = manifest_meta.get("provenance", {})
+    provenance_mismatch = {
+        key: {"expected": value, "observed": observed_provenance.get(key)}
+        for key, value in expected_provenance.items()
+        if observed_provenance.get(key) != value
+    }
+    report["provenance_validation"] = {
+        "expected": expected_provenance,
+        "mismatch": provenance_mismatch,
+        "ok": not provenance_mismatch,
+    }
+
+    if public_manifest_path is None:
+        public_dir = os.path.join(os.path.dirname(manifest_dir), "public_manifests")
+        public_manifest_path = os.path.join(public_dir, "manifest.json")
+    else:
+        public_manifest_path = os.path.abspath(public_manifest_path)
+        public_dir = os.path.dirname(public_manifest_path)
+    public_problems = []
+    public_conflict_inventory_ok = False
+    public_manifest_sha256 = None
+    if not os.path.exists(public_manifest_path):
+        public_problems.append(f"missing {public_manifest_path}")
+    else:
+        public_meta = json.load(open(public_manifest_path, encoding="utf-8"))
+        public_manifest_sha256 = L.sha256_of_file(public_manifest_path)
+        public_problems.extend(find_banned_public_keys(public_meta))
+        if public_meta.get("source_contract") != "pinned_hf_v2":
+            public_problems.append("public source_contract is not pinned_hf_v2")
+        if public_meta.get("clean_rerun_compatible") is not True:
+            public_problems.append("public snapshot is not marked clean-rerun-compatible")
+        raw_commitment = public_meta.get("raw_artifact_commitment") or {}
+        if raw_commitment.get("manifest_sha256") != L.sha256_of_file(manifest_json_path):
+            public_problems.append("public raw manifest commitment mismatch")
+        effective_license_by_source = {}
+        for source_meta in manifest_meta.get("sources", {}).values():
+            emitted = source_meta.get("emitted_source")
+            effective_license_by_source[emitted] = L.resolved_license_metadata(source_meta)
+        for stem in L.MANIFEST_FILES:
+            path = os.path.join(public_dir, f"{stem}.jsonl")
+            if not os.path.exists(path):
+                public_problems.append(f"missing {path}")
+                continue
+            declared = public_meta.get("files", {}).get(stem, {})
+            if declared.get("sha256") != L.sha256_of_file(path):
+                public_problems.append(f"{stem}: public sha256 mismatch")
+            rows = load_jsonl(path)
+            if declared.get("n_rows") != len(rows):
+                public_problems.append(f"{stem}: public row-count mismatch")
+            public_problems.extend(find_banned_public_keys(rows))
+            raw_path = os.path.join(manifest_dir, f"{stem}.jsonl")
+            raw_declared = (raw_commitment.get("splits") or {}).get(stem, {})
+            if raw_declared.get("sha256") != L.sha256_of_file(raw_path):
+                public_problems.append(f"{stem}: public raw-split commitment mismatch")
+            if raw_declared.get("n_rows") != len(M[stem]):
+                public_problems.append(f"{stem}: public raw-split row-count mismatch")
+            expected_public_rows = [
+                P.project_public_row(raw, effective_license_by_source) for raw in M[stem]]
+            if rows != expected_public_rows:
+                public_problems.append(f"{stem}: public rows differ from deterministic raw projection")
+        for name in ("policy_label_crosswalk", "contradictory_label_inventory"):
+            declared = public_meta.get("supplemental_files", {}).get(name, {})
+            path = declared.get("path")
+            if not path:
+                public_problems.append(f"{name}: missing supplemental declaration")
+                continue
+            path = path if os.path.isabs(path) else os.path.join(_ROOT, path)
+            if not os.path.exists(path):
+                public_problems.append(f"{name}: missing {path}")
+                continue
+            if declared.get("sha256") != L.sha256_of_file(path):
+                public_problems.append(f"{name}: sha256 mismatch")
+            supplemental = json.load(open(path, encoding="utf-8"))
+            public_problems.extend(find_banned_public_keys(supplemental))
+            if name == "contradictory_label_inventory":
+                public_conflict_inventory_ok = (
+                    len(supplemental.get("final_manifest_cross_source_conflicts", []))
+                    == len(cross_source_label_conflicts))
+    report["public_release_validation"] = {
+        "path": os.path.relpath(public_manifest_path, _ROOT),
+        "problems": public_problems[:50],
+        "n_problems": len(public_problems),
+        "ok": len(public_problems) == 0 and public_conflict_inventory_ok,
+        "contradictory_label_inventory_matches": public_conflict_inventory_ok,
+        "manifest_sha256": public_manifest_sha256,
+    }
+
     # ---- HARD ASSERTIONS ---------------------------------------------------
+    calibration_by_source = {
+        source: Counter(r["label"] for r in M["calibration"] if r["source"] == source)
+        for source in REPRESENTED_SOURCES
+    }
+    calibration_has_required_classes = all(
+        counts_for_source.get("safe", 0) >= 10
+        and counts_for_source.get("unsafe", 0) > 0
+        for counts_for_source in calibration_by_source.values()
+    )
+    file_integrity_ok = all(
+        item["sha256_matches"] and item["row_count_matches"]
+        for item in file_integrity.values())
+    family_validation_ok = (
+        len(shared_fams) == 0
+        and len(shared_cal_id_fams) == 0
+        and len(shared_cal_reported_fams) == 0
+        and not missing_required_upstream
+        and len(jbb_pairs) == 36
+        and len(xstest_pairs) == 58
+        and not upstream_family_mismatch
+        and not exact_family_mismatch
+        and not minhash_family_mismatch
+        and not global_upstream_family_mismatch
+        and int(manifest_meta.get("family_stats", {}).get("n_upstream_edges", 0)) >= 94
+    )
     assertions = {
+        "config_hash_matches == true": report["config_validation"]["matches"],
+        "source_mode == huggingface_pinned_revisions": report["config_validation"]["pinned_hf_default"],
+        "manifest_file_hashes_and_counts_match == true": file_integrity_ok,
+        "declared_row_and_class_counts_match == true": count_validation["all_expected_counts_match"],
+        "exact_schema_and_types_valid == true": (
+            not schema_missing and not schema_exact_problems and not type_problems),
+        "stored_content_hashes_recompute == true": len(hash_mismatch) == 0,
+        "sample_id_and_split_names_valid == true": (
+            not sample_id_mismatch and not split_mismatch),
+        "source_revision_and_license_metadata_match == true": (
+            not source_metadata_problems),
+        "sample_ids_unique == true": len(dup_sids) == 0,
         "or_bench_train_count == 0": or_bench_train_count == 0,
         "beavertails_train_count == 0": beavertails_train_count == 0,
         "exact_train_vs_eval_overlap == 0": total_exact == 0,
@@ -278,7 +700,23 @@ def audit(config_path, manifest_json_path, out_dir):
         "every_row_has_source_revision == true": len(missing_rev) == 0,
         "every_row_has_content_hash == true": len(missing_hash) == 0,
         "every_near_duplicate_candidate_has_disposition == true": every_candidate_disposed,
+        "train_eval_and_calibration_id_families_disjoint == true": family_validation_ok,
+        "calibration_vs_all_reported_test_families_disjoint == true": (
+            len(shared_cal_reported_fams) == 0),
+        "all_observed_similarity_and_upstream_edges_share_family_id == true": (
+            not exact_family_mismatch
+            and not minhash_family_mismatch
+            and not global_upstream_family_mismatch),
+        "calibration_has_both_classes_and_at_least_10_negatives_per_source == true": (
+            calibration_has_required_classes),
+        "source_roles_valid == true": len(role_problems) == 0,
+        "licenses_resolved_and_conflicts_recorded == true": report["license_validation"]["ok"],
+        "minhash_backend_and_algorithm_pinned == true": report["provenance_validation"]["ok"],
+        "public_text_free_release_complete == true": report["public_release_validation"]["ok"],
     }
+    if set(assertions) != set(C.AUDIT_HARD_ASSERTION_KEYS):
+        raise RuntimeError("audit implementation does not match the locked hard-assertion schema")
+    report["audit_contract_version"] = C.AUDIT_CONTRACT_VERSION
     report["hard_assertions"] = assertions
     all_pass = all(assertions.values())
     report["all_hard_assertions_pass"] = all_pass
@@ -404,8 +842,10 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--public-manifest", default=None,
+                    help="text-free public manifest index (default: sibling public_manifests)")
     args = ap.parse_args()
-    audit(args.config, args.manifest, args.out)
+    audit(args.config, args.manifest, args.out, args.public_manifest)
 
 
 if __name__ == "__main__":

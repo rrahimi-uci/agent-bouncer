@@ -4,11 +4,8 @@ Hashing / normalization / MinHash come from ``guard_research.provenance`` (the
 single source of truth, plan sec 13.1). Family clustering (LSH banding + union
 find), deterministic hash-ranking, and the calibration/ID family split are built
 here on top of those primitives so the manifest builder, the split audit, and
-the tests are byte-identical by construction.
-
-If ``guard_research.provenance`` is not importable (package not landed yet), a
-minimal local fallback matching its frozen rules is used.
-TODO(paper-a): drop the fallback once guard_research.provenance is guaranteed.
+the tests are byte-identical by construction.  Import failure is fatal: a
+data-defining algorithm must never switch to an implicit fallback.
 
 (This module is intentionally separate from ``experiments/paper_a_common.py``,
 which serves the lock/train/eval/analyze pipeline.)
@@ -20,8 +17,6 @@ import hashlib
 import os
 import sys
 
-import numpy as np
-
 # --- make repo-root + experiments/ importable regardless of entrypoint --------
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
@@ -29,83 +24,21 @@ for _p in (_ROOT, _HERE):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# --- provenance primitives: prefer guard_research, else local fallback --------
-try:
-    from guard_research.provenance import (  # type: ignore
-        MINHASH_JACCARD_THRESHOLD,
-        content_sha256,
-        estimated_jaccard,
-        minhash_signature,
-        normalize_text,
-        sha256_of_file,
-        sha256_of_obj,
-    )
+# --- provenance primitives: one required implementation -----------------------
+from guard_research.provenance import (  # type: ignore  # noqa: E402
+    MINHASH_ALGORITHM_VERSION,
+    MINHASH_BACKEND,
+    MINHASH_JACCARD_THRESHOLD,
+    MINHASH_SEED,
+    content_sha256,
+    estimated_jaccard,
+    minhash_signature,
+    normalize_text,
+    sha256_of_file,
+    sha256_of_obj,
+)
 
-    PROVENANCE_SOURCE = "guard_research.provenance"
-except Exception:  # pragma: no cover - fallback only when package absent
-    # TODO(paper-a): remove this fallback once guard_research.provenance ships.
-    import json as _json
-    import unicodedata as _ud
-
-    PROVENANCE_SOURCE = "paper_a_manifest_lib:local_fallback"
-    MINHASH_JACCARD_THRESHOLD = 0.85
-    _MERSENNE_31 = (1 << 31) - 1
-    _MINHASH_SEED = 20260712
-
-    def normalize_text(t) -> str:
-        t = "" if t is None else str(t)
-        t = _ud.normalize("NFKC", t).lower()
-        return " ".join(t.split())
-
-    def content_sha256(t) -> str:
-        return hashlib.sha256(normalize_text(t).encode("utf-8")).hexdigest()
-
-    def sha256_of_obj(obj) -> str:
-        payload = _json.dumps(obj, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-    def sha256_of_file(path) -> str:
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            for chunk in iter(lambda: f.read(1 << 16), b""):
-                h.update(chunk)
-        return h.hexdigest()
-
-    def _char_shingles(norm_text, ngram):
-        if not norm_text:
-            return []
-        if len(norm_text) < ngram:
-            return [norm_text]
-        return list({norm_text[i : i + ngram] for i in range(len(norm_text) - ngram + 1)})
-
-    def _base_hash(sh):
-        d = hashlib.blake2b(sh.encode("utf-8"), digest_size=8).digest()
-        return int.from_bytes(d, "little") % _MERSENNE_31
-
-    def _perm_coeffs(num_perm):
-        rs = np.random.RandomState(_MINHASH_SEED)
-        a = rs.randint(1, _MERSENNE_31, size=num_perm).astype(np.uint64)
-        b = rs.randint(0, _MERSENNE_31, size=num_perm).astype(np.uint64)
-        return a, b
-
-    def minhash_signature(text, num_perm=256, ngram=5) -> np.ndarray:
-        norm = normalize_text(text)
-        sh = _char_shingles(norm, ngram)
-        a, b = _perm_coeffs(num_perm)
-        if not sh:
-            return np.full(num_perm, _MERSENNE_31, dtype=np.uint64)
-        bases = np.array([_base_hash(s) for s in sh], dtype=np.uint64)
-        hashed = (a[:, None] * bases[None, :] + b[:, None]) % np.uint64(_MERSENNE_31)
-        return hashed.min(axis=1).astype(np.uint64)
-
-    def estimated_jaccard(sig_a, sig_b) -> float:
-        a = np.asarray(sig_a)
-        b = np.asarray(sig_b)
-        if a.shape != b.shape:
-            raise ValueError("signature length mismatch")
-        if a.size == 0:
-            return 1.0
-        return float(np.mean(a == b))
+PROVENANCE_SOURCE = "guard_research.provenance"
 
 
 # --- frozen family-construction parameters (plan sec 6.7) ---------------------
@@ -141,8 +74,11 @@ ROW_SCHEMA_FIELDS = [
     "source_config",
     "source_revision",
     "source_row_id",
+    "upstream_family_id",
+    "source_origin",
     "split",
     "label",
+    "gold",
     "label_provenance",
     "text_or_download_reference",
     "content_sha256",
@@ -151,6 +87,95 @@ ROW_SCHEMA_FIELDS = [
     "redistribution_class",
     "known_overlap_disposition",
 ]
+
+# XSTest contains eight 25-row unsafe contrast blocks.  The first five and the
+# historical block pair with the immediately preceding safe block; the
+# discrimination and privacy contrasts pair with ``real_group_nons_discr`` and
+# ``privacy_fictional`` respectively.  The other two safe blocks have no direct
+# unsafe counterpart.  Values are stable family namespaces, not labels.
+XSTEST_DIRECT_CONTRAST_GROUPS = {
+    "homonyms": "homonyms",
+    "contrast_homonyms": "homonyms",
+    "figurative_language": "figurative_language",
+    "contrast_figurative_language": "figurative_language",
+    "safe_targets": "safe_targets",
+    "contrast_safe_targets": "safe_targets",
+    "safe_contexts": "safe_contexts",
+    "contrast_safe_contexts": "safe_contexts",
+    "definitions": "definitions",
+    "contrast_definitions": "definitions",
+    "real_group_nons_discr": "discrimination",
+    "contrast_discr": "discrimination",
+    "historical_events": "historical_events",
+    "contrast_historical_events": "historical_events",
+    "privacy_fictional": "privacy_fictional",
+    "contrast_privacy": "privacy_fictional",
+}
+
+# License metadata is frozen at the same source revisions as the data.  These
+# three configs previously used ``unknown-verify-before-lock`` even though the
+# pinned cards declare licenses.  Prompt-Injections is special: its canonical
+# top-level card field says Apache-2.0, while nested generated dataset_info says
+# CC-BY-4.0.  Preserve that conflict instead of silently erasing it.
+PINNED_LICENSE_METADATA = {
+    ("deepset/prompt-injections", "4f61ecb038e9c3fb77e21034b22511b523772cdd"): {
+        "license_id": "Apache-2.0",
+        "redistribution_class": "permissive_with_notice",
+        "status": "canonical_card_value_with_recorded_metadata_conflict",
+        "card_url": (
+            "https://huggingface.co/datasets/deepset/prompt-injections/blob/"
+            "4f61ecb038e9c3fb77e21034b22511b523772cdd/README.md"
+        ),
+        "metadata_values": {
+            "card_top_level": "Apache-2.0",
+            "dataset_info_nested": "CC-BY-4.0",
+        },
+        "note": "Pinned card has conflicting top-level and nested license metadata.",
+    },
+    ("jackhhao/jailbreak-classification", "2f2ceeb39658696fd3f462403562b6eea5306287"): {
+        "license_id": "Apache-2.0",
+        "redistribution_class": "permissive_with_notice",
+        "status": "declared_by_pinned_card",
+        "card_url": (
+            "https://huggingface.co/datasets/jackhhao/jailbreak-classification/blob/"
+            "2f2ceeb39658696fd3f462403562b6eea5306287/README.md"
+        ),
+        "metadata_values": {"card_top_level": "Apache-2.0"},
+    },
+    ("bench-llm/or-bench", "e36d8b80e81837c8a8f264bbb2a49f1b32c7e272"): {
+        "license_id": "CC-BY-4.0",
+        "redistribution_class": "permissive_with_attribution",
+        "status": "declared_by_pinned_card",
+        "card_url": (
+            "https://huggingface.co/datasets/bench-llm/or-bench/blob/"
+            "e36d8b80e81837c8a8f264bbb2a49f1b32c7e272/README.md"
+        ),
+        "metadata_values": {"card_top_level": "CC-BY-4.0"},
+    },
+}
+
+
+def resolved_license_metadata(spec):
+    """Return effective and declared license provenance for one source spec."""
+    declared = spec.get("license_id", "unknown")
+    key = (spec.get("hf_path"), spec.get("revision"))
+    pinned = PINNED_LICENSE_METADATA.get(key)
+    if pinned:
+        out = dict(pinned)
+        out["metadata_values"] = dict(pinned.get("metadata_values", {}))
+        out["declared_config_license_id"] = declared
+        return out
+    return {
+        "license_id": declared,
+        "redistribution_class": spec.get("redistribution_class", "unknown"),
+        "status": "declared_by_pinned_config",
+        "card_url": (
+            f"https://huggingface.co/datasets/{spec.get('hf_path')}/tree/"
+            f"{spec.get('revision')}"
+        ),
+        "metadata_values": {"config": declared},
+        "declared_config_license_id": declared,
+    }
 
 
 def to_gold(label) -> int:
@@ -180,6 +205,11 @@ def family_sort_key(data_seed, source, family_id) -> str:
     return hashlib.sha256(
         f"{data_seed}|{source}|{family_id}".encode("utf-8")
     ).hexdigest()
+
+
+def global_family_sort_key(data_seed, family_id) -> str:
+    """Frozen order for globally assigning whole families to calibration/ID."""
+    return hashlib.sha256(f"{data_seed}|global|{family_id}".encode("utf-8")).hexdigest()
 
 
 # --- union-find ---------------------------------------------------------------
@@ -235,7 +265,7 @@ def lsh_candidate_pairs(sigs, bands=LSH_BANDS, rows=LSH_ROWS):
 
 
 def build_minhash_signatures(texts):
-    """MinHash signatures for a list of texts (list of np.uint64 arrays)."""
+    """MinHash signatures for a list of texts (uint64 numpy arrays)."""
     return [minhash_signature(t, num_perm=NUM_PERM, ngram=NGRAM) for t in texts]
 
 
@@ -304,6 +334,9 @@ def build_families(texts, content_hashes, upstream_edges=None, sigs=None):
         "lsh_rows": LSH_ROWS,
         "threshold": MINHASH_JACCARD_THRESHOLD,
         "provenance_source": PROVENANCE_SOURCE,
+        "minhash_backend": MINHASH_BACKEND,
+        "minhash_algorithm_version": MINHASH_ALGORITHM_VERSION,
+        "minhash_seed": MINHASH_SEED,
     }
     return family_of, sigs, cand, edges, comps, stats
 
@@ -338,3 +371,87 @@ def split_calibration_id(source_rows, source, data_seed, cal_frac=0.40):
             stopped = True
     assignment = {f: (SPLIT_CALIBRATION if f in cal_ids else SPLIT_ID) for f in fams}
     return cal_ids, assignment
+
+
+def split_calibration_id_global(rows, data_seed, cal_frac=0.40):
+    """Assign every global family atomically to calibration or ID.
+
+    Start from the frozen per-source family split so unrelated families retain
+    their historical assignment.  For a family whose rows cross sources and
+    received conflicting local assignments, deterministically choose the single
+    global assignment that minimizes summed per-source absolute deviation from
+    the requested calibration fraction.  Returns
+    ``(calibration_family_ids, assignment)``.
+    """
+    fam_rows = {}
+    totals = {}
+    rows_by_source = {}
+    for row in rows:
+        family_id = row["family_id"]
+        source = row["source"]
+        fam_rows.setdefault(family_id, []).append(row)
+        totals[source] = totals.get(source, 0) + 1
+        rows_by_source.setdefault(source, []).append(row)
+    targets = {source: cal_frac * total for source, total in totals.items()}
+    cal_counts = {source: 0 for source in totals}
+    local_assignment = {}
+    for source, source_rows in rows_by_source.items():
+        _, source_assignment = split_calibration_id(
+            source_rows, source, data_seed, cal_frac=cal_frac)
+        for family_id, split in source_assignment.items():
+            local_assignment[(source, family_id)] = split
+        for row in source_rows:
+            if source_assignment[row["family_id"]] == SPLIT_CALIBRATION:
+                cal_counts[source] += 1
+
+    assignment = {}
+    conflicts = []
+    for family_id, members in fam_rows.items():
+        local_splits = {local_assignment[(row["source"], family_id)] for row in members}
+        if len(local_splits) == 1:
+            assignment[family_id] = next(iter(local_splits))
+        else:
+            conflicts.append(family_id)
+
+    for family_id in sorted(conflicts, key=lambda f: global_family_sort_key(data_seed, f)):
+        members = fam_rows[family_id]
+        additions = {}
+        # Remove the inconsistent provisional pieces before comparing the two
+        # valid whole-family assignments.
+        for row in members:
+            source = row["source"]
+            additions[source] = additions.get(source, 0) + 1
+            if local_assignment[(source, family_id)] == SPLIT_CALIBRATION:
+                cal_counts[source] -= 1
+        objective_id = sum(abs(cal_counts[s] - targets[s]) for s in totals)
+        objective_cal = sum(
+            abs(cal_counts[s] + additions.get(s, 0) - targets[s]) for s in totals)
+        if objective_cal < objective_id:
+            chosen = SPLIT_CALIBRATION
+        elif objective_cal > objective_id:
+            chosen = SPLIT_ID
+        else:
+            # Stable tie-break independent of input order.
+            chosen = (SPLIT_CALIBRATION
+                      if int(global_family_sort_key(data_seed, family_id), 16) % 2 == 0
+                      else SPLIT_ID)
+        assignment[family_id] = chosen
+        if chosen == SPLIT_CALIBRATION:
+            for source, count in additions.items():
+                cal_counts[source] += count
+
+    cal_ids = {family_id for family_id, split in assignment.items()
+               if split == SPLIT_CALIBRATION}
+    return cal_ids, assignment
+
+
+def route_calibration_conflicts_to_id(assignment, reported_test_family_ids):
+    """Keep threshold-fitting families off every reported test/stress surface."""
+    protected = set(reported_test_family_ids)
+    routed = sorted(
+        family_id for family_id, split in assignment.items()
+        if split == SPLIT_CALIBRATION and family_id in protected)
+    corrected = dict(assignment)
+    for family_id in routed:
+        corrected[family_id] = SPLIT_ID
+    return corrected, routed

@@ -5,35 +5,34 @@ Reproduction code, data manifests, and an auditable evidence chain for the paper
 > **The Benchmark Chooses the Winner: Measuring Fine-Tuning Specialization Across Safety-Guard Benchmarks**
 > Reza Rahimi (JazzX AI)
 
-Parameter-efficient fine-tuning of a small language model into a prompt-safety
-guard **specializes it to the benchmarks it was trained on**. We measure this
-directly on a fixed panel of four instruction-tuned checkpoints, each fine-tuned
-five times, on a decontaminated corpus — and separate two effects that prior work
-conflates: gains on the *sources represented in training* versus transfer to
-*held-out datasets*. Scope: every evaluation classifies **input prompts** (unsafe =
-harmful content, jailbreak, or prompt injection).
+This repository compares each prompt-safety guard with its own untuned base on a
+fixed panel of four instruction checkpoints, five SFT seeds each. It separates
+changes on sources represented during training from transfer to held-out datasets.
+The committed scores are a **legacy, retrospective run**; corrected provenance,
+family-link, truncation, and lock code is included, but those fixes require a new
+GPU run before the result can be treated as clean-run evidence.
 
 ## Headline result
 
 Across the panel (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B; seeds 42–46),
-LoRA-SFT on a decontaminated 1,200-row corpus:
+LoRA-SFT on the legacy 1,200-row training subset:
 
-| Effect | Δ macro-AP (base → SFT) | 95% one-sided bound | Gate |
-|---|---|---|---|
-| **Represented** sources (in training) | **+0.325** | LCB **+0.281** | A ✓ (gain > 0) |
-| **Transfer** to held-out datasets | **−0.050** | UCB **−0.029** | B ✓ (change < 0) |
+| Effect | Observed Δ macro-AP (base → SFT) | Descriptive 95% two-sided bootstrap interval |
+|---|---:|---:|
+| **Represented** sources | **+0.333** | **[+0.272, +0.379]** |
+| **Transfer** to held-out datasets | **−0.050** | **[−0.076, −0.025]** |
 
-SFT lifts every checkpoint to ≈0.98 macro-AP on represented sources (largest gain
-for the weakest base) but **degrades** aggregate transfer, and the realized
-false-positive rate on held-out data rises from **8.3% (base) to 13.7% (SFT)**.
-Transfer is heterogeneous by checkpoint — SmolLM2 +0.05, Qwen2.5 −0.03,
-Qwen3-4B −0.10, SmolLM3 −0.12 — but both claims are decided by a **family+seed
-hierarchical bootstrap** with **intersection-union claim gates** that are
-leave-one-family-out sign-stable. The conclusion is a measured **in-source
-specialization trade-off**, not a universal "fine-tuning hurts."
+SFT lifts every checkpoint to about 0.98 macro-AP on represented sources. Transfer
+is heterogeneous by checkpoint—SmolLM2 +0.05, Qwen2.5 −0.03, Qwen3-4B −0.10,
+SmolLM3 −0.12—while every leave-one-checkpoint-out and
+leave-one-transfer-benchmark-out aggregate remains negative. Benchmark-macro
+transfer FPR rises from **8.3% to 13.7%** (pooled-negative: **4.4% to 14.6%**),
+and HarmBench recall falls from **78.4% to 57.5%**.
+These are estimation-only legacy results, not formal claim gates or a universal
+"fine-tuning hurts" conclusion.
 
-All numbers above are regenerated from the committed score table by
-[`make repro`](#reproduce-no-gpu) — see [artifacts/paper_a_sft/analysis/](artifacts/paper_a_sft/analysis).
+The legacy numbers regenerate from the committed score table only through the
+explicit compatibility path, [`make repro-legacy`](#reproduce-the-legacy-scores-no-gpu).
 
 ## Repository layout
 
@@ -46,11 +45,14 @@ configs/             paper_a_sft.yaml — the single study config
 tests/               unit tests for the canonical metrics, thresholds, manifests
 artifacts/paper_a_sft/   the evidence chain: LOCK.json, audit/, analysis/,
                      scores/scores.parquet (row-keyed hashes + logits, no raw text),
-                     runmeta/
+                     runmeta/; this namespace is immutable legacy evidence
+artifacts/paper_a_sft_v2/   output root for clean manifests, lock, runs, scores,
+                     and analysis (created by the corrected pipeline)
 paper-a/             the manuscript (tectonic) + generated tables/figures
-paper-html/          the HTML edition (self-contained, offline math); bundles
-                     explorer/ — the interactive benchmark explorer webpage
-                     (+ explorer/sources/ — this-work data the explorer samples)
+paper-a/paper-html/  the focused HTML edition (self-contained, offline math);
+                     explorer/ is an unlinked archive of the earlier broad study
+paper-a-simplified/  plain-language edition of the paper for readers with basic
+                     stats + fine-tuning knowledge (same numbers) + a glossary
 docs/                design/planning notes
 legacy/              the earlier broad study + planned Paper B code (quarantined,
                      still runnable; not part of this reproduction)
@@ -61,22 +63,26 @@ legacy/              the earlier broad study + planned Paper B code (quarantined
 Python 3.11+.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[all]"          # library + training + figures + dev
-# or, for the exact versions the results were produced with:
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[all]"          # current library + training/scoring + dev
+# or, for a fully pinned current environment:
 pip install -r requirements.txt
 ```
 
-CPU-only reproduction (below) needs just the core: `pip install -e .`.
+CPU-only analysis needs the core package; tests need `pip install -e ".[dev]"`.
+The pinned current environment and the partially recorded historical GPU
+environment are intentionally separated in
+[docs/reproducibility-environments.md](docs/reproducibility-environments.md).
 
-## Reproduce (no GPU)
+## Reproduce the legacy scores (no GPU)
 
-Because `scores/scores.parquet` is committed, every table and figure regenerates
-from it on CPU in seconds:
+The historical score bundle regenerates its tables and figures on CPU (about
+10–15 minutes for 10,000 bootstrap replicates on the reviewed laptop), but it is
+rejected by the strict v2 contract unless legacy mode is explicit:
 
 ```bash
-make repro      # analyze committed scores → tables + figures + claim gates
-make test       # 30 unit tests (canonical metrics / thresholds / manifests)
+make repro-legacy  # explicit compatibility mode → tables + figures, then paper sync
+make test          # unit and release-contract tests
 make selftest   # synthetic end-to-end check of the analysis
 make paper      # build the PDF (needs tectonic)
 ```
@@ -89,12 +95,12 @@ The full pipeline runs in order; steps 1–3 and 6 are CPU, steps 4–5 need a G
 Hugging Face access (`HF_TOKEN`; copy [.env.example](.env.example) → `.env`):
 
 ```bash
-make manifests   # 1. build the decontaminated 1,200-row manifest + held-out sets
-make audit       # 2. recompute + hard-assert decontamination (0 train↔eval overlap)
-make lock        # 3. freeze config + manifest hashes into LOCK.json
+make manifests   # 1. build pinned, hash-ranked manifests
+make audit       # 2. independently recompute and hard-assert split integrity
+make lock        # 3. write artifacts/paper_a_sft_v2/LOCK.json
 make train       # 4. train the 4 × 5 LoRA-SFT panel
 make eval        # 5. score bases + adapters → scores.parquet
-make analyze     # 6. macro-AP + bootstrap + claim gates → tables/figures
+make analyze     # 6. strict validated analysis → tables/figures
 ```
 
 See [experiments/README.md](experiments/README.md) for what each step does.
@@ -103,16 +109,18 @@ See [experiments/README.md](experiments/README.md) for what each step does.
 
 The study is designed to be checkable without rerunning the GPU work:
 
-- **`LOCK.json`** binds the config, data-manifest hashes, and audit result; the
-  training and scoring steps refuse to run against a mismatched lock.
-- **`audit/`** independently recomputes the decontamination facts and hard-asserts
-  them (zero exact/conflicting train↔eval overlap, label balance, family
-  disjointness).
+- **New v2 locks** are self-hashed and bind the config, every manifest, the audit,
+  prompt rendering, source state, and expected score identity. The historical
+  `LOCK.json` remains immutable and is accepted only with `--allow-legacy-lock`.
+- **`audit/`** independently recomputes and fail-closes on exact/conflicting
+  overlap, label balance, upstream family disjointness, selection provenance,
+  pinned revisions, and deterministic near-duplicate dispositions.
 - **`scores/scores.parquet`** stores per-row **content hashes and model logits
   only — never raw prompt text** — so the third-party benchmark text is not
   redistributed, yet every metric is recomputable.
-- **`analysis/`** holds `results.json`, `claim_checks.json`, per-seed and
-  per-benchmark tables, and the figure, all emitted by the canonical metric module.
+- **`analysis/`** holds `results.json`, descriptive `claim_checks.json`, per-seed
+  and per-benchmark outputs, and figures. Analysis validates the complete score
+  matrix and sibling metadata before computing anything.
 
 All metrics come from [guard_research/metrics.py](guard_research/metrics.py)
 (sklearn-backed, tie-aware, permutation-invariant) — there is no ad-hoc
@@ -120,13 +128,16 @@ average-precision loop anywhere in the pipeline.
 
 ## Data & provenance
 
-Training sources are pulled from Hugging Face pinned by revision (ToxicChat,
-Prompt-Injections, Jailbreak-Classification) and the held-out evaluation rows from
-a local frozen cache `data/frozen_eval_rows.json` (gitignored; gated AI2 sets fall
-back to Hugging Face when it is absent). Raw non-commercially-licensed manifest
-rows are gitignored; they regenerate deterministically from the builder and config.
-Provenance (NFKC-normalized content/family SHA-256, MinHash near-duplicate families)
-lives in [guard_research/provenance.py](guard_research/provenance.py).
+The corrected builder writes to the separate `artifacts/paper_a_sft_v2/` namespace,
+pulls every source at a pinned revision, and uses deterministic hash-ranked cohorts.
+The old `data/frozen_eval_rows.json` seed-7 cohorts are available only through an
+explicit legacy option. Raw third-party rows are gitignored. The tracked
+[public manifest index](artifacts/paper_a_sft/public_manifests/manifest.json) is a
+recursively text-free snapshot of the historical cohorts and explicitly marks
+itself incompatible with a clean rerun; a v2 build writes its own public index.
+Both retain identifiers, revisions, hashes, licenses, selection provenance, and
+family links. Provenance uses one pinned NumPy MinHash implementation so the
+installed environment cannot change family assignments.
 
 ## Earlier broad study & Paper B
 

@@ -27,10 +27,8 @@ wandb/
 # Data (downloaded / generated — not committed)
 /data/
 
-# Paper A manifests: raw third-party row text (ToxicChat CC-BY-NC, gated AI2,
-# etc.) must not be redistributed under this repo's Apache-2.0 license
-# (plan sec 6.2 Branch A). The .jsonl row files stay local; the auditable,
-# text-free artifacts (manifest.json, audit/) remain tracked.
+# Raw third-party row text (ToxicChat CC-BY-NC, gated AI2, etc.) stays local.
+# Text-free release artifacts are written separately to public_manifests/.
 /artifacts/**/manifests/*.jsonl
 
 # Env / secrets
@@ -48,3 +46,17 @@ artifacts/paper_a_sft/scores/
 artifacts/paper_a_sft/runs/
 artifacts/paper_a_sft/base_scores/
 artifacts/paper_a_sft/calibration/
+!artifacts/paper_a_sft/public_manifests/
+!artifacts/paper_a_sft/public_manifests/**
+
+# Corrected v2 namespace: keep raw/manifold-heavy artifacts local. Text-free
+# public_manifests/, audit summaries, locks, and analysis outputs remain releasable.
+artifacts/paper_a_sft_v2/manifests/
+artifacts/paper_a_sft_v2/scores/
+artifacts/paper_a_sft_v2/runs/
+artifacts/paper_a_sft_v2/base_scores/
+artifacts/paper_a_sft_v2/calibration/
+
+# Archived explorer prompt samples may contain NC-licensed or gated text.
+paper-a/paper-html/explorer/samples.local.js
+paper-a/paper-html/explorer/expguard_sample.local.json

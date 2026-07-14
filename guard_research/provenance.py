@@ -24,6 +24,9 @@ __all__ = [
     "minhash_signature",
     "estimated_jaccard",
     "MINHASH_JACCARD_THRESHOLD",
+    "MINHASH_ALGORITHM_VERSION",
+    "MINHASH_BACKEND",
+    "MINHASH_SEED",
 ]
 
 # Prespecified candidate-generation threshold for near-duplicate families
@@ -31,11 +34,18 @@ __all__ = [
 # a *candidate* threshold for adjudication, NOT proof of semantic equivalence.
 MINHASH_JACCARD_THRESHOLD = 0.85
 
+# Family construction is data definition, not an optional performance detail.
+# Keep one implementation and one seed so installing an extra package can never
+# silently change the study population.  Version this string whenever any
+# shingling, hashing, permutation, or empty-input behavior changes.
+MINHASH_ALGORITHM_VERSION = 1
+MINHASH_BACKEND = "numpy-blake2b-mersenne31-v1"
+
 # 31-bit Mersenne prime for the compact MinHash universal-hash permutations.
 # Keeps a*base < 2**62 so uint64 arithmetic never overflows.
 _MERSENNE_31 = (1 << 31) - 1
 # Fixed seed so signatures are reproducible across processes/runs.
-_MINHASH_SEED = 20260712
+MINHASH_SEED = 20260712
 
 
 def normalize_text(t) -> str:
@@ -102,7 +112,7 @@ def _perm_coeffs(num_perm: int):
     Reseeded from a fixed seed on every call, so two signatures computed with
     the same ``num_perm`` use the same permutations and are directly comparable.
     """
-    rs = np.random.RandomState(_MINHASH_SEED)
+    rs = np.random.RandomState(MINHASH_SEED)
     a = rs.randint(1, _MERSENNE_31, size=num_perm).astype(np.uint64)
     b = rs.randint(0, _MERSENNE_31, size=num_perm).astype(np.uint64)
     return a, b
@@ -111,11 +121,10 @@ def _perm_coeffs(num_perm: int):
 def minhash_signature(text, num_perm: int = 256, ngram: int = 5) -> np.ndarray:
     """MinHash signature over character ``ngram``-grams of the normalized text.
 
-    Uses ``datasketch`` if it is importable, otherwise a compact numpy
-    implementation (universal hashing of blake2b shingle hashes). Both backends
-    return a length-``num_perm`` numpy array of hash values; compare two
-    signatures from the *same backend and num_perm* with :func:`estimated_jaccard`.
-    Do not mix signatures produced by different backends.
+    Uses the study's sole pinned implementation: universal hashing of stable
+    blake2b shingle hashes with numpy arithmetic.  Optional-package availability
+    is intentionally irrelevant because changing MinHash implementations can
+    change family edges and therefore train/evaluation membership.
 
     Text is normalized internally via :func:`normalize_text`, matching the
     frozen family-construction rule (plan sec 6.7): NFKC + lowercase +
@@ -124,19 +133,7 @@ def minhash_signature(text, num_perm: int = 256, ngram: int = 5) -> np.ndarray:
     norm = normalize_text(text)
     shingles = _char_shingles(norm, ngram)
 
-    # Preferred backend: datasketch (if the reproducibility environment has it).
-    try:
-        from datasketch import MinHash  # type: ignore
-    except Exception:
-        MinHash = None
-
-    if MinHash is not None:
-        m = MinHash(num_perm=num_perm)
-        for sh in shingles:
-            m.update(sh.encode("utf-8"))
-        return np.asarray(m.hashvalues, dtype=np.uint64)
-
-    # Compact fallback: signature[i] = min_s ((a_i * base_s + b_i) mod prime).
+    # signature[i] = min_s ((a_i * base_s + b_i) mod prime).
     a, b = _perm_coeffs(num_perm)
     if not shingles:
         # No content -> fill with the prime sentinel so two empty texts match.

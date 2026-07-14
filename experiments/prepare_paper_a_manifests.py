@@ -21,14 +21,17 @@ before family clustering because it is train-independent and fully deterministic
 
 Usage:
   .venv/bin/python experiments/prepare_paper_a_manifests.py \
-    --config configs/paper_a_sft.yaml --out artifacts/paper_a_sft/manifests
+    --config configs/paper_a_sft.yaml --out artifacts/paper_a_sft_v2/manifests \
+    --public-out artifacts/paper_a_sft_v2/public_manifests
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 
@@ -99,13 +102,15 @@ def _hf(token, path, config, split, revision):
     return load_dataset(path, config, split=split, revision=revision, token=token)
 
 
-def make_row(source, cfg, rev, split, srid, text, label, prov, spec):
+def make_row(source, cfg, rev, split, srid, text, label, prov, spec,
+             upstream_family_id=None):
     ct = L.content_sha256(text)
     return {
         "source": source,
         "source_config": cfg,
         "source_revision": rev,
         "source_row_id": srid,
+        "upstream_family_id": upstream_family_id,
         "role_split": split,          # working split; final `split` set later
         "text": text,
         "content_sha256": ct,
@@ -113,8 +118,9 @@ def make_row(source, cfg, rev, split, srid, text, label, prov, spec):
         "label": label,
         "gold": L.to_gold(label),
         "label_provenance": prov,
-        "license_id": spec.get("license_id", "unknown"),
-        "redistribution_class": spec.get("redistribution_class", "unknown"),
+        "license_id": spec.get("_effective_license_id", spec.get("license_id", "unknown")),
+        "redistribution_class": spec.get(
+            "_effective_redistribution_class", spec.get("redistribution_class", "unknown")),
         "source_origin": None,        # set by loader
     }
 
@@ -146,7 +152,11 @@ def load_hf_source(token, name, spec, label_fn, id_field=None):
                 srid = f"{cfg}/{split}/{up}"
             else:
                 srid = f"{rev[:8]}/{cfg}/{split}/pos{pos}"
-            row = make_row(name, cfg, rev, spec["role"], srid, text, label, prov, spec)
+            upstream_family_id = None
+            if up not in (None, ""):
+                upstream_family_id = f"{name}:{id_field}:{up}"
+            row = make_row(name, cfg, rev, spec["role"], srid, text, label, prov, spec,
+                           upstream_family_id=upstream_family_id)
             row["source_origin"] = f"hf:{spec['hf_path']}@{rev[:8]}"
             rows.append(row)
     return rows
@@ -193,6 +203,54 @@ def load_wildjailbreak_labeled(token, name, spec):
         row = make_row(name, cfg, rev, spec["role"], srid, text, label, prov, spec)
         row["source_origin"] = f"hf:{spec['hf_path']}@{rev[:8]}"
         rows.append(row)
+    return rows
+
+
+def load_xstest_labeled(token, name, spec):
+    """Load XSTest while preserving all eight direct contrast relationships."""
+    rev = spec["revision"]
+    cfg = spec["hf_config"]
+    split = spec["split"]
+    prov = f"{spec['hf_path']}@{rev[:8]} :: {spec['label_rule']}"
+    ds = _hf(token, spec["hf_path"], cfg, split, rev)
+    type_ordinals = Counter()
+    rows = []
+    for pos, r in enumerate(ds):
+        text = (r.get(spec["text_field"]) or "").strip()
+        if not text:
+            continue
+        row_type = str(r.get("type") or "").strip()
+        ordinal = type_ordinals[row_type]
+        type_ordinals[row_type] += 1
+        label = label_xstest(r)
+        upstream_id = r.get("id")
+        srid = f"{rev[:8]}/{cfg}/{split}/pos{pos}"
+        group = L.XSTEST_DIRECT_CONTRAST_GROUPS.get(row_type)
+        if group is not None:
+            upstream_family_id = f"xstest:direct-contrast:{group}:{ordinal:02d}"
+        else:
+            # Preserve a stable identifier without inventing a dependency.
+            stable = upstream_id if upstream_id not in (None, "") else f"pos{pos}"
+            upstream_family_id = f"xstest:unpaired:{stable}"
+        row = make_row(name, cfg, rev, spec["role"], srid, text, label, prov, spec,
+                       upstream_family_id=upstream_family_id)
+        row["source_origin"] = f"hf:{spec['hf_path']}@{rev[:8]}"
+        rows.append(row)
+
+    expected_types = set(L.XSTEST_DIRECT_CONTRAST_GROUPS)
+    bad = {t: type_ordinals.get(t, 0) for t in expected_types if type_ordinals.get(t, 0) != 25}
+    if bad:
+        raise RuntimeError(f"XSTest pinned contrast-block shape drift: {bad}")
+    grouped = defaultdict(list)
+    for row in rows:
+        if row["upstream_family_id"].startswith("xstest:direct-contrast:"):
+            grouped[row["upstream_family_id"]].append(row)
+    invalid = [fid for fid, members in grouped.items()
+               if len(members) != 2 or {m["label"] for m in members} != {"safe", "unsafe"}]
+    if invalid or len(grouped) != 200:
+        raise RuntimeError(
+            f"XSTest direct-contrast validation failed: families={len(grouped)} "
+            f"invalid={invalid[:5]}")
     return rows
 
 
@@ -293,16 +351,362 @@ def _redact_text(rec):
     return {k: v for k, v in rec.items() if k != "normalized_text"}
 
 
-def build(config_path, out_dir):
+PUBLIC_BANNED_CONTENT_KEYS = {
+    "text",
+    "raw_text",
+    "norm_text",
+    "normalized_text",
+    "text_or_download_reference",
+    "prompt",
+    "response",
+    "completion",
+    "adversarial",
+}
+
+PUBLIC_ROW_FIELDS = (
+    "sample_id",
+    "source",
+    "source_config",
+    "source_revision",
+    "source_row_id",
+    "upstream_family_id",
+    "split",
+    "label",
+    "gold",
+    "label_provenance",
+    "content_sha256",
+    "family_id",
+    "license_id",
+    "redistribution_class",
+    "known_overlap_disposition",
+    "source_origin",
+)
+
+POLICY_LABEL_CROSSWALK = {
+    "toxicchat": {
+        "native_field": "toxicity", "native_to_binary": {"1": "unsafe", "else": "safe"},
+        "caveat": "Toxicity annotation; not a measured jailbreak or injection success outcome.",
+    },
+    "prompt_injections": {
+        "native_field": "label", "native_to_binary": {"1": "unsafe", "0": "safe"},
+        "caveat": "Prompt-injection class label; not a measured attack-success outcome.",
+    },
+    "jailbreak_classification": {
+        "native_field": "type",
+        "native_to_binary": {"prefix jailbreak": "unsafe", "otherwise": "safe"},
+        "caveat": "Prompt-type label; not a measured jailbreak-success outcome.",
+    },
+    "jailbreakbench": {
+        "native_field": "dataset split",
+        "native_to_binary": {"harmful": "unsafe", "benign": "safe"},
+        "caveat": "Behavior-policy class; matched harmful/benign indexes form one family.",
+    },
+    "xstest": {
+        "native_field": "type",
+        "native_to_binary": {"prefix contrast_": "unsafe", "otherwise": "safe"},
+        "caveat": "Functional contrast class, not observed harm; eight direct contrast blocks are paired.",
+    },
+    "wildguardtest": {
+        "native_field": "prompt_harm_label",
+        "native_to_binary": {"harmful": "unsafe", "unharmful": "safe"},
+        "caveat": "Prompt-harm annotation; response labels are not used.",
+    },
+    "wildjailbreak": {
+        "native_field": "label", "native_to_binary": {"1": "unsafe", "0": "safe"},
+        "caveat": "Adversarial prompt class; not a measured jailbreak-success outcome.",
+    },
+    "orbench": {
+        "native_field": "benchmark membership", "native_to_binary": {"all": "safe"},
+        "caveat": "Single-class benign over-refusal stress set.",
+    },
+    "harmbench": {
+        "native_field": "benchmark membership", "native_to_binary": {"all": "unsafe"},
+        "caveat": "Single-class harmful-behavior recall stress set.",
+    },
+}
+
+
+def recursively_redact_public(value):
+    """Remove raw-content keys at every nesting level from a public artifact."""
+    if isinstance(value, dict):
+        return {
+            key: recursively_redact_public(item)
+            for key, item in value.items()
+            if str(key).lower() not in PUBLIC_BANNED_CONTENT_KEYS
+        }
+    if isinstance(value, list):
+        return [recursively_redact_public(item) for item in value]
+    return value
+
+
+def assert_public_artifact_redacted(value, path="$"):
+    """Fail closed if a recursively nested raw-content field remains."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if str(key).lower() in PUBLIC_BANNED_CONTENT_KEYS:
+                raise ValueError(f"public artifact contains banned key {path}.{key}")
+            assert_public_artifact_redacted(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for i, item in enumerate(value):
+            assert_public_artifact_redacted(item, f"{path}[{i}]")
+
+
+def recover_public_upstream_family_id(row):
+    """Recover stable public pair IDs for legacy manifests that predate the field."""
+    if row.get("upstream_family_id"):
+        return row["upstream_family_id"]
+    source = row.get("source")
+    source_row_id = str(row.get("source_row_id", ""))
+    if source == "jailbreakbench" and "/" in source_row_id:
+        return f"jailbreakbench:Index:{source_row_id.rsplit('/', 1)[-1]}"
+    if source == "xstest" and "/pos" in source_row_id:
+        try:
+            pos = int(source_row_id.rsplit("/pos", 1)[-1])
+        except ValueError:
+            return None
+        blocks = {
+            0: "homonyms", 25: "homonyms",
+            50: "figurative_language", 75: "figurative_language",
+            100: "safe_targets", 125: "safe_targets",
+            150: "safe_contexts", 175: "safe_contexts",
+            200: "definitions", 225: "definitions",
+            275: "discrimination", 300: "discrimination",
+            325: "historical_events", 350: "historical_events",
+            400: "privacy_fictional", 425: "privacy_fictional",
+        }
+        start = (pos // 25) * 25
+        if start in blocks:
+            return f"xstest:direct-contrast:{blocks[start]}:{pos % 25:02d}"
+        return f"xstest:unpaired:pos{pos}"
+    return None
+
+
+def project_public_row(raw, effective_license_by_source):
+    """Deterministic text-free projection used by both publisher and auditor."""
+    public_row = {field: raw.get(field) for field in PUBLIC_ROW_FIELDS}
+    public_row["upstream_family_id"] = recover_public_upstream_family_id(raw)
+    license_meta = effective_license_by_source.get(raw.get("source"))
+    if license_meta:
+        public_row["license_id"] = license_meta["license_id"]
+        public_row["redistribution_class"] = license_meta["redistribution_class"]
+    return recursively_redact_public(public_row)
+
+
+def write_public_release(raw_manifest_path, public_out_dir, source_license_overrides=None):
+    """Write a text-free public row index and recursively redacted manifest.
+
+    The raw manifests remain local.  Public JSONL files expose only stable IDs,
+    hashes, labels, family assignments, revisions, and license/provenance fields.
+    """
+    raw_manifest = json.load(open(raw_manifest_path, encoding="utf-8"))
+    raw_dir = os.path.dirname(raw_manifest_path)
+    os.makedirs(public_out_dir, exist_ok=True)
+    public_files = {}
+    raw_commitments = {}
+    all_raw_rows = []
+    effective_license_by_source = {}
+    source_license_overrides = source_license_overrides or {}
+    for source_key, source_meta in raw_manifest.get("sources", {}).items():
+        emitted = source_meta.get("emitted_source")
+        resolved = L.resolved_license_metadata(
+            source_license_overrides.get(source_key, source_meta))
+        effective_license_by_source[emitted] = resolved
+    for stem in L.MANIFEST_FILES:
+        raw_path = os.path.join(raw_dir, f"{stem}.jsonl")
+        if not os.path.exists(raw_path):
+            raise FileNotFoundError(f"cannot publish missing raw manifest: {raw_path}")
+        public_rows = []
+        with open(raw_path, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                raw = json.loads(line)
+                all_raw_rows.append(raw)
+                public_rows.append(project_public_row(raw, effective_license_by_source))
+        assert_public_artifact_redacted(public_rows)
+        public_path = os.path.join(public_out_dir, f"{stem}.jsonl")
+        with open(public_path, "w", encoding="utf-8") as f:
+            for row in public_rows:
+                f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+        public_files[stem] = {
+            "path": os.path.relpath(public_path, _ROOT),
+            "n_rows": len(public_rows),
+            "sha256": L.sha256_of_file(public_path),
+        }
+        raw_commitments[stem] = {
+            "n_rows": len(public_rows),
+            "sha256": L.sha256_of_file(raw_path),
+        }
+
+    crosswalk = {}
+    for key, source_meta in raw_manifest.get("sources", {}).items():
+        emitted = source_meta.get("emitted_source")
+        if emitted not in POLICY_LABEL_CROSSWALK:
+            continue
+        license_meta = L.resolved_license_metadata(
+            source_license_overrides.get(key, source_meta))
+        record = copy.deepcopy(POLICY_LABEL_CROSSWALK[emitted])
+        record.update({
+            "source": emitted,
+            "source_config_key": key,
+            "hf_path": source_meta.get("hf_path"),
+            "hf_config": source_meta.get("hf_config"),
+            "revision": source_meta.get("revision"),
+            "role": source_meta.get("role"),
+            "license_id": license_meta["license_id"],
+            "license_metadata": license_meta,
+        })
+        crosswalk[key] = record
+    crosswalk_doc = {
+        "schema_version": 1,
+        "description": "Native dataset annotations mapped to the study's binary prompt-policy labels.",
+        "sources": crosswalk,
+    }
+    assert_public_artifact_redacted(crosswalk_doc)
+    crosswalk_path = os.path.join(public_out_dir, "policy_label_crosswalk.json")
+    with open(crosswalk_path, "w", encoding="utf-8") as f:
+        json.dump(crosswalk_doc, f, indent=2, ensure_ascii=False, sort_keys=True)
+
+    by_content = defaultdict(list)
+    for row in all_raw_rows:
+        by_content[row["content_sha256"]].append(row)
+    final_conflicts = []
+    for content_sha, rows in sorted(by_content.items()):
+        if len({r["label"] for r in rows}) < 2 or len({r["source"] for r in rows}) < 2:
+            continue
+        final_conflicts.append({
+            "content_sha256": content_sha,
+            "rows": [{field: row.get(field) for field in (
+                "sample_id", "source", "source_revision", "source_row_id",
+                "upstream_family_id", "split", "label", "gold", "family_id")}
+                     for row in rows],
+        })
+    removed_conflicts = []
+    for record in raw_manifest.get("removals", {}).get(
+            "exact_train_vs_eval", {}).get("records", []):
+        if set(record.get("eval_labels", [])) == {record.get("train_label")}:
+            continue
+        removed_conflicts.append({
+            key: record.get(key) for key in (
+                "content_sha256", "train_source", "train_source_row_id",
+                "train_label", "eval_sources", "eval_labels")
+        })
+    conflict_doc = {
+        "schema_version": 1,
+        "matching_rule": "exact SHA-256 of NFKC-lower-collapsed-whitespace content",
+        "final_manifest_cross_source_conflicts": final_conflicts,
+        "removed_train_eval_conflicts": removed_conflicts,
+    }
+    assert_public_artifact_redacted(conflict_doc)
+    conflict_path = os.path.join(public_out_dir, "contradictory_label_inventory.json")
+    with open(conflict_path, "w", encoding="utf-8") as f:
+        json.dump(conflict_doc, f, indent=2, ensure_ascii=False, sort_keys=True)
+
+    supplemental_files = {
+        "policy_label_crosswalk": {
+            "path": os.path.relpath(crosswalk_path, _ROOT),
+            "sha256": L.sha256_of_file(crosswalk_path),
+        },
+        "contradictory_label_inventory": {
+            "path": os.path.relpath(conflict_path, _ROOT),
+            "sha256": L.sha256_of_file(conflict_path),
+        },
+    }
+
+    public_manifest = recursively_redact_public(raw_manifest)
+    for key, source_meta in public_manifest.get("sources", {}).items():
+        resolved = L.resolved_license_metadata(
+            source_license_overrides.get(key, raw_manifest["sources"][key]))
+        source_meta["license_id"] = resolved["license_id"]
+        source_meta["redistribution_class"] = resolved["redistribution_class"]
+        source_meta["license_metadata"] = resolved
+    raw_source_mode = raw_manifest.get("source_mode")
+    family_stats = raw_manifest.get("family_stats", {})
+    calibration_families = {
+        row["family_id"] for row in all_raw_rows if row.get("split") == L.SPLIT_CALIBRATION}
+    id_families = {
+        row["family_id"] for row in all_raw_rows if row.get("split") == L.SPLIT_ID}
+    limitations = []
+    if raw_source_mode != "huggingface_pinned_revisions":
+        limitations.append(
+            "Historical v1 snapshot uses the previously inspected legacy frozen transfer cohorts.")
+    if int(family_stats.get("n_upstream_edges", 0)) < 94:
+        limitations.append(
+            "Historical family IDs omit JailbreakBench and XSTest authoritative pair edges.")
+    shared_cal_id = calibration_families & id_families
+    if shared_cal_id:
+        limitations.append(
+            f"Historical calibration and ID assignments share {len(shared_cal_id)} global families.")
+    observed_backend = raw_manifest.get("provenance", {}).get("minhash_backend")
+    if observed_backend != L.MINHASH_BACKEND:
+        limitations.append(
+            f"Historical manifest records MinHash backend {observed_backend!r}, not the pinned v2 name.")
+    if limitations:
+        limitations.append(
+            "This public index is an auditable commitment to historical rows, not corrected rerun evidence.")
+
+    public_manifest["public_schema_version"] = 2
+    public_manifest["source_contract"] = (
+        "pinned_hf_v2" if not limitations else "legacy_v1_snapshot")
+    public_manifest["clean_rerun_compatible"] = not limitations
+    public_manifest["known_integrity_limitations"] = limitations
+    public_manifest["release_kind"] = "text_free_identifier_hash_index"
+    public_manifest["row_schema_fields"] = list(PUBLIC_ROW_FIELDS)
+    public_manifest["files"] = public_files
+    public_manifest["supplemental_files"] = supplemental_files
+    public_manifest["raw_artifact_commitment"] = {
+        "manifest_sha256": L.sha256_of_file(raw_manifest_path),
+        "splits": raw_commitments,
+    }
+    assert_public_artifact_redacted(public_manifest)
+    public_manifest_path = os.path.join(public_out_dir, "manifest.json")
+    with open(public_manifest_path, "w", encoding="utf-8") as f:
+        json.dump(public_manifest, f, indent=2, ensure_ascii=False, sort_keys=True)
+    return {
+        "manifest_path": public_manifest_path,
+        "manifest_sha256": L.sha256_of_file(public_manifest_path),
+        "files": public_files,
+        "supplemental_files": supplemental_files,
+    }
+
+
+def _prepare_sources(config_sources):
+    """Validate immutable revisions and attach effective license metadata."""
+    sources = copy.deepcopy(config_sources)
+    for key, spec in sources.items():
+        revision = str(spec.get("revision", ""))
+        if re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+            raise ValueError(f"{key}: source revision must be a full 40-hex commit, got {revision!r}")
+        license_meta = L.resolved_license_metadata(spec)
+        spec["_license_metadata"] = license_meta
+        spec["_effective_license_id"] = license_meta["license_id"]
+        spec["_effective_redistribution_class"] = license_meta["redistribution_class"]
+        if str(license_meta["license_id"]).lower().startswith("unknown"):
+            raise ValueError(f"{key}: unresolved license at pinned revision {revision}")
+    return sources
+
+
+def build(config_path, out_dir, *, allow_legacy_frozen_cohorts=False,
+          public_out_dir=None):
     token = load_env()
     cfg = load_config(config_path)
     data_seed = cfg["data_seed"]
-    sources = cfg["sources"]
+    sources = _prepare_sources(cfg["sources"])
     os.makedirs(out_dir, exist_ok=True)
 
-    # ---- frozen cache -------------------------------------------------------
-    frozen = json.load(open(FROZEN_PATH))
-    frozen_sha = L.sha256_of_file(FROZEN_PATH)
+    # Pinned Hugging Face revisions are the only default.  The legacy cache is
+    # a previously inspected seed-7 cohort and is available solely for explicit
+    # retrospective reproduction.
+    frozen = None
+    frozen_sha = None
+    if allow_legacy_frozen_cohorts:
+        if not os.path.exists(FROZEN_PATH):
+            raise FileNotFoundError(
+                f"legacy frozen cohort requested but missing: {FROZEN_PATH}")
+        frozen = json.load(open(FROZEN_PATH))
+        frozen_sha = L.sha256_of_file(FROZEN_PATH)
+        print("!! LEGACY RETROSPECTIVE MODE: using previously inspected frozen cohorts !!",
+              flush=True)
 
     LABEL_FN = {
         "toxicchat": label_toxicchat, "toxicchat_test": label_toxicchat,
@@ -328,20 +732,23 @@ def build(config_path, out_dir):
     raw = {}
     for key, spec in sources.items():
         role = spec["role"]
-        origin = spec.get("origin", "hf")
+        use_legacy_frozen = allow_legacy_frozen_cohorts and key in {
+            "wildguardtest", "wildjailbreak"}
         if key in ("wildguardtest",):
-            if origin.startswith("frozen"):
+            if use_legacy_frozen:
                 rows = load_frozen(SRC_NAME[key], spec, frozen, frozen_sha)
             else:
                 rows = load_wildguard_labeled(token, SRC_NAME[key], spec)
         elif key in ("wildjailbreak",):
-            if origin.startswith("frozen"):
+            if use_legacy_frozen:
                 rows = load_frozen(SRC_NAME[key], spec, frozen, frozen_sha)
             else:
                 rows = load_wildjailbreak_labeled(token, SRC_NAME[key], spec)
         elif key == "jailbreakbench":
             rows = load_hf_source(token, SRC_NAME[key], spec, "split_harmful_benign",
                                   id_field=ID_FIELD.get(key))
+        elif key == "xstest":
+            rows = load_xstest_labeled(token, SRC_NAME[key], spec)
         elif key == "orbench_hard":
             rows = load_hf_source(token, SRC_NAME[key], spec, "safe")
         elif key == "harmbench":
@@ -431,13 +838,14 @@ def build(config_path, out_dir):
         graph_rows.append(r)
     texts = [r["norm_text"] for r in graph_rows]
     chashes = [r["content_sha256"] for r in graph_rows]
-    # upstream-family edges: rows sharing (source, upstream family id) -- none for
-    # these sources in practice (toxicchat conv_id is unique), but implemented.
+    # Authoritative family edges are independent of split and row serialization.
+    # In particular this joins JailbreakBench harmful/benign matched indexes and
+    # all eight XSTest direct-contrast blocks when both members are selected.
     up_index = defaultdict(list)
     for i, r in enumerate(graph_rows):
-        srid = r["source_row_id"]
-        if "/" in srid and not srid.split("/")[-1].startswith("pos"):
-            up_index[(r["source"], srid)].append(i)
+        upstream_family_id = r.get("upstream_family_id")
+        if upstream_family_id:
+            up_index[upstream_family_id].append(i)
     upstream_edges = []
     for members in up_index.values():
         for j in members[1:]:
@@ -515,15 +923,27 @@ def build(config_path, out_dir):
     # ---- calibration / ID family-level split (plan sec 6.4.2 step 10) ------
     print("== calibration/ID family split (40/60) ==", flush=True)
     represented_test_keys = [k for k, s in sources.items() if s["role"] == "represented_test"]
+    represented_rows = [r for key in represented_test_keys for r in eval_final[key]]
+    _, global_assignment = L.split_calibration_id_global(
+        represented_rows, data_seed, cal_frac=0.40)
+    # Calibration is used to choose deployment thresholds, so it must be
+    # family-disjoint from *every* reported test/stress surface, not only ID.
+    noncal_eval_rows = [
+        row for key, spec in sources.items()
+        if spec["role"] != "represented_test"
+        for row in eval_final.get(key, [])
+    ]
+    noncal_eval_families = {row["family_id"] for row in noncal_eval_rows}
+    global_assignment, routed_from_calibration = L.route_calibration_conflicts_to_id(
+        global_assignment, noncal_eval_families)
     cal_rows, id_rows = [], []
     calid_summary = {}
     for key in represented_test_keys:
         src = SRC_NAME[key]
         srows = eval_final[key]
-        cal_ids, assignment = L.split_calibration_id(srows, src, data_seed, cal_frac=0.40)
         c_safe = c_unsafe = i_safe = i_unsafe = 0
         for r in srows:
-            split = assignment[r["family_id"]]
+            split = global_assignment[r["family_id"]]
             r["known_overlap_disposition"] = "none"
             if split == L.SPLIT_CALIBRATION:
                 r["_final_split"] = L.SPLIT_CALIBRATION
@@ -557,6 +977,18 @@ def build(config_path, out_dir):
             print("   " + p, flush=True)
         raise SystemExit(3)
 
+    cal_families = {r["family_id"] for r in cal_rows}
+    id_families = {r["family_id"] for r in id_rows}
+    shared_cal_id = cal_families & id_families
+    if shared_cal_id:
+        raise RuntimeError(
+            f"global calibration/ID split leaked {len(shared_cal_id)} family ids")
+    shared_cal_reported = cal_families & noncal_eval_families
+    if shared_cal_reported:
+        raise RuntimeError(
+            "global calibration split leaked families into transfer/stress surfaces: "
+            f"{len(shared_cal_reported)}")
+
     # ---- assemble + write manifests ----------------------------------------
     print("== writing manifests ==", flush=True)
 
@@ -567,6 +999,7 @@ def build(config_path, out_dir):
             "source_config": r["source_config"],
             "source_revision": r["source_revision"],
             "source_row_id": r["source_row_id"],
+            "upstream_family_id": r.get("upstream_family_id"),
             "split": split,
             "label": r["label"],
             "gold": r["gold"],
@@ -621,17 +1054,24 @@ def build(config_path, out_dir):
               flush=True)
 
     # ---- manifest.json ------------------------------------------------------
-    minhash_backend = "datasketch" if "datasketch" in sys.modules else "numpy_fallback"
     source_report = {}
     for key, spec in sources.items():
+        effective_origin = (
+            "legacy_frozen_seed7_opt_in"
+            if allow_legacy_frozen_cohorts and key in {"wildguardtest", "wildjailbreak"}
+            else "huggingface_pinned_revision"
+        )
         source_report[key] = {
             "emitted_source": SRC_NAME[key], "role": spec["role"],
             "hf_path": spec["hf_path"], "hf_config": spec["hf_config"],
             "split": spec["split"], "revision": spec["revision"],
             "text_field": spec.get("text_field"), "label_rule": spec["label_rule"],
-            "license_id": spec.get("license_id"),
-            "redistribution_class": spec.get("redistribution_class"),
-            "origin": spec.get("origin", "hf"), "target": spec.get("target"),
+            "license_id": spec.get("_effective_license_id"),
+            "redistribution_class": spec.get("_effective_redistribution_class"),
+            "license_metadata": spec.get("_license_metadata"),
+            "configured_origin": spec.get("origin", "hf"),
+            "effective_origin": effective_origin,
+            "target": spec.get("target"),
             "raw_rows": dedup_stats.get(key, {}).get("raw"),
             "eligible_after_dedup": dedup_stats.get(key, {}).get("kept"),
         }
@@ -651,9 +1091,15 @@ def build(config_path, out_dir):
         "config_path": os.path.relpath(config_path, _ROOT),
         "config_sha256": L.sha256_of_obj(cfg),
         "frozen_eval_rows_sha256": frozen_sha,
+        "source_mode": (
+            "legacy_frozen_seed7_retrospective_opt_in"
+            if allow_legacy_frozen_cohorts else "huggingface_pinned_revisions"
+        ),
         "provenance": {
             "provenance_source": L.PROVENANCE_SOURCE,
-            "minhash_backend": minhash_backend,
+            "minhash_backend": L.MINHASH_BACKEND,
+            "minhash_algorithm_version": L.MINHASH_ALGORITHM_VERSION,
+            "minhash_seed": L.MINHASH_SEED,
             "normalization": "NFKC+lowercase+collapse_whitespace",
             "minhash_num_perm": L.NUM_PERM, "minhash_ngram": L.NGRAM,
             "minhash_jaccard_threshold": L.MINHASH_JACCARD_THRESHOLD,
@@ -665,6 +1111,12 @@ def build(config_path, out_dir):
         "train_breakdown": train_breakdown,
         "train_total": sum(v["safe"] + v["unsafe"] for v in train_breakdown.values()),
         "calibration_id_split": calid_summary,
+        "calibration_family_routing": {
+            "policy": "families present on transfer or stress surfaces route to id_test",
+            "n_families_routed_from_calibration": len(routed_from_calibration),
+            "routed_family_ids": routed_from_calibration,
+            "calibration_reported_test_shared_families": 0,
+        },
         "pooled_calibration_negatives": pooled_cal_neg,
         "family_stats": fam_stats,
         "dedup_stats": dedup_stats,
@@ -692,6 +1144,13 @@ def build(config_path, out_dir):
     with open(mpath, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False, sort_keys=True)
     print(f"  wrote manifest.json  sha={L.sha256_of_file(mpath)[:12]}", flush=True)
+    if public_out_dir is None:
+        public_out_dir = os.path.join(os.path.dirname(os.path.abspath(out_dir)),
+                                      "public_manifests")
+    public_release = write_public_release(
+        mpath, public_out_dir, source_license_overrides=cfg.get("sources"))
+    print(f"  wrote public text-free index  sha={public_release['manifest_sha256'][:12]}",
+          flush=True)
 
     # ---- summary ------------------------------------------------------------
     print("\n== SUMMARY ==", flush=True)
@@ -715,8 +1174,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument(
+        "--public-out", default=None,
+        help="text-free public index directory (default: sibling public_manifests)")
+    ap.add_argument(
+        "--allow-legacy-frozen-cohorts", action="store_true",
+        help=("RETROSPECTIVE ONLY: use the previously inspected seed-7 WildGuard/"
+              "WildJailbreak cache instead of pinned Hugging Face revisions"))
     args = ap.parse_args()
-    build(args.config, args.out)
+    build(args.config, args.out,
+          allow_legacy_frozen_cohorts=args.allow_legacy_frozen_cohorts,
+          public_out_dir=args.public_out)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Hardened mortgage benchmark — results
 
-**Dataset (what the paper analyzes):** `paper-html/explorer/sources/guard_benchmark_hard.jsonl` — **334 trap-typed items** (195 unsafe / 139 safe; difficulty very-hard 284 / borderline 50; loan-officer and consumer personas). Fields: `id, text, persona, label_binary, label_category, label_subcategory, severity, difficulty, trap_type, rationale`. No train/dev split, minimal-pair ids, or protected-class tags.
+**Dataset (what the paper analyzes):** `paper-a/paper-html/explorer/sources/guard_benchmark_hard.jsonl` — **334 trap-typed items** (195 unsafe / 139 safe; difficulty very-hard 284 / borderline 50; loan-officer and consumer personas). Fields: `id, text, persona, label_binary, label_category, label_subcategory, severity, difficulty, trap_type, rationale`. No train/dev split, minimal-pair ids, or protected-class tags.
 
 Trap types: hard_negative 75, minimal_pair 60, euphemism 52, business_justified 45, buried_injection 39, over_refusal_bait 20, dual_use 15, multi_turn 15, coded_proxy 13. Categories: safe 139, security_misuse 89, fair_lending 65, compliance_bad_advice 41.
 

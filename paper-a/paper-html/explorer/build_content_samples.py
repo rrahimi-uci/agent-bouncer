@@ -1,25 +1,24 @@
 #!/usr/bin/env python
-"""Extract a small, balanced, REAL sample of prompts per benchmark into samples.js,
+"""Extract a small, balanced, REAL sample of prompts into a local-only JS file,
 which index.html loads via <script src> (works offline on file://, unlike fetch).
 
-Content is sampled, not redistributed wholesale: several sources are non-commercial
-(ToxicChat, BeaverTails are CC BY-NC) and the paper reconstructs rows from the public
-datasets rather than committing them. Each entry records the true total (n) and how many
+The generated output is gitignored and must remain local: several sources are
+non-commercial or gated. Each entry records the true total and how many local rows
 are shown, and the page links to the authoritative source for the complete set.
 
 Sources (all already local):
   data/frozen_eval_rows.json                     6 in-house strata + 4 novel sets (the exact scored rows; gitignored)
-  paper-html/explorer/sources/guard_benchmark_hard.jsonl   the mortgage set (this work; tracked)
+  paper-a/paper-html/explorer/sources/guard_benchmark_hard.jsonl   the mortgage set (this work; tracked)
   data/benchmarks/openai_moderation.jsonl        landscape-only reference set (gitignored)
 
-Run from repo root:  python3 paper-html/explorer/build_content_samples.py
+Run from repo root:  python3 paper-a/paper-html/explorer/build_content_samples.py
 """
 import json, os, re
 from collections import OrderedDict
 
-HERE = os.path.dirname(os.path.abspath(__file__))          # paper-html/explorer
-ROOT = os.path.dirname(os.path.dirname(HERE))              # repo root
-OUT = os.path.join(HERE, "samples.js")
+HERE = os.path.dirname(os.path.abspath(__file__))          # paper-a/paper-html/explorer
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))  # repo root
+OUT = os.path.join(HERE, "samples.local.js")
 PER = 30        # rows shown per benchmark (label-balanced + tag-diversified)
 TRUNC = 320     # truncate prompt text to keep the page browsable
 
@@ -116,7 +115,7 @@ if os.path.exists(op):
     add("openai_mod", orows, otot)
 
 # ---- ExpGuardTest (CC BY-4.0): expert-annotated; use a local sample if pulled, else link ----
-ep = os.path.join(HERE, "expguard_sample.json")
+ep = os.path.join(HERE, "expguard_sample.local.json")
 if os.path.exists(ep):
     ej = json.load(open(ep))
     erows = [{"t": clip(r["t"]), "g": int(r["g"]), "tag": r.get("tag", "")} for r in ej["rows"]]

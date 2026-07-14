@@ -1,0 +1,2481 @@
+{
+  "build_order_note": "plan sec 6.4.2; eval-target selection performed before family clustering (train-independent + deterministic); family graph and exact/near-dup checks scoped to train-eligible U final-eval rows.",
+  "calibration_id_split": {
+    "jailbreak_classification": {
+      "cal": 105,
+      "cal_frac_realized": 0.4008,
+      "cal_safe": 43,
+      "cal_unsafe": 62,
+      "id": 157,
+      "id_safe": 80,
+      "id_unsafe": 77,
+      "total": 262
+    },
+    "prompt_injections": {
+      "cal": 45,
+      "cal_frac_realized": 0.4018,
+      "cal_safe": 16,
+      "cal_unsafe": 29,
+      "id": 67,
+      "id_safe": 40,
+      "id_unsafe": 27,
+      "total": 112
+    },
+    "toxicchat": {
+      "cal": 302,
+      "cal_frac_realized": 0.4005,
+      "cal_safe": 156,
+      "cal_unsafe": 146,
+      "id": 452,
+      "id_safe": 244,
+      "id_unsafe": 208,
+      "total": 754
+    }
+  },
+  "clean_rerun_compatible": false,
+  "config_path": "configs/paper_a_sft.yaml",
+  "config_sha256": "55b210f35a0b836987d1acbc099303bb540e1367358c85df8feffdfa06fc569e",
+  "data_branch": "academic_noncommercial",
+  "data_order_seed": 42,
+  "data_seed": 42,
+  "dedup_stats": {
+    "harmbench": {
+      "exact_dup_dropped": 0,
+      "kept": 200,
+      "quarantined": 0,
+      "raw": 200
+    },
+    "jailbreak_classification": {
+      "exact_dup_dropped": 13,
+      "kept": 1031,
+      "quarantined": 0,
+      "raw": 1044
+    },
+    "jailbreak_classification_test": {
+      "exact_dup_dropped": 0,
+      "kept": 262,
+      "quarantined": 0,
+      "raw": 262
+    },
+    "jailbreakbench": {
+      "exact_dup_dropped": 0,
+      "kept": 200,
+      "quarantined": 0,
+      "raw": 200
+    },
+    "orbench_hard": {
+      "exact_dup_dropped": 0,
+      "kept": 1319,
+      "quarantined": 0,
+      "raw": 1319
+    },
+    "prompt_injections": {
+      "exact_dup_dropped": 0,
+      "kept": 546,
+      "quarantined": 0,
+      "raw": 546
+    },
+    "prompt_injections_test": {
+      "exact_dup_dropped": 0,
+      "kept": 116,
+      "quarantined": 0,
+      "raw": 116
+    },
+    "toxicchat": {
+      "exact_dup_dropped": 118,
+      "kept": 4964,
+      "quarantined": 0,
+      "raw": 5082
+    },
+    "toxicchat_test": {
+      "exact_dup_dropped": 132,
+      "kept": 4951,
+      "quarantined": 0,
+      "raw": 5083
+    },
+    "wildguardtest": {
+      "exact_dup_dropped": 0,
+      "kept": 800,
+      "quarantined": 0,
+      "raw": 800
+    },
+    "wildjailbreak": {
+      "exact_dup_dropped": 0,
+      "kept": 420,
+      "quarantined": 0,
+      "raw": 420
+    },
+    "xstest": {
+      "exact_dup_dropped": 0,
+      "kept": 450,
+      "quarantined": 0,
+      "raw": 450
+    }
+  },
+  "family_stats": {
+    "lsh_bands": 32,
+    "lsh_rows": 8,
+    "n_candidate_pairs": 1376,
+    "n_components": 9559,
+    "n_minhash_edges_085": 351,
+    "n_multi_member_components": 151,
+    "n_rows": 9789,
+    "n_upstream_edges": 0,
+    "ngram": 5,
+    "num_perm": 256,
+    "provenance_source": "guard_research.provenance",
+    "threshold": 0.85
+  },
+  "files": {
+    "calibration": {
+      "n_rows": 452,
+      "path": "artifacts/paper_a_sft/public_manifests/calibration.jsonl",
+      "sha256": "9049673afc6585a9752e1ebf386a6d6d29b9f35fe34373af8df01700f25680d4"
+    },
+    "harmbench_positive_stress": {
+      "n_rows": 200,
+      "path": "artifacts/paper_a_sft/public_manifests/harmbench_positive_stress.jsonl",
+      "sha256": "01b1ecbd3f88af82b4a7db2ae3387716444bc7e2569b86e8f927f16a51242f98"
+    },
+    "id_test": {
+      "n_rows": 676,
+      "path": "artifacts/paper_a_sft/public_manifests/id_test.jsonl",
+      "sha256": "b2d2b9c003bdfe45473dd42d364b7d2ed0dc0c463c715796a284fa3180b49809"
+    },
+    "orbench_safe_stress": {
+      "n_rows": 400,
+      "path": "artifacts/paper_a_sft/public_manifests/orbench_safe_stress.jsonl",
+      "sha256": "d7c11ecb26974eeff28d05bc8bef7ccc3c475040c1903413bf2e682943f3b502"
+    },
+    "train": {
+      "n_rows": 1200,
+      "path": "artifacts/paper_a_sft/public_manifests/train.jsonl",
+      "sha256": "766b7e81da660fbfd88dd63c531b345ea7404a1f7b99cd43247c06038b160f80"
+    },
+    "transfer_test": {
+      "n_rows": 1580,
+      "path": "artifacts/paper_a_sft/public_manifests/transfer_test.jsonl",
+      "sha256": "19f295cacb5dd9addcb63b5a039ac0d294a2b7dc8f8a86f0fa3ab28df1812bbf"
+    }
+  },
+  "frozen_eval_rows_sha256": "ef827a2794e3fa0a0e27f994d02830e721090c513a08dbe9799cd96714180347",
+  "known_integrity_limitations": [
+    "Historical v1 snapshot uses the previously inspected legacy frozen transfer cohorts.",
+    "Historical family IDs omit JailbreakBench and XSTest authoritative pair edges.",
+    "Historical calibration and ID assignments share 2 global families.",
+    "Historical manifest records MinHash backend 'numpy_fallback', not the pinned v2 name.",
+    "This public index is an auditable commitment to historical rows, not corrected rerun evidence."
+  ],
+  "known_wildjailbreak_overlaps": {
+    "count": 4,
+    "expected": 4,
+    "records": [
+      {
+        "content_sha256": "79918565caa3feec4d291ac474fe245bf9ba7ee9fbe41cb9435389b38c19548e",
+        "eval_labels": [
+          "safe"
+        ],
+        "eval_sources": [
+          "wildjailbreak"
+        ],
+        "train_label": "unsafe",
+        "train_source": "jailbreak_classification",
+        "train_source_row_id": "2f2ceeb3/default/train/pos22"
+      },
+      {
+        "content_sha256": "d4aa8c7b005b20f04f6e57aa1c1d4a782cfcfff316bb7b0cb0028947e574419f",
+        "eval_labels": [
+          "safe"
+        ],
+        "eval_sources": [
+          "wildjailbreak"
+        ],
+        "train_label": "unsafe",
+        "train_source": "jailbreak_classification",
+        "train_source_row_id": "2f2ceeb3/default/train/pos149"
+      },
+      {
+        "content_sha256": "16c9e4f7b01049c53b4862022723f872cd23153b6fb2ffe02ceb865db41d561e",
+        "eval_labels": [
+          "safe"
+        ],
+        "eval_sources": [
+          "wildjailbreak"
+        ],
+        "train_label": "unsafe",
+        "train_source": "jailbreak_classification",
+        "train_source_row_id": "2f2ceeb3/default/train/pos293"
+      },
+      {
+        "content_sha256": "e5af876a9be0e1308535eb9f3aa05cf900d296335cc3b42b6f24849c908d408d",
+        "eval_labels": [
+          "safe"
+        ],
+        "eval_sources": [
+          "wildjailbreak"
+        ],
+        "train_label": "unsafe",
+        "train_source": "jailbreak_classification",
+        "train_source_row_id": "2f2ceeb3/default/train/pos927"
+      }
+    ]
+  },
+  "pooled_calibration_negatives": 215,
+  "provenance": {
+    "lsh_bands": 32,
+    "lsh_rows": 8,
+    "minhash_backend": "numpy_fallback",
+    "minhash_jaccard_threshold": 0.85,
+    "minhash_ngram": 5,
+    "minhash_num_perm": 256,
+    "normalization": "NFKC+lowercase+collapse_whitespace",
+    "provenance_source": "guard_research.provenance",
+    "rank_rule": "sha256(data_seed|source_row_id|content_sha256)"
+  },
+  "public_schema_version": 2,
+  "raw_artifact_commitment": {
+    "manifest_sha256": "2bca9bf136f7c1bb0317cbf51e0077313ceac4038b16483ded6400ddb8ded932",
+    "splits": {
+      "calibration": {
+        "n_rows": 452,
+        "sha256": "4abd3d6e785c13b649033fc20cac79c1bf9160fa845ba525b3499e9ab1afcd96"
+      },
+      "harmbench_positive_stress": {
+        "n_rows": 200,
+        "sha256": "a6dd4f9f14567bc6dfcf69d55f3ea008e099c9aeadb59624f2b27f7108d4a38f"
+      },
+      "id_test": {
+        "n_rows": 676,
+        "sha256": "690e26184dc5523bb74a98c5f3df67b617ba50c8a88e697107beb6b77102828a"
+      },
+      "orbench_safe_stress": {
+        "n_rows": 400,
+        "sha256": "50f2a5e1eea8c5b962485df7d292af265448c2401737ada6edfc8d774964718d"
+      },
+      "train": {
+        "n_rows": 1200,
+        "sha256": "650c3867b3b73f7b89ad7ab58019de182e69ed5ea80c6a8b466db5c649bac7b2"
+      },
+      "transfer_test": {
+        "n_rows": 1580,
+        "sha256": "447872cd091b0ab6a996600114b5cfc0eb907f405b9f0c9da4d341c5e18b9833"
+      }
+    }
+  },
+  "release_kind": "text_free_identifier_hash_index",
+  "removals": {
+    "cross_split_near_dup": {
+      "components": [
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos229"
+            }
+          ],
+          "family_id": "f738993047bd43301438fc38d12a769dd25550d647faebb8c15c324b065f9959",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/73925314f03f57120b9bd08f3b2aa7b0085f51d2566efa6cc7cfea8803eaefbf"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos583"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/5859f83606a23d6e0aa620333667d5bb64a86e7e7ab90b8c468edc6277531979"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/834f3b1078625c86430a804124890ce0f10b82b140f55ca9294e70d1d505d122"
+            }
+          ],
+          "family_id": "b7525588b283ebd1b06e5f5e5cdf8a2bbb816f2ba81a5a171a3809e5ea670b9b",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/71674710422ce240df8b9dc76ba7fb1512f036e2fe6fe508cb2d8df0dbe31386"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/3266ef0f7b68a620fcd92ec570709873a38fa49705fbcff7e2441b10e2f07fb1"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/c1960de3ec5475d5df7abf82426e4b5fca6d80de5027644d5d665d5442197f07"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/df2ba43443971b0de36d770b52efa8ef57465905253f27e4df50165409fc3b02"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/cd5ed48b42483349f4a1931f93d69d6480fea4e3152a7a2a45a6b4169d01e5ca"
+            }
+          ],
+          "family_id": "9538d2101d108d0af41978c83532d8878277b03ebb742c07fcc5ba581c6c9d5e",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/143fa0186dfbaf4649c9cf46bde967c011ef858c4f1ba9db3f0db49ee1359a34"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/97ad881b8140fc4c9e8b9409b7186767efc106bfbfd0f75622f89da59af22f9b"
+            }
+          ],
+          "family_id": "eb3c5afc9f05ad4242361a1d6c80f879fc68a34c6007d6014948558b45c0e453",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/0732a61cc81936905b8c5c99d227f4cc2face746bfd547318b9f2600b2ead110"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos255"
+            }
+          ],
+          "family_id": "2ed97e9fd5587d331158553b849391ef9552e1be42fc44ff71b6bbafd76e5834",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/c94447e42283bc576992d0d9e5270ae565f727173be250db75d3214ca7444b96"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/90c461a359b18aecb6285e671b291825579c1d92afeb22bf5f609a921e638485"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos752"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/66e5b5a75149c27be3a6e66f9265684b1e8d56ab317a7d9537441ed396a87df7"
+            }
+          ],
+          "family_id": "4149eefea565df602e3bccf38513a5661c9c79bb6222526e4be00b112b13be39",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/fe3af17fd437ba69fe7f65581c88febb12e012443cfae5411adeee77bad32019"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/fb94e296043fa15a1228e7165b5717542ff41b579c3fc2ce88eadfb4c2361b8b"
+            }
+          ],
+          "family_id": "dba893dff617dd331d65b89e63ab4a06403b6ad00ffacb8c787096217137287d",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/0fcf2f16a44f8024633e1bcbd5c5580aab2a2f034eabb0cb812ed85ba086dd75"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/cf5f3c5b7b05fa8fd5e33efcd9d049a7d3af5da4ae79769828d111152723b28e"
+            }
+          ],
+          "family_id": "ca361c10e385fd842c6fa33dcf3a12832ad830746ee852c9b74c62f48bbc8486",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/80f2a544c6400c37b6135a0ade9210db4b76d1eb7a0ac6712aaa071a90b99b82"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/7463a3ea99f4e684fb7db948e1cd52fce479627cc53a22c38cfd1d01463b6d77"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos246"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos109"
+            }
+          ],
+          "family_id": "0373a5c1db92f5f6e10d5e5ea4dfe5907ede148e418da642b174bac3596eb1ab",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/4d75ebad7970644594010f78812d106222399b8a13eed9124f446f364638e1b3"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos482"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos707"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/241b27d99571fbe8983c1f337e19a6efdb61e18afbf7b772cd53903f3b078353"
+            }
+          ],
+          "family_id": "76074d8e042d7b79d3f101cba50db40034c41dd8fec887b113f79e863af4e6f5",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/2a266d136d1bcddaf7d0ef58eab3eef65ea160d19b743137f6f9e2c57a1c5d97"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/36f1dd6e18beceb37c304ac804e09f530b976bdb58c334ce0dd714ba6191a06f"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/d2f652f81aff8a1b553ef2743d8200e5e8aec615fb44bbb7c4440dd686ab3042"
+            }
+          ],
+          "family_id": "01ddd44ae11a5b7c43b704af89c6694accda342434d04ffbd72928951b385ced",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/55a12487d6e15a54b82187a916d71806bb73b62f0dcbddf9067a6cd93483b31f"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/bb77fa118dd34224e4fce897a54fc2550c09dcda9393d4465a9bed4c013dd658"
+            }
+          ],
+          "family_id": "4b148c7cb1dc3811c5955bfe22c0afe438070c06cd75c0e5fe3c904e51747db4",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/b3071695720b5d1386014f24cb613f4495f82e583367220c0456ce1c8387d018"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos532"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/6fa837e61e152b336bae681efc5f51647bdc059587e37541e599edba5412ee5b"
+            }
+          ],
+          "family_id": "2eab48eeca4c290c111dcfe836019ddd04fd462bb1f6a2c0e90084b58c36cde6",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/1d5f8e41b8e2b8fe9ba1f5a72888e92abede5c338237514a2cc06c4729054bdc"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/0e6914a41485a6b73d24e68c37e6efdb860bee0ddc7a99dcd1873d1191999ee5"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/67cb3b7fa61f841b67946914d247d334b3ee188a1bdcc10a60087c59232b99a9"
+            }
+          ],
+          "family_id": "3f9b1a5f6dbca92c619af6aecc3e5428f302914d4f37be5541a2833098fa11c5",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/c3de523a0dab2e833f3b04ead7067572673feb4d9150fbfc7561b55b5478ad75"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/4c0726937583ed40666ac44086a30d28ba8cb51e39896ba93e5cd3349e3e42bc"
+            }
+          ],
+          "family_id": "af11b50287e8939134818c1fe5c6d948f4d5b08fed02bf63646d6de6a795cb21",
+          "train_members": [
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/ec7d7e2ccb44515a040155e5a7e25119afac63ea0cd88436c145791cd1d7fa58"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/ae8a36d516083172775fc5f4335171965b891bb66249cd6d9d4a9e5b7ac40797"
+            }
+          ],
+          "family_id": "56e9d680401fc49ba37c648ae2cdb1308cb6db7850872f6d9609ce4de8a078d6",
+          "train_members": [
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/094aa452ba585a9c6da8834e3203da04013d755ace90a9aaea4843f65b1df5d8"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/2b1e0e1a15e28a61f8b3571b89c98685396e71889dc973f9e28e5b194d884005"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/1188f36235adb5ef0d723476c856e512428e7895bb0d9d0909c4bd2be5b9e8e0"
+            }
+          ],
+          "family_id": "b99a5d5ca05656959de853d4147aaa6abf3344dbbabe6648d2cc5072be0c278e",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/97e702d2b1af6a1fe698b31eeacb702d74ac72d85ac1034d6c4e8ccaa53d4f11"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "prompt_injections",
+              "source_row_id": "4f61ecb0/default/test/pos0"
+            }
+          ],
+          "family_id": "a037913b66b9473c7fa137f1456fc88d00683d84a3dedee613d2744239898089",
+          "train_members": [
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/030be1d291578dbbd603f6e75a9da7881153b25752c5546440a270f6dd4c418f"
+            },
+            {
+              "label": "safe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/c4abc208453501fd5be6fa50b2533c38fc092684fb4152b6c4d2db8a543a0ac3"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/b90b72d8dd08c368d0eb846257c73ec740a66b43dddd42bc33bbd87e9d88eb3b"
+            }
+          ],
+          "family_id": "8c01fc18698f2a423e414880afb6743141985b76e9446b51f55ce7fd416cb9cb",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/train/d0abec70d8fd4c2fe51446cdf332a5ff300da457336cfa8ed9f628acaa6e41c5"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos177"
+            }
+          ],
+          "family_id": "098e4c8288c289790ecca978764e568f1fdd6d3a5bdd07d122eeabb290a2030b",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "prompt_injections",
+              "source_row_id": "4f61ecb0/default/train/pos415"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos297"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos443"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos463"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos254"
+            }
+          ],
+          "family_id": "8954f64bc5f59c11b9d05fabc14af76090630a1d34b84b6cc9bf69aaa3390565",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos29"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos45"
+            }
+          ],
+          "family_id": "8c6d3fed8f171a3d77771dadfd00cba88a7dfdd571b19d7fd94ead00fbd31ab3",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos35"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos806"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos235"
+            }
+          ],
+          "family_id": "2c788ccbb636e1872a550af8200fa1b32057ec8b5e99d4ff91a38c5351ef93e6",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos42"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos147"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos277"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos113"
+            }
+          ],
+          "family_id": "d8d0a5ed74409e91ec9f80d4a713e9a383d0297fd8858add5f9bf3ccbf9d9057",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos80"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos65"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos243"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos37"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos124"
+            }
+          ],
+          "family_id": "fea3a96d1f829f25f81fd7a7181ee90a4e2b8df0831a6d47752dcba5b3119954",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos93"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos284"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos382"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos418"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos540"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos590"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos711"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos883"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos154"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos159"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos256"
+            }
+          ],
+          "family_id": "01f7184a88eb879ea84538fdabc7cf95bf14f002c4954d17275d316741361aa0",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos180"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos358"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos390"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos416"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos650"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos684"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos809"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos822"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos831"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos956"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos75"
+            }
+          ],
+          "family_id": "9f970437df6145b02d150333963ee2618dd213f15cb9eef421f873fd274de043",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos194"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos406"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos568"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos570"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos862"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos935"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos30"
+            }
+          ],
+          "family_id": "5f7861aef87cf3053663866ed499f48349b8822c126b3922cdea035a2b6d4cd2",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos255"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos349"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos61"
+            }
+          ],
+          "family_id": "c0a175b62dd95219ca7251f02206623ff9d62f8b3a47ee872ddb4a738f5653eb",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos256"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos105"
+            }
+          ],
+          "family_id": "9ce411c35d572fcb84723e486f4e5a813e0a991b7aab7dd0f7ee801459feccc5",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos351"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos86"
+            }
+          ],
+          "family_id": "4a544293f70bfe9d532d0da4f930cec4688bf8d101fcab06236b585c1036603a",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos404"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos221"
+            }
+          ],
+          "family_id": "71299958662d4f99ab3b033bd0c9bcd0b2c4757606b07d47f0c02a48850a6f54",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos412"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos77"
+            }
+          ],
+          "family_id": "02a4d1aad91e96c8af59e6c39b96c51f22eb4e027a71fd332a2f66f1a4b33749",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos436"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos449"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos760"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos146"
+            }
+          ],
+          "family_id": "54a2358ee113005c4fa63cf01f23b9c7fbdfee3cc8496d23b48ad325210f1974",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos498"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/171c3ea22000283b2edb234b87ee4fc0628b565d03f4ea33f44cf42be67fa424"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/d01c51f169d6a66928f1c2dc5a8cb69f8feb9fb1338ab0237bf027f13649b729"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/12eb9c27f60545bc1e128469d078850a0fbd8a7cfeb2aa01be97c54a47ca5962"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/5e839a6a4fc529ae3b28309e60034409c2e76e99bd0fbc036b58f76fd345151c"
+            },
+            {
+              "label": "unsafe",
+              "source": "toxicchat",
+              "source_row_id": "toxicchat0124/test/c57c20d58fb9d06952272f96cdde331857b853dab32516aecb1692f2655931b3"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos151"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos98"
+            }
+          ],
+          "family_id": "2369c4e956718eaf33338f5f629d0f3602285a2d37256c83cc1dc4189c75e0b3",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos586"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos743"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos152"
+            }
+          ],
+          "family_id": "a5065f628c3d086d7bdd4feae6c330c1a2f44a6181b4e5041abe22c637b96263",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos592"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos623"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos742"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos191"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos31"
+            }
+          ],
+          "family_id": "d354c17f86a442c92d5328e55f2385c973e0e31c0f620c121447f2ec565b5fae",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos632"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos245"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos236"
+            }
+          ],
+          "family_id": "34e971f32198667c853e5ec95e200b83cffb3857c1cb4c31dc85e2a400c960a5",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos661"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos108"
+            }
+          ],
+          "family_id": "3ca54f7cbb109818fdbeae96385dfa606bc15e36a4767a0b8adee94f5b220230",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos710"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos161"
+            }
+          ],
+          "family_id": "1cc316f6911cf2b47b8cdb7d8550997722f12d9a6b66e87ac08137b1b3811e9c",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos933"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos261"
+            }
+          ],
+          "family_id": "858e0f5e4916a06539087003450f4290644d6a09a9f0f52393183c0378467e69",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos939"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos251"
+            }
+          ],
+          "family_id": "9df1b5393f28099074a21a45935bc5918f5ffba280db7d39d8f94af0cdfc6b9d",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos948"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos147"
+            }
+          ],
+          "family_id": "56e68a8584ae5c25949e43d006d0f11db8d23833e6675a579b7d5317dd6cde7a",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos970"
+            }
+          ]
+        },
+        {
+          "disposition": "removed_train_side",
+          "eval_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos59"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos94"
+            },
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/test/pos149"
+            }
+          ],
+          "family_id": "c85ca8f015c6a8710658db0cfb177d76c0e30f41d428bf63191ffa9b3fee288c",
+          "train_members": [
+            {
+              "label": "unsafe",
+              "source": "jailbreak_classification",
+              "source_row_id": "2f2ceeb3/default/train/pos1039"
+            }
+          ]
+        }
+      ],
+      "count": 44
+    },
+    "exact_train_vs_eval": {
+      "count": 60,
+      "records": [
+        {
+          "content_sha256": "f2a7cfe42a76ed0f17677f27443ea56fbf040ccc9b87e165a19b1563a8cdc76f",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/7ef5ba3be6777cbd9764012109ede8706a9f3fe1723c4f42250fd2c3fc51f5a3"
+        },
+        {
+          "content_sha256": "d17e6281d089a8e6112a5535864463fd58e77559ac9d73af2cd8c3736ac724d7",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/a835f760cc93d0c53a48adeb019b1771bcf26df8ee12c34d023dfb3e487687cc"
+        },
+        {
+          "content_sha256": "8972a06a358bde292bb6ebd4c441e670445c1a261a7a49075ee1b86481e144e9",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/b2537f0b7bc49e2b1f99f76f7b4ca31b259eb85532ed3d9c64e3d427a3607e08"
+        },
+        {
+          "content_sha256": "f7c2f3961c879c2717b5781d231578169c5da2f463614d3d59b8d7a6823c16f9",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/5532662595c66f2333c119b4c28369022d138415fff7f723d8e5e667da30dbb1"
+        },
+        {
+          "content_sha256": "47a345161e297460aee13e81910f0cc893a51de25d7f0a3c84d9e2c5e2b5067d",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/6dbd45f3e0159ee8e41c84b6c708dafbf1b04c8736f054e0c17017273069c98f"
+        },
+        {
+          "content_sha256": "30ea8e1c5dc5a9a3c8f4b2ee233f45b9249cd7c967c9f124bb8b8ea203c314da",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/d477e980837ca21a7ca4e618856f713ce582cdd72aa5af1e9f8d489b3fb73d38"
+        },
+        {
+          "content_sha256": "b59e10b650e35a7e7c33c29f79091c81e4d3bbce0f121b3513621cc0545d05d1",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/6581957afb2525df74ac62e520b36d4c5737ec0efa7e497a68ac51eb08bea0a1"
+        },
+        {
+          "content_sha256": "8b39c54107ee016e4d1f2fc093ba8f1c7ad6874def6161441fe9048300b34168",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/988f2cab4c88a362dd861c32f56c3fdd3a9dcc936abce3421a00ffb3154d1405"
+        },
+        {
+          "content_sha256": "58bbc3ec0e8e8c73f964cacfdd1fe3af57f2f0a0d412e5a590fb781b10c0b66d",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/f4849120d0b2a47bb32903e3b2710cdcd901372c3d38aa40cce84ab686a40fe8"
+        },
+        {
+          "content_sha256": "4254143072e2351f69a21ef5ee153e27c3250490d76ab06db66494aa8d16e6c3",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/3c5b08583f0833ba823458d8bb7ea2cbb02266739d98b31f3799aa25c08b5a77"
+        },
+        {
+          "content_sha256": "852fd72d262f6f9ef0118391a916869f5f292a540a1ccfa746d7ccc55c791a76",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/c817bd057afa105ef9d77afb37adbcaf895ede6e12f72505edf6300dd64dc9d4"
+        },
+        {
+          "content_sha256": "3ebd9e54f35fe58ddb029938147fba80a35455ea62be9f263994a8e4466e48c2",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/9a0d1e91fe21f4d557cc27a26a80cd1090f178f7a5c75717b1642747d2836b65"
+        },
+        {
+          "content_sha256": "fb445ed90b88d2eefd2a3b06a2f7fde37b7df1f63b44fbc079ffbe52b208b442",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/0c3a8069621731511cf3204b1984fb0790b2b20238077f65ed432ce81c8b1741"
+        },
+        {
+          "content_sha256": "9dd0592eaeaee2e259a983bdad787a2e5de4f90c9057dc315c0d69c34f460a2a",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/8599df5d6adaa7184a3a2b9c8244f8168b9f356934fa1f3a0e0c4086b7444bdb"
+        },
+        {
+          "content_sha256": "09d5bfd063396e1783dd1a271bf3e2bda950a6841e2ba6f5b4378e44bcfdd19b",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/c4e3047c4043b819ac4e388c57af5871fc39ac771a4bee7a89d0072057aeb895"
+        },
+        {
+          "content_sha256": "c0d10abc586eb67b31da92286ed254d0058974af15808b0fd48d6130b2763574",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/ed6f2ba5435acb703554952d886d42350a8c3e8ec5b6aeaeb177e4a79fecb88d"
+        },
+        {
+          "content_sha256": "d4b975e0d9ad8d26a7f2803a16b0aa155976f1812f1b147a347c29e41cac2965",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/bc1c9ab30a8ba27140846a19aa3ec02fce004f19b7fac471b3bc13386e35bff4"
+        },
+        {
+          "content_sha256": "52950882b006b4ac33839e436fc1dab48b64e07d691a82494f9dced37aee3db0",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/edc242dda10626427a6d36d1d1f433d585837eb034ab1c1fe3db5c4d0257173e"
+        },
+        {
+          "content_sha256": "682072b765dfdc15c15eef8b859ee5c767702ff5afc64f88ee3e3904b97894a1",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/d432169aef6f7859baf18722876ef4e57246b64c3e59f8a851c1873d36153e6e"
+        },
+        {
+          "content_sha256": "6981f84950b9f5baffabca0d80edc3d6de3da7df43050610a4a3cf034004428a",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/6c2b0d3fb335e74c33987441b7c8b459bcef7b5320a38d8e646ab966e15ebcc9"
+        },
+        {
+          "content_sha256": "d156ddeeb2a07ffbf90f0602a6cc06ebecacae1b6d4a4f3667b4517d412ec3b2",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/14e67e12fdd53fda22c2fe8d80623904f5a9941c24508eee1903cd046426d468"
+        },
+        {
+          "content_sha256": "32f257ec3e48795fa6aa743edd4ff16fcc771af9436d4ae243b11dd5867e5e66",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/b9783228811435a1a31deab6e10fcb70fffce231a54515d5b5b2d7112ffa6d19"
+        },
+        {
+          "content_sha256": "ec4646b130d4425e986fa5e80c8fa2baeabb1dfa64291c1fede9d3ff319b12a6",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/ed47ced6c8ea341749d85e39a7effcdf71e4a504f1b1879fb8fba4cc448cb17f"
+        },
+        {
+          "content_sha256": "89bd92a2bf9ff66b2af8a37ee50cf28aad9957d64bd0242738e6877af4c06b06",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/4815fd012750b8bceb73562397ff37dab04fa3b6ab22ba32432a31e1cfcb7d79"
+        },
+        {
+          "content_sha256": "9eb45f33581871d96bf857750907307b690a783a5e7d70d670500ebfd5fc4a84",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/090ae541404aa87603b6706326823083627acef5c09b7f75ff4dc90245e0d3d6"
+        },
+        {
+          "content_sha256": "ac5e57bae3f4f8253b2f68dea73eb91b1dadfd6361309c3c0d1a1b2625bbf265",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/415da9fbd2f0916aa2992a985f95f1ffcf5e355d7366205a188c46ddd4161378"
+        },
+        {
+          "content_sha256": "cc8b56309fc4f2cf51cb69a477545997c25d7cd7fca0a119afc0a2a904d8b325",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/3b44548c313f509fa634519f18de236ea37a0f7e3ebf1957faa5e4a904474b6b"
+        },
+        {
+          "content_sha256": "62217cde9a08777989ef1b712bf604ddcac3eb41b3eae6acbd77eb437f5277a1",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/349b6888a43244d8cc272683500ab6c4ca5da8b8e9b96b1f50077a3955e96e4d"
+        },
+        {
+          "content_sha256": "f9f06e962e5ccddcec5be4d25f9bbbb763c6f20bdf249cbff7f14a48f663e5b7",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/22e08f661873ccf9be03f5905153323528728863d0cd2baf33ee9879f215ee60"
+        },
+        {
+          "content_sha256": "a01248e7efc70a1608829f75d7613373c1f146df41c6855c6c429abfac97b8e0",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/9a0a976c399ce08b5bb0bb3c0904cd1950cd36de0f5eeb320392b4260112e24d"
+        },
+        {
+          "content_sha256": "fa1f41315150ebbe01f5c5fb5726958a917ded25ac08274eda1e4b83854110d4",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/4244b2d9c8a811a91f36bf1f765b307cf132308707321c184077da8a0d27866e"
+        },
+        {
+          "content_sha256": "f6a7e8688ffdc4a02943e8138bde7214eeecff18907022982b5e9c45c8f6b14d",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/7381119fb14218cb79e3cb89ad4b8082ba53c2afed1488a4782944ecc6d03e01"
+        },
+        {
+          "content_sha256": "065c176a9a293f0baed7cf73715295f855eaf0ca567f6686f8ab57a5a1fb1da5",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/b11a1e681a43f077bca0737d0ee61f12e52785b3bbb9d4c27e083ecdb2d8ee94"
+        },
+        {
+          "content_sha256": "364639c5892d48cc11e6f1a40ef962590903e97746e82e764cc617e209e20f2c",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/ee8f15584b4ca349e896cc2d793f21ab60da2822126b0cf175b994a84e56435a"
+        },
+        {
+          "content_sha256": "82061700aca8972f667bf5f41ddaa08f3265c68e9a62ee51b8c788a81c3f5f17",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/bdad2f349a4fefb428af235540ab819611559cf2786a9509e91543dbdb148ba3"
+        },
+        {
+          "content_sha256": "a777aced920e0e4b710d1c126d2aa207f7caed56fa93640276331214734a0719",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/bbecfb809c3abbb0ed2fe5eea40e5256b13f5b4fd45f847b72993673267b25b4"
+        },
+        {
+          "content_sha256": "841b1f9f3e7c9fcf3848f3ed650dde11f0c214d8842bc317c7655b2bb2e6ff4e",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/a3e6ad1d5a94cf0dee0009f3a2ff9a94ea223b42d703f9c06b8a6a265e728fee"
+        },
+        {
+          "content_sha256": "fe8feccdec2236a0747f43b801c73408d3b09f9a641829600d68804758b598e0",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/f0f01679baa61d1fe8357b7a2b990fba8d665bd622ab25a1ffffb56b798bca03"
+        },
+        {
+          "content_sha256": "21e5b18ec77ac91c9bc883d650bfe6ab9c73112fb03cba120f2ff875b74de23a",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/15bea960d9511a232fdbdee1ce2c1e9c593aef176da67b1fa5efcd4e8ba1efb3"
+        },
+        {
+          "content_sha256": "a7561f15b21a75de60fab0de58697357229ef0a9a39dedd9c6e7ab60c0530d0d",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/4cb80eeaa768a9771d1502c907ccdd1840d8a0c94d994b692182fb319eced82c"
+        },
+        {
+          "content_sha256": "45e4e6d86f15abd35875d30065cb378b0c4a1fe53830dd5a9eddcab623195fc0",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/b91f7b3ae3949b2202753a7e0adf77bff0b506bf9d453ca19c5933f8456e017a"
+        },
+        {
+          "content_sha256": "c59f959467c633359b3ba2f25cb0336880c0e369b25a13db08b3b1c306232fef",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/f2704845d9eb215edbfc3303c03c5de63bc9b3f22eb3ad16359440fb4ccc262f"
+        },
+        {
+          "content_sha256": "c273068954094009a643c14e702d66322dec5f71e41e9383a2145004c56ad0f2",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/d965c9c3a8b5c3a8f5b47d533da498c47638081a6fc2ab4af7e63ed780400d7a"
+        },
+        {
+          "content_sha256": "a62bb440fee3450e951f3b2228e3e6aef270628ae6b9c43893cb05fc3b962940",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/4071b1548bc9166c0ca9a8f734178f0c2cf4b49064f02de76ae9344c347798d5"
+        },
+        {
+          "content_sha256": "415bc7def1fc423674a40b868e7c2bb6b3db37dc10ed629bf3e66a41abdda348",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/8eb57fc9a27d77bd93ece4fe31f0af75cee758081eddfc5902af9a86a6fd660d"
+        },
+        {
+          "content_sha256": "d49b921634ecfbd6b26b524c90da2e4e2dc8ed4e354f7e21125ac63d1aaa82e6",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/7d41db8b4e4085f6a4d54591b10bb7e40af6955fda5f054dc4bc9a05ed1486a2"
+        },
+        {
+          "content_sha256": "69f7d92145a7db73319f745d21f2f1a0c2b3dc4af94279c446fc33c21c812c25",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/507acbd829667d97c7bf8472630c57dca3d3425a4ff3aa037bae54e15f56c8ba"
+        },
+        {
+          "content_sha256": "03cf3e0f7c10088b6c4bae0a9a26ec21881b56d2acdf6bb7c153ae6733377e18",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "safe",
+          "train_source": "toxicchat",
+          "train_source_row_id": "toxicchat0124/train/b45ebde62177efd213fcdbd5e93f337bbb5c63f75c3f0be7fb21f5a91bff1ecf"
+        },
+        {
+          "content_sha256": "79918565caa3feec4d291ac474fe245bf9ba7ee9fbe41cb9435389b38c19548e",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "wildjailbreak"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos22"
+        },
+        {
+          "content_sha256": "d4aa8c7b005b20f04f6e57aa1c1d4a782cfcfff316bb7b0cb0028947e574419f",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "wildjailbreak"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos149"
+        },
+        {
+          "content_sha256": "042062d2887ab4c0ee02f14dfcfcc72be237e48d61adc965cf59fedbf58d7b35",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos152"
+        },
+        {
+          "content_sha256": "3a07b6215b2f993e43a3c4a8a12d9d62ba43566565fa78a7ea40187dc56da36b",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "safe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos185"
+        },
+        {
+          "content_sha256": "16c9e4f7b01049c53b4862022723f872cd23153b6fb2ffe02ceb865db41d561e",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "wildjailbreak"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos293"
+        },
+        {
+          "content_sha256": "a21139092020b3f3651a766d6378c493f825a3d42533f3699011f6a362c4ab51",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos397"
+        },
+        {
+          "content_sha256": "47c8bfbe3eb696fca2b1dd058c95998c08c85c2bc8445f7598f3df2cf07ca8d9",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos403"
+        },
+        {
+          "content_sha256": "2c42f0d27671501cccb826c10d8e5197d7aa393429c5b6aab60262706a014e61",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "toxicchat"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos518"
+        },
+        {
+          "content_sha256": "545381bc3eed7bd93d3d6ad1e7395306071d31cbceb0b7e02d9c3cdce8d6de5a",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos737"
+        },
+        {
+          "content_sha256": "93ddbc032616e51621da18eeb68fd7e37eeb51efd0ce9cdd1e4f6f3c2f09dcdf",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos830"
+        },
+        {
+          "content_sha256": "e5af876a9be0e1308535eb9f3aa05cf900d296335cc3b42b6f24849c908d408d",
+          "eval_labels": [
+            "safe"
+          ],
+          "eval_sources": [
+            "wildjailbreak"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos927"
+        },
+        {
+          "content_sha256": "069163c1abf6e34b58f88ce0cce3736b58a4a327546c825f2e7c2584a11ef43a",
+          "eval_labels": [
+            "unsafe"
+          ],
+          "eval_sources": [
+            "jailbreak_classification"
+          ],
+          "train_label": "unsafe",
+          "train_source": "jailbreak_classification",
+          "train_source_row_id": "2f2ceeb3/default/train/pos934"
+        }
+      ]
+    },
+    "quarantined_conflicting_within_source": {
+      "count": 0,
+      "records": []
+    }
+  },
+  "row_schema_fields": [
+    "sample_id",
+    "source",
+    "source_config",
+    "source_revision",
+    "source_row_id",
+    "upstream_family_id",
+    "split",
+    "label",
+    "gold",
+    "label_provenance",
+    "content_sha256",
+    "family_id",
+    "license_id",
+    "redistribution_class",
+    "known_overlap_disposition",
+    "source_origin"
+  ],
+  "schema_version": 1,
+  "source_contract": "legacy_v1_snapshot",
+  "sources": {
+    "harmbench": {
+      "eligible_after_dedup": 200,
+      "emitted_source": "harmbench",
+      "hf_config": "standard",
+      "hf_path": "walledai/HarmBench",
+      "label_rule": "all unsafe (recall stress)",
+      "license_id": "MIT",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/walledai/HarmBench/tree/fb6c2afd5a2a943d701d6db3efab87d077e81be5",
+        "declared_config_license_id": "MIT",
+        "license_id": "MIT",
+        "metadata_values": {
+          "config": "MIT"
+        },
+        "redistribution_class": "permissive",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "hf",
+      "raw_rows": 200,
+      "redistribution_class": "permissive",
+      "revision": "fb6c2afd5a2a943d701d6db3efab87d077e81be5",
+      "role": "stress_unsafe",
+      "split": "train",
+      "target": "200_rows",
+      "text_field": "prompt"
+    },
+    "jailbreak_classification": {
+      "eligible_after_dedup": 1031,
+      "emitted_source": "jailbreak_classification",
+      "hf_config": "default",
+      "hf_path": "jackhhao/jailbreak-classification",
+      "label_rule": "type.lower().startswith('jailbreak')->unsafe; else safe",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/jackhhao/jailbreak-classification/blob/2f2ceeb39658696fd3f462403562b6eea5306287/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0"
+        },
+        "redistribution_class": "permissive_with_notice",
+        "status": "declared_by_pinned_card"
+      },
+      "origin": "hf",
+      "raw_rows": 1044,
+      "redistribution_class": "permissive_with_notice",
+      "revision": "2f2ceeb39658696fd3f462403562b6eea5306287",
+      "role": "train",
+      "split": "train",
+      "target": null,
+      "text_field": "prompt"
+    },
+    "jailbreak_classification_test": {
+      "eligible_after_dedup": 262,
+      "emitted_source": "jailbreak_classification",
+      "hf_config": "default",
+      "hf_path": "jackhhao/jailbreak-classification",
+      "label_rule": "type.lower().startswith('jailbreak')->unsafe; else safe",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/jackhhao/jailbreak-classification/blob/2f2ceeb39658696fd3f462403562b6eea5306287/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0"
+        },
+        "redistribution_class": "permissive_with_notice",
+        "status": "declared_by_pinned_card"
+      },
+      "origin": "hf",
+      "raw_rows": 262,
+      "redistribution_class": "permissive_with_notice",
+      "revision": "2f2ceeb39658696fd3f462403562b6eea5306287",
+      "role": "represented_test",
+      "split": "test",
+      "target": "at_most_400_per_label",
+      "text_field": "prompt"
+    },
+    "jailbreakbench": {
+      "eligible_after_dedup": 200,
+      "emitted_source": "jailbreakbench",
+      "hf_config": "behaviors",
+      "hf_path": "JailbreakBench/JBB-Behaviors",
+      "label_rule": "harmful split->unsafe; benign split->safe",
+      "license_id": "MIT",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/tree/886acc352a31533ffbcf4ef22c744658688086fc",
+        "declared_config_license_id": "MIT",
+        "license_id": "MIT",
+        "metadata_values": {
+          "config": "MIT"
+        },
+        "redistribution_class": "permissive",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "hf",
+      "raw_rows": 200,
+      "redistribution_class": "permissive",
+      "revision": "886acc352a31533ffbcf4ef22c744658688086fc",
+      "role": "transfer",
+      "split": [
+        "harmful",
+        "benign"
+      ],
+      "target": "60_per_label",
+      "text_field": "Goal"
+    },
+    "orbench_hard": {
+      "eligible_after_dedup": 1319,
+      "emitted_source": "orbench",
+      "hf_config": "or-bench-hard-1k",
+      "hf_path": "bench-llm/or-bench",
+      "label_rule": "all safe (benign over-refusal stress)",
+      "license_id": "CC-BY-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/bench-llm/or-bench/blob/e36d8b80e81837c8a8f264bbb2a49f1b32c7e272/README.md",
+        "declared_config_license_id": "CC-BY-4.0",
+        "license_id": "CC-BY-4.0",
+        "metadata_values": {
+          "card_top_level": "CC-BY-4.0"
+        },
+        "redistribution_class": "permissive_with_attribution",
+        "status": "declared_by_pinned_card"
+      },
+      "origin": "hf",
+      "raw_rows": 1319,
+      "redistribution_class": "permissive_with_attribution",
+      "revision": "e36d8b80e81837c8a8f264bbb2a49f1b32c7e272",
+      "role": "stress_safe",
+      "split": "train",
+      "target": "400_rows",
+      "text_field": "prompt"
+    },
+    "prompt_injections": {
+      "eligible_after_dedup": 546,
+      "emitted_source": "prompt_injections",
+      "hf_config": "default",
+      "hf_path": "deepset/prompt-injections",
+      "label_rule": "label==1->unsafe; else safe",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/deepset/prompt-injections/blob/4f61ecb038e9c3fb77e21034b22511b523772cdd/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0",
+          "dataset_info_nested": "CC-BY-4.0"
+        },
+        "note": "Pinned card has conflicting top-level and nested license metadata.",
+        "redistribution_class": "permissive_with_notice",
+        "status": "canonical_card_value_with_recorded_metadata_conflict"
+      },
+      "origin": "hf",
+      "raw_rows": 546,
+      "redistribution_class": "permissive_with_notice",
+      "revision": "4f61ecb038e9c3fb77e21034b22511b523772cdd",
+      "role": "train",
+      "split": "train",
+      "target": null,
+      "text_field": "text"
+    },
+    "prompt_injections_test": {
+      "eligible_after_dedup": 116,
+      "emitted_source": "prompt_injections",
+      "hf_config": "default",
+      "hf_path": "deepset/prompt-injections",
+      "label_rule": "label==1->unsafe; else safe",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/deepset/prompt-injections/blob/4f61ecb038e9c3fb77e21034b22511b523772cdd/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0",
+          "dataset_info_nested": "CC-BY-4.0"
+        },
+        "note": "Pinned card has conflicting top-level and nested license metadata.",
+        "redistribution_class": "permissive_with_notice",
+        "status": "canonical_card_value_with_recorded_metadata_conflict"
+      },
+      "origin": "hf",
+      "raw_rows": 116,
+      "redistribution_class": "permissive_with_notice",
+      "revision": "4f61ecb038e9c3fb77e21034b22511b523772cdd",
+      "role": "represented_test",
+      "split": "test",
+      "target": "balance_to_minority",
+      "text_field": "text"
+    },
+    "toxicchat": {
+      "eligible_after_dedup": 4964,
+      "emitted_source": "toxicchat",
+      "hf_config": "toxicchat0124",
+      "hf_path": "lmsys/toxic-chat",
+      "label_rule": "toxicity==1->unsafe; else safe",
+      "license_id": "CC-BY-NC-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/lmsys/toxic-chat/tree/29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+        "declared_config_license_id": "CC-BY-NC-4.0",
+        "license_id": "CC-BY-NC-4.0",
+        "metadata_values": {
+          "config": "CC-BY-NC-4.0"
+        },
+        "redistribution_class": "noncommercial_reconstruct_only",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "hf",
+      "raw_rows": 5082,
+      "redistribution_class": "noncommercial_reconstruct_only",
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "role": "train",
+      "split": "train",
+      "target": null,
+      "text_field": "user_input"
+    },
+    "toxicchat_test": {
+      "eligible_after_dedup": 4951,
+      "emitted_source": "toxicchat",
+      "hf_config": "toxicchat0124",
+      "hf_path": "lmsys/toxic-chat",
+      "label_rule": "toxicity==1->unsafe; else safe",
+      "license_id": "CC-BY-NC-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/lmsys/toxic-chat/tree/29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+        "declared_config_license_id": "CC-BY-NC-4.0",
+        "license_id": "CC-BY-NC-4.0",
+        "metadata_values": {
+          "config": "CC-BY-NC-4.0"
+        },
+        "redistribution_class": "noncommercial_reconstruct_only",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "hf",
+      "raw_rows": 5083,
+      "redistribution_class": "noncommercial_reconstruct_only",
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "role": "represented_test",
+      "split": "test",
+      "target": "at_most_400_per_label",
+      "text_field": "user_input"
+    },
+    "wildguardtest": {
+      "eligible_after_dedup": 800,
+      "emitted_source": "wildguardtest",
+      "hf_config": "wildguardtest",
+      "hf_path": "allenai/wildguardmix",
+      "label_rule": "prompt_harm_label:harmful->unsafe; unharmful->safe; else discard",
+      "license_id": "ODC-BY-AI2-gated",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/allenai/wildguardmix/tree/d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+        "declared_config_license_id": "ODC-BY-AI2-gated",
+        "license_id": "ODC-BY-AI2-gated",
+        "metadata_values": {
+          "config": "ODC-BY-AI2-gated"
+        },
+        "redistribution_class": "gated_no_redistribution",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "frozen_prefer",
+      "raw_rows": 800,
+      "redistribution_class": "gated_no_redistribution",
+      "revision": "d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+      "role": "transfer",
+      "split": "test",
+      "target": "400_per_label",
+      "text_field": "prompt"
+    },
+    "wildjailbreak": {
+      "eligible_after_dedup": 420,
+      "emitted_source": "wildjailbreak",
+      "hf_config": "eval",
+      "hf_path": "allenai/wildjailbreak",
+      "label_rule": "label==1->unsafe; 0->safe",
+      "license_id": "ODC-BY-AI2-gated",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/allenai/wildjailbreak/tree/5ddc12a7894f842b0619b8e1c7ee496b198af009",
+        "declared_config_license_id": "ODC-BY-AI2-gated",
+        "license_id": "ODC-BY-AI2-gated",
+        "metadata_values": {
+          "config": "ODC-BY-AI2-gated"
+        },
+        "redistribution_class": "gated_no_redistribution",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "frozen_prefer",
+      "raw_rows": 420,
+      "redistribution_class": "gated_no_redistribution",
+      "revision": "5ddc12a7894f842b0619b8e1c7ee496b198af009",
+      "role": "transfer",
+      "split": "train",
+      "target": "balance_to_minority",
+      "text_field": "adversarial"
+    },
+    "xstest": {
+      "eligible_after_dedup": 450,
+      "emitted_source": "xstest",
+      "hf_config": "default",
+      "hf_path": "natolambert/xstest-v2-copy",
+      "label_rule": "type.lower().startswith('contrast')->unsafe; else safe",
+      "license_id": "CC-BY-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/natolambert/xstest-v2-copy/tree/b71afe2a6d10e5a6254ea8bcb006c48b095a15d5",
+        "declared_config_license_id": "CC-BY-4.0",
+        "license_id": "CC-BY-4.0",
+        "metadata_values": {
+          "config": "CC-BY-4.0"
+        },
+        "redistribution_class": "permissive_with_attribution",
+        "status": "declared_by_pinned_config"
+      },
+      "origin": "hf",
+      "raw_rows": 450,
+      "redistribution_class": "permissive_with_attribution",
+      "revision": "b71afe2a6d10e5a6254ea8bcb006c48b095a15d5",
+      "role": "transfer",
+      "split": "prompts",
+      "target": "120_per_label",
+      "text_field": "prompt"
+    }
+  },
+  "study_id": "paper_a_sft",
+  "supplemental_files": {
+    "contradictory_label_inventory": {
+      "path": "artifacts/paper_a_sft/public_manifests/contradictory_label_inventory.json",
+      "sha256": "e186fd2d55ac92097bd5d59cc97641a38ae665b56f78be88f7a76fed831c88f2"
+    },
+    "policy_label_crosswalk": {
+      "path": "artifacts/paper_a_sft/public_manifests/policy_label_crosswalk.json",
+      "sha256": "2be2b52c5289a9c943c630e97fecf6a6d9c12bee54a1e54261bbec2b65cd7aac"
+    }
+  },
+  "train_breakdown": {
+    "jailbreak_classification": {
+      "safe": 200,
+      "unsafe": 200
+    },
+    "prompt_injections": {
+      "safe": 200,
+      "unsafe": 200
+    },
+    "toxicchat": {
+      "safe": 200,
+      "unsafe": 200
+    }
+  },
+  "train_total": 1200
+}

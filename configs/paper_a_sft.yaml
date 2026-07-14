@@ -22,8 +22,8 @@ train_sources:
 excluded_train_sources:
   - beavertails
   - or_bench
-# NOTE: the run may start with seeds [42, 43, 44] (Stage 1, first twelve cells),
-# then complete [45, 46] (Stage 2). The frozen confirmatory design is all five.
+# All five seeds define the fixed-panel precision-focused analysis. Development
+# runs may use fewer seeds only in an explicit nonfinal namespace.
 seeds: [42, 43, 44, 45, 46]
 max_steps: 300
 max_length: 1024
@@ -84,9 +84,9 @@ family:
 
 # ---------------------------------------------------------------------------
 # Data sources (plan sec 6.4.1 mechanical construction table). All revisions
-# pinned to the locally-cached HF snapshot commit. `origin` records the
-# authoritative provenance; gated AI2 sets prefer the frozen local cache to
-# avoid a gated re-download and are documented as such.
+# pinned to an immutable HF snapshot commit. `origin` records the authoritative
+# provenance. Pinned Hugging Face reconstruction is the default; gated legacy
+# cache use requires the explicit --allow-legacy-frozen-cohorts option.
 # ---------------------------------------------------------------------------
 sources:
   # ---- TRAIN candidates ---------------------------------------------------
@@ -109,8 +109,8 @@ sources:
     revision: 4f61ecb038e9c3fb77e21034b22511b523772cdd
     text_field: text
     label_rule: "label==1->unsafe; else safe"
-    license_id: unknown-verify-before-lock
-    redistribution_class: research_reconstruct_only
+    license_id: Apache-2.0  # pinned card top-level; nested metadata says CC-BY-4.0
+    redistribution_class: permissive_with_notice
     origin: hf
   jailbreak_classification:
     role: train
@@ -120,8 +120,8 @@ sources:
     revision: 2f2ceeb39658696fd3f462403562b6eea5306287
     text_field: prompt
     label_rule: "type.lower().startswith('jailbreak')->unsafe; else safe"
-    license_id: unknown-verify-before-lock
-    redistribution_class: research_reconstruct_only
+    license_id: Apache-2.0
+    redistribution_class: permissive_with_notice
     origin: hf
 
   # ---- Represented-source calibration + ID (TEST splits) ------------------
@@ -146,8 +146,8 @@ sources:
     text_field: text
     label_rule: "label==1->unsafe; else safe"
     target: balance_to_minority
-    license_id: unknown-verify-before-lock
-    redistribution_class: research_reconstruct_only
+    license_id: Apache-2.0  # pinned card top-level; nested metadata says CC-BY-4.0
+    redistribution_class: permissive_with_notice
     origin: hf
   jailbreak_classification_test:
     role: represented_test
@@ -158,8 +158,8 @@ sources:
     text_field: prompt
     label_rule: "type.lower().startswith('jailbreak')->unsafe; else safe"
     target: at_most_400_per_label
-    license_id: unknown-verify-before-lock
-    redistribution_class: research_reconstruct_only
+    license_id: Apache-2.0
+    redistribution_class: permissive_with_notice
     origin: hf
 
   # ---- Transfer benchmarks ------------------------------------------------
@@ -185,7 +185,7 @@ sources:
     label_rule: "type.lower().startswith('contrast')->unsafe; else safe"
     target: 120_per_label
     license_id: CC-BY-4.0
-    redistribution_class: permissive
+    redistribution_class: permissive_with_attribution
     origin: hf
   wildguardtest:
     role: transfer
@@ -198,7 +198,7 @@ sources:
     target: 400_per_label
     license_id: ODC-BY-AI2-gated
     redistribution_class: gated_no_redistribution
-    origin: frozen_prefer   # AI2-gated: prefer data/frozen_eval_rows.json; HF fallback
+    origin: hf              # legacy frozen rows require explicit CLI opt-in
     frozen_key: wildguardtest
   wildjailbreak:
     role: transfer
@@ -211,7 +211,7 @@ sources:
     target: balance_to_minority
     license_id: ODC-BY-AI2-gated
     redistribution_class: gated_no_redistribution
-    origin: frozen_prefer   # AI2-gated: prefer frozen cache; HF fallback
+    origin: hf              # legacy frozen rows require explicit CLI opt-in
     frozen_key: wildjailbreak
 
   # ---- Single-class stress sets ------------------------------------------
@@ -224,8 +224,8 @@ sources:
     text_field: prompt
     label_rule: "all safe (benign over-refusal stress)"
     target: 400_rows
-    license_id: unknown-verify-before-lock
-    redistribution_class: research_reconstruct_only
+    license_id: CC-BY-4.0
+    redistribution_class: permissive_with_attribution
     origin: hf   # not gated; frozen orbench_hard is the confounded hybrid, not used
   harmbench:
     role: stress_unsafe

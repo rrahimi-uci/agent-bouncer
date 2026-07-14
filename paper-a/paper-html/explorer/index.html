@@ -145,12 +145,13 @@ footer{color:var(--muted);font-size:12.5px;line-height:1.6;padding:26px 0 54px;b
 <body>
 <div class="wrap">
   <header class="hero">
+    <p style="padding:12px 14px;border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:10px;font-weight:700">Archived broad-study explorer — not part of focused Paper A and not a source for its reported results.</p>
     <span class="eyebrow"><i></i>Small-LLM Safety Guards</span>
     <h1>Guard Benchmark Explorer</h1>
-    <p class="sub">The evaluation suites behind <a href="../paper-html/index.html" style="color:var(--brand);font-weight:600"><em>“The Benchmark Chooses the Winner: A Fair Evaluation of Small-LLM Safety Guards”</em>&nbsp;↗</a>.
+    <p class="sub">An archived explorer from the repository's earlier broad study.
     Every set classifies <b>input prompts</b> (unsafe = positive); scores are threshold-free <b>tie-aware AUPRC</b>.
-    Browse the <b>cards</b>, or switch to <b>Table</b> view for a tab per benchmark with its complete record
-    and a <b>diversified sample of its real prompts</b>.</p>
+    Browse the <b>cards</b>, or switch to <b>Table</b> view for a tab per benchmark.
+    Real-prompt samples appear only when the gitignored local sample file is present.</p>
     <div class="stats" id="stats"></div>
     <div class="legend" id="legend"></div>
   </header>
@@ -182,7 +183,7 @@ footer{color:var(--muted);font-size:12.5px;line-height:1.6;padding:26px 0 54px;b
 <div class="scrim" id="scrim" onclick="closeD()"></div>
 <aside class="drawer" id="drawer" aria-live="polite"></aside>
 
-<script src="samples.js"></script>
+<script src="samples.local.js"></script>
 <script>
 const AX={guardrail:["Guardrail","--guardrail"],red_team:["Red-team","--redteam"],over_refusal:["Over-refusal","--refusal"]};
 const POOL={

@@ -1,0 +1,83 @@
+{
+  "final_manifest_cross_source_conflicts": [
+    {
+      "content_sha256": "323bd8933a8482d5a47e926837373d605b1826fa14b1b5e649a7c90c766d40dc",
+      "rows": [
+        {
+          "family_id": "5211000fd3fb1136297a2b0a01756f8b132c5d7f49f3602a5285848e4f943a85",
+          "gold": 1,
+          "label": "unsafe",
+          "sample_id": "jailbreak_classification::2f2ceeb3/default/test/pos64",
+          "source": "jailbreak_classification",
+          "source_revision": "2f2ceeb39658696fd3f462403562b6eea5306287",
+          "source_row_id": "2f2ceeb3/default/test/pos64",
+          "split": "id_test",
+          "upstream_family_id": null
+        },
+        {
+          "family_id": "5211000fd3fb1136297a2b0a01756f8b132c5d7f49f3602a5285848e4f943a85",
+          "gold": 0,
+          "label": "safe",
+          "sample_id": "wildjailbreak::5ddc12a7/eval/train/pos184",
+          "source": "wildjailbreak",
+          "source_revision": "5ddc12a7894f842b0619b8e1c7ee496b198af009",
+          "source_row_id": "5ddc12a7/eval/train/pos184",
+          "split": "transfer_test",
+          "upstream_family_id": null
+        }
+      ]
+    }
+  ],
+  "matching_rule": "exact SHA-256 of NFKC-lower-collapsed-whitespace content",
+  "removed_train_eval_conflicts": [
+    {
+      "content_sha256": "79918565caa3feec4d291ac474fe245bf9ba7ee9fbe41cb9435389b38c19548e",
+      "eval_labels": [
+        "safe"
+      ],
+      "eval_sources": [
+        "wildjailbreak"
+      ],
+      "train_label": "unsafe",
+      "train_source": "jailbreak_classification",
+      "train_source_row_id": "2f2ceeb3/default/train/pos22"
+    },
+    {
+      "content_sha256": "d4aa8c7b005b20f04f6e57aa1c1d4a782cfcfff316bb7b0cb0028947e574419f",
+      "eval_labels": [
+        "safe"
+      ],
+      "eval_sources": [
+        "wildjailbreak"
+      ],
+      "train_label": "unsafe",
+      "train_source": "jailbreak_classification",
+      "train_source_row_id": "2f2ceeb3/default/train/pos149"
+    },
+    {
+      "content_sha256": "16c9e4f7b01049c53b4862022723f872cd23153b6fb2ffe02ceb865db41d561e",
+      "eval_labels": [
+        "safe"
+      ],
+      "eval_sources": [
+        "wildjailbreak"
+      ],
+      "train_label": "unsafe",
+      "train_source": "jailbreak_classification",
+      "train_source_row_id": "2f2ceeb3/default/train/pos293"
+    },
+    {
+      "content_sha256": "e5af876a9be0e1308535eb9f3aa05cf900d296335cc3b42b6f24849c908d408d",
+      "eval_labels": [
+        "safe"
+      ],
+      "eval_sources": [
+        "wildjailbreak"
+      ],
+      "train_label": "unsafe",
+      "train_source": "jailbreak_classification",
+      "train_source_row_id": "2f2ceeb3/default/train/pos927"
+    }
+  ],
+  "schema_version": 1
+}

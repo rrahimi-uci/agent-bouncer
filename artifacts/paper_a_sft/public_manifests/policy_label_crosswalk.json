@@ -1,0 +1,308 @@
+{
+  "description": "Native dataset annotations mapped to the study's binary prompt-policy labels.",
+  "schema_version": 1,
+  "sources": {
+    "harmbench": {
+      "caveat": "Single-class harmful-behavior recall stress set.",
+      "hf_config": "standard",
+      "hf_path": "walledai/HarmBench",
+      "license_id": "MIT",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/walledai/HarmBench/tree/fb6c2afd5a2a943d701d6db3efab87d077e81be5",
+        "declared_config_license_id": "MIT",
+        "license_id": "MIT",
+        "metadata_values": {
+          "config": "MIT"
+        },
+        "redistribution_class": "permissive",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "benchmark membership",
+      "native_to_binary": {
+        "all": "unsafe"
+      },
+      "revision": "fb6c2afd5a2a943d701d6db3efab87d077e81be5",
+      "role": "stress_unsafe",
+      "source": "harmbench",
+      "source_config_key": "harmbench"
+    },
+    "jailbreak_classification": {
+      "caveat": "Prompt-type label; not a measured jailbreak-success outcome.",
+      "hf_config": "default",
+      "hf_path": "jackhhao/jailbreak-classification",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/jackhhao/jailbreak-classification/blob/2f2ceeb39658696fd3f462403562b6eea5306287/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0"
+        },
+        "redistribution_class": "permissive_with_notice",
+        "status": "declared_by_pinned_card"
+      },
+      "native_field": "type",
+      "native_to_binary": {
+        "otherwise": "safe",
+        "prefix jailbreak": "unsafe"
+      },
+      "revision": "2f2ceeb39658696fd3f462403562b6eea5306287",
+      "role": "train",
+      "source": "jailbreak_classification",
+      "source_config_key": "jailbreak_classification"
+    },
+    "jailbreak_classification_test": {
+      "caveat": "Prompt-type label; not a measured jailbreak-success outcome.",
+      "hf_config": "default",
+      "hf_path": "jackhhao/jailbreak-classification",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/jackhhao/jailbreak-classification/blob/2f2ceeb39658696fd3f462403562b6eea5306287/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0"
+        },
+        "redistribution_class": "permissive_with_notice",
+        "status": "declared_by_pinned_card"
+      },
+      "native_field": "type",
+      "native_to_binary": {
+        "otherwise": "safe",
+        "prefix jailbreak": "unsafe"
+      },
+      "revision": "2f2ceeb39658696fd3f462403562b6eea5306287",
+      "role": "represented_test",
+      "source": "jailbreak_classification",
+      "source_config_key": "jailbreak_classification_test"
+    },
+    "jailbreakbench": {
+      "caveat": "Behavior-policy class; matched harmful/benign indexes form one family.",
+      "hf_config": "behaviors",
+      "hf_path": "JailbreakBench/JBB-Behaviors",
+      "license_id": "MIT",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/tree/886acc352a31533ffbcf4ef22c744658688086fc",
+        "declared_config_license_id": "MIT",
+        "license_id": "MIT",
+        "metadata_values": {
+          "config": "MIT"
+        },
+        "redistribution_class": "permissive",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "dataset split",
+      "native_to_binary": {
+        "benign": "safe",
+        "harmful": "unsafe"
+      },
+      "revision": "886acc352a31533ffbcf4ef22c744658688086fc",
+      "role": "transfer",
+      "source": "jailbreakbench",
+      "source_config_key": "jailbreakbench"
+    },
+    "orbench_hard": {
+      "caveat": "Single-class benign over-refusal stress set.",
+      "hf_config": "or-bench-hard-1k",
+      "hf_path": "bench-llm/or-bench",
+      "license_id": "CC-BY-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/bench-llm/or-bench/blob/e36d8b80e81837c8a8f264bbb2a49f1b32c7e272/README.md",
+        "declared_config_license_id": "CC-BY-4.0",
+        "license_id": "CC-BY-4.0",
+        "metadata_values": {
+          "card_top_level": "CC-BY-4.0"
+        },
+        "redistribution_class": "permissive_with_attribution",
+        "status": "declared_by_pinned_card"
+      },
+      "native_field": "benchmark membership",
+      "native_to_binary": {
+        "all": "safe"
+      },
+      "revision": "e36d8b80e81837c8a8f264bbb2a49f1b32c7e272",
+      "role": "stress_safe",
+      "source": "orbench",
+      "source_config_key": "orbench_hard"
+    },
+    "prompt_injections": {
+      "caveat": "Prompt-injection class label; not a measured attack-success outcome.",
+      "hf_config": "default",
+      "hf_path": "deepset/prompt-injections",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/deepset/prompt-injections/blob/4f61ecb038e9c3fb77e21034b22511b523772cdd/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0",
+          "dataset_info_nested": "CC-BY-4.0"
+        },
+        "note": "Pinned card has conflicting top-level and nested license metadata.",
+        "redistribution_class": "permissive_with_notice",
+        "status": "canonical_card_value_with_recorded_metadata_conflict"
+      },
+      "native_field": "label",
+      "native_to_binary": {
+        "0": "safe",
+        "1": "unsafe"
+      },
+      "revision": "4f61ecb038e9c3fb77e21034b22511b523772cdd",
+      "role": "train",
+      "source": "prompt_injections",
+      "source_config_key": "prompt_injections"
+    },
+    "prompt_injections_test": {
+      "caveat": "Prompt-injection class label; not a measured attack-success outcome.",
+      "hf_config": "default",
+      "hf_path": "deepset/prompt-injections",
+      "license_id": "Apache-2.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/deepset/prompt-injections/blob/4f61ecb038e9c3fb77e21034b22511b523772cdd/README.md",
+        "declared_config_license_id": "Apache-2.0",
+        "license_id": "Apache-2.0",
+        "metadata_values": {
+          "card_top_level": "Apache-2.0",
+          "dataset_info_nested": "CC-BY-4.0"
+        },
+        "note": "Pinned card has conflicting top-level and nested license metadata.",
+        "redistribution_class": "permissive_with_notice",
+        "status": "canonical_card_value_with_recorded_metadata_conflict"
+      },
+      "native_field": "label",
+      "native_to_binary": {
+        "0": "safe",
+        "1": "unsafe"
+      },
+      "revision": "4f61ecb038e9c3fb77e21034b22511b523772cdd",
+      "role": "represented_test",
+      "source": "prompt_injections",
+      "source_config_key": "prompt_injections_test"
+    },
+    "toxicchat": {
+      "caveat": "Toxicity annotation; not a measured jailbreak or injection success outcome.",
+      "hf_config": "toxicchat0124",
+      "hf_path": "lmsys/toxic-chat",
+      "license_id": "CC-BY-NC-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/lmsys/toxic-chat/tree/29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+        "declared_config_license_id": "CC-BY-NC-4.0",
+        "license_id": "CC-BY-NC-4.0",
+        "metadata_values": {
+          "config": "CC-BY-NC-4.0"
+        },
+        "redistribution_class": "noncommercial_reconstruct_only",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "toxicity",
+      "native_to_binary": {
+        "1": "unsafe",
+        "else": "safe"
+      },
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "role": "train",
+      "source": "toxicchat",
+      "source_config_key": "toxicchat"
+    },
+    "toxicchat_test": {
+      "caveat": "Toxicity annotation; not a measured jailbreak or injection success outcome.",
+      "hf_config": "toxicchat0124",
+      "hf_path": "lmsys/toxic-chat",
+      "license_id": "CC-BY-NC-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/lmsys/toxic-chat/tree/29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+        "declared_config_license_id": "CC-BY-NC-4.0",
+        "license_id": "CC-BY-NC-4.0",
+        "metadata_values": {
+          "config": "CC-BY-NC-4.0"
+        },
+        "redistribution_class": "noncommercial_reconstruct_only",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "toxicity",
+      "native_to_binary": {
+        "1": "unsafe",
+        "else": "safe"
+      },
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "role": "represented_test",
+      "source": "toxicchat",
+      "source_config_key": "toxicchat_test"
+    },
+    "wildguardtest": {
+      "caveat": "Prompt-harm annotation; response labels are not used.",
+      "hf_config": "wildguardtest",
+      "hf_path": "allenai/wildguardmix",
+      "license_id": "ODC-BY-AI2-gated",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/allenai/wildguardmix/tree/d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+        "declared_config_license_id": "ODC-BY-AI2-gated",
+        "license_id": "ODC-BY-AI2-gated",
+        "metadata_values": {
+          "config": "ODC-BY-AI2-gated"
+        },
+        "redistribution_class": "gated_no_redistribution",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "prompt_harm_label",
+      "native_to_binary": {
+        "harmful": "unsafe",
+        "unharmful": "safe"
+      },
+      "revision": "d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+      "role": "transfer",
+      "source": "wildguardtest",
+      "source_config_key": "wildguardtest"
+    },
+    "wildjailbreak": {
+      "caveat": "Adversarial prompt class; not a measured jailbreak-success outcome.",
+      "hf_config": "eval",
+      "hf_path": "allenai/wildjailbreak",
+      "license_id": "ODC-BY-AI2-gated",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/allenai/wildjailbreak/tree/5ddc12a7894f842b0619b8e1c7ee496b198af009",
+        "declared_config_license_id": "ODC-BY-AI2-gated",
+        "license_id": "ODC-BY-AI2-gated",
+        "metadata_values": {
+          "config": "ODC-BY-AI2-gated"
+        },
+        "redistribution_class": "gated_no_redistribution",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "label",
+      "native_to_binary": {
+        "0": "safe",
+        "1": "unsafe"
+      },
+      "revision": "5ddc12a7894f842b0619b8e1c7ee496b198af009",
+      "role": "transfer",
+      "source": "wildjailbreak",
+      "source_config_key": "wildjailbreak"
+    },
+    "xstest": {
+      "caveat": "Functional contrast class, not observed harm; eight direct contrast blocks are paired.",
+      "hf_config": "default",
+      "hf_path": "natolambert/xstest-v2-copy",
+      "license_id": "CC-BY-4.0",
+      "license_metadata": {
+        "card_url": "https://huggingface.co/datasets/natolambert/xstest-v2-copy/tree/b71afe2a6d10e5a6254ea8bcb006c48b095a15d5",
+        "declared_config_license_id": "CC-BY-4.0",
+        "license_id": "CC-BY-4.0",
+        "metadata_values": {
+          "config": "CC-BY-4.0"
+        },
+        "redistribution_class": "permissive_with_attribution",
+        "status": "declared_by_pinned_config"
+      },
+      "native_field": "type",
+      "native_to_binary": {
+        "otherwise": "safe",
+        "prefix contrast_": "unsafe"
+      },
+      "revision": "b71afe2a6d10e5a6254ea8bcb006c48b095a15d5",
+      "role": "transfer",
+      "source": "xstest",
+      "source_config_key": "xstest"
+    }
+  }
+}

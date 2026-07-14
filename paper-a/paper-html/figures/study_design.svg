@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="700" viewBox="0 0 720 700" role="img" aria-labelledby="title desc">
+  <title id="title">Paper A clean-rerun study design</title>
+  <desc id="desc">Five stages connect pinned source snapshots to manifests and audit, four bases and five SFT seeds, three evaluation regimes, and paired estimation with sensitivity checks.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .box { stroke-width: 2.2; rx: 14; }
+      .head { font: 700 22px system-ui, sans-serif; fill: #111827; text-anchor: middle; }
+      .sub { font: 16px system-ui, sans-serif; fill: #334155; text-anchor: middle; }
+      .flow { stroke: #475569; stroke-width: 3; marker-end: url(#arrow); }
+      .note { font: 600 14px system-ui, sans-serif; fill: #475569; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="720" height="700" fill="#ffffff"/>
+
+  <rect class="box" x="80" y="35" width="560" height="90" fill="#eaf2ff" stroke="#2563eb"/>
+  <text class="head" x="360" y="72">Pinned source snapshots</text>
+  <text class="sub" x="360" y="101">immutable revisions + content hashes</text>
+
+  <line class="flow" x1="360" y1="125" x2="360" y2="158"/>
+
+  <rect class="box" x="80" y="165" width="560" height="100" fill="#fff1e8" stroke="#ea580c"/>
+  <text class="head" x="360" y="202">Manifest build → fail-closed audit → v2 lock</text>
+  <text class="sub" x="360" y="233">upstream families · global split · license evidence</text>
+
+  <line class="flow" x1="360" y1="265" x2="360" y2="298"/>
+
+  <rect class="box" x="80" y="305" width="560" height="90" fill="#fff7d6" stroke="#ca8a04"/>
+  <text class="head" x="360" y="342">Four untuned bases → five SFT seeds each</text>
+  <text class="sub" x="360" y="371">20 validated adapters + 4 base score bundles</text>
+
+  <line class="flow" x1="360" y1="395" x2="360" y2="428"/>
+
+  <rect class="box" x="80" y="435" width="560" height="90" fill="#eaf7ee" stroke="#15803d"/>
+  <text class="head" x="360" y="472">Represented source | held-out transfer | stress</text>
+  <text class="sub" x="360" y="501">macro AP · calibration-targeted operating points</text>
+
+  <line class="flow" x1="360" y1="525" x2="360" y2="558"/>
+
+  <rect class="box" x="80" y="565" width="560" height="90" fill="#f8fafc" stroke="#475569"/>
+  <text class="head" x="360" y="602">Paired estimates and sensitivity</text>
+  <text class="sub" x="360" y="631">observed points · two-sided intervals · leave-one-out checks</text>
+
+  <text class="note" x="360" y="684">Clean v2 artifacts use a namespace separate from immutable legacy evidence.</text>
+</svg>

@@ -8,10 +8,10 @@ Guards the reviewer's central "contamination + no auditable artifacts" blocker:
   * every row carries provenance, family, and hash fields;
   * joins are one-to-one (unique sample_id across all manifests).
 
-These run against the built manifests at artifacts/paper_a_sft/manifests. Build
+These run against corrected manifests at artifacts/paper_a_sft_v2/manifests. Build
 them first with:
   .venv/bin/python experiments/prepare_paper_a_manifests.py \
-    --config configs/paper_a_sft.yaml --out artifacts/paper_a_sft/manifests
+    --config configs/paper_a_sft.yaml --out artifacts/paper_a_sft_v2/manifests
 """
 
 import json
@@ -29,7 +29,11 @@ for _p in (_ROOT, _EXP):
 
 import paper_a_manifest_lib as L  # noqa: E402
 
-MANIFEST_DIR = os.path.join(_ROOT, "artifacts", "paper_a_sft", "manifests")
+# Never interpret the immutable v1 raw cache as corrected v2 data.  The synthetic
+# regressions and tracked public-release test still run in a clean checkout; these
+# integration checks activate only after `make manifests` creates the v2 namespace.
+MANIFEST_DIR = os.path.join(_ROOT, "artifacts", "paper_a_sft_v2", "manifests")
+PUBLIC_MANIFEST_DIR = os.path.join(_ROOT, "artifacts", "paper_a_sft", "public_manifests")
 REPRESENTED_SOURCES = {"toxicchat", "prompt_injections", "jailbreak_classification"}
 TRANSFER_SOURCES = {"jailbreakbench", "xstest", "wildguardtest", "wildjailbreak"}
 
@@ -188,6 +192,43 @@ def test_train_and_eval_families_are_disjoint(train_rows, eval_rows):
         "train and eval share family ids (cross-split near-dup leak)"
 
 
+def test_calibration_and_id_families_are_globally_disjoint(manifests):
+    calibration = {r["family_id"] for r in manifests["calibration"]}
+    identity_test = {r["family_id"] for r in manifests["id_test"]}
+    assert calibration.isdisjoint(identity_test), \
+        "calibration and ID share global family ids"
+
+
+def test_calibration_is_family_disjoint_from_every_reported_test(manifests):
+    calibration = {r["family_id"] for r in manifests["calibration"]}
+    reported = {
+        r["family_id"]
+        for stem in ("id_test", "transfer_test", "orbench_safe_stress",
+                     "harmbench_positive_stress")
+        for r in manifests[stem]
+    }
+    assert calibration.isdisjoint(reported), \
+        "calibration shares a global family with an ID, transfer, or stress row"
+
+
+def test_authoritative_transfer_pairs_share_families(manifests):
+    grouped = {}
+    for row in manifests["transfer_test"]:
+        if row["source"] not in {"jailbreakbench", "xstest"}:
+            continue
+        assert row.get("upstream_family_id"), row["sample_id"]
+        grouped.setdefault(row["upstream_family_id"], []).append(row)
+    jbb = [rows for fid, rows in grouped.items()
+           if fid.startswith("jailbreakbench:")
+           and {r["label"] for r in rows} == {"safe", "unsafe"}]
+    xstest = [rows for fid, rows in grouped.items()
+              if fid.startswith("xstest:direct-contrast:")
+              and {r["label"] for r in rows} == {"safe", "unsafe"}]
+    assert len(jbb) == 36
+    assert len(xstest) == 58
+    assert all(len({r["family_id"] for r in rows}) == 1 for rows in jbb + xstest)
+
+
 # --------------------------------------------------------------------------
 # construction sanity (locked 1,200 rows: 400/source, 200/source-label)
 # --------------------------------------------------------------------------
@@ -211,3 +252,64 @@ def test_transfer_rows_only_from_transfer_sources(manifests):
 def test_calibration_and_id_from_represented_sources(manifests):
     for stem in ("calibration", "id_test"):
         assert {r["source"] for r in manifests[stem]}.issubset(REPRESENTED_SOURCES)
+
+
+def test_manifest_records_pinned_backend_and_resolved_licenses(manifest_meta, all_rows):
+    provenance = manifest_meta["provenance"]
+    assert provenance["minhash_backend"] == L.MINHASH_BACKEND
+    assert provenance["minhash_algorithm_version"] == L.MINHASH_ALGORITHM_VERSION
+    assert provenance["minhash_seed"] == L.MINHASH_SEED
+    assert all(not str(r["license_id"]).lower().startswith("unknown") for r in all_rows)
+    prompt = manifest_meta["sources"]["prompt_injections"]["license_metadata"]
+    assert prompt["metadata_values"] == {
+        "card_top_level": "Apache-2.0", "dataset_info_nested": "CC-BY-4.0"}
+
+
+def _assert_text_free_public_index(public_dir):
+    index_path = os.path.join(public_dir, "manifest.json")
+    assert os.path.exists(index_path), "tracked public manifest index is required"
+    index = json.load(open(index_path))
+    assert index["source_contract"] in {"legacy_v1_snapshot", "pinned_hf_v2"}
+    assert isinstance(index["clean_rerun_compatible"], bool)
+    if index["source_contract"] == "legacy_v1_snapshot":
+        assert index["clean_rerun_compatible"] is False
+        assert index["known_integrity_limitations"]
+    banned = {
+        "text", "raw_text", "norm_text", "normalized_text",
+        "text_or_download_reference", "prompt", "response", "completion", "adversarial",
+    }
+
+    def check(value):
+        if isinstance(value, dict):
+            assert not ({str(k).lower() for k in value} & banned)
+            for item in value.values():
+                check(item)
+        elif isinstance(value, list):
+            for item in value:
+                check(item)
+
+    check(index)
+    for stem in L.MANIFEST_FILES:
+        path = os.path.join(public_dir, f"{stem}.jsonl")
+        assert os.path.exists(path)
+        rows = [json.loads(line) for line in open(path) if line.strip()]
+        check(rows)
+        assert len(rows) == index["files"][stem]["n_rows"]
+        assert L.sha256_of_file(path) == index["files"][stem]["sha256"]
+    for name in ("policy_label_crosswalk", "contradictory_label_inventory"):
+        rec = index["supplemental_files"][name]
+        path = rec["path"] if os.path.isabs(rec["path"]) else os.path.join(_ROOT, rec["path"])
+        assert os.path.exists(path)
+        assert L.sha256_of_file(path) == rec["sha256"]
+        check(json.load(open(path)))
+
+
+def test_legacy_release_contains_text_free_public_index():
+    _assert_text_free_public_index(PUBLIC_MANIFEST_DIR)
+
+
+def test_built_v2_release_contains_text_free_public_index():
+    public_dir = os.path.join(_ROOT, "artifacts", "paper_a_sft_v2", "public_manifests")
+    if not os.path.exists(os.path.join(public_dir, "manifest.json")):
+        pytest.skip("v2 public release not built; legacy tracked release was checked separately")
+    _assert_text_free_public_index(public_dir)

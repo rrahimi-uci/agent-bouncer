@@ -5,7 +5,7 @@ Pipeline (all reproducible; rerun after the paper's numbers change):
   1. figures: vector PDF -> SVG (pdftocairo), crisp + offline.
   2. numbers: compile once with tectonic to read the .aux -> authoritative
      label -> number map (Table 5, Figure 3, section 5.2, ...).
-  3. body: pandoc LaTeX -> HTML5 with our template (sidebar TOC, MathML math,
+  3. body: pandoc LaTeX -> HTML5 with our template (sidebar TOC, MathJax math,
      citeproc bibliography). We rewrite  table* -> table  first because pandoc
      drops captions/labels on the starred (full-width) float.
   4. post-process the emitted HTML:
@@ -16,20 +16,24 @@ Pipeline (all reproducible; rerun after the paper's numbers change):
        - point <img> at the SVG figures.
      The sidebar TOC is protected from ref-rewriting.
 
-Run:  python3 paper-html/build.py
+Run from the repository root:  python3 paper-a/paper-html/build.py
 """
-import os, re, subprocess
+import os, re, shutil, subprocess
 from itertools import groupby
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-PAPER = os.path.join(ROOT, "paper-a")
+PAPER = os.path.dirname(HERE)
 TEX = "benchmark_chooses_the_winner.tex"
-INPUTS = ["tab_primary_gen.tex", "tab_sensitivity_gen.tex"]  # \input'd generated tabulars
+INPUTS = [
+    "results_macros_gen.tex",
+    "tab_primary_gen.tex",
+    "tab_sensitivity_gen.tex",
+    "tab_seed_values_gen.tex",
+]  # \input'd generated values/tabulars
 OUT = os.path.join(HERE, "index.html")
 FIGDIR = os.path.join(HERE, "figures")
-TMP = "/tmp/phbuild"
-AUXDIR = "/tmp/ph_aux"
+TMP = "/tmp/guard-ranking-fragility-paper-html"
+AUXDIR = "/tmp/guard-ranking-fragility-paper-aux"
 
 def run(cmd, **kw):
     return subprocess.run(cmd, check=True, **kw)
@@ -42,14 +46,20 @@ if not os.path.exists(MJ):
     print("vendored MathJax:", os.path.getsize(MJ) // 1024, "KB")
 
 # ---------------------------------------------------------------- 1. figures
+if os.path.isdir(FIGDIR):
+    shutil.rmtree(FIGDIR)
 os.makedirs(FIGDIR, exist_ok=True)
 srcfig = os.path.join(PAPER, "figures")
 for f in sorted(os.listdir(srcfig)):
     if f.endswith(".pdf"):
         run(["pdftocairo", "-svg", os.path.join(srcfig, f), os.path.join(FIGDIR, f[:-4] + ".svg")])
+    elif f.endswith(".svg"):
+        shutil.copy2(os.path.join(srcfig, f), os.path.join(FIGDIR, f))
 print("figures -> svg:", len([f for f in os.listdir(FIGDIR) if f.endswith('.svg')]))
 
 # ---------------------------------------------------------------- 2. numbers (.aux)
+if os.path.isdir(AUXDIR):
+    shutil.rmtree(AUXDIR)
 os.makedirs(AUXDIR, exist_ok=True)
 run(["tectonic", "-X", "compile", os.path.join(PAPER, TEX), "--outdir", AUXDIR,
      "--keep-intermediates", "--synctex=0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -65,6 +75,8 @@ for m in re.finditer(r'\\newlabel\{([^}]+)\}\{\{([^}]*)\}', aux):
 print("labels numbered:", len(NUM))
 
 # ---------------------------------------------------------------- 3. pandoc
+if os.path.isdir(TMP):
+    shutil.rmtree(TMP)
 os.makedirs(TMP, exist_ok=True)
 for f in [TEX] + INPUTS:
     src = os.path.join(PAPER, f)
@@ -140,10 +152,53 @@ def fig_repl(m):
     return m.group(0).replace('<figcaption>', f'<figcaption><span class="tnum">Figure&nbsp;{n}.</span> ', 1)
 h = re.sub(r'<figure id="(?P<lab>fig:[^"]+)".*?</figure>', fig_repl, h, flags=re.S)
 
+# Pandoc drops the body of inline TikZ figures.  Keep TikZ authoritative for PDF,
+# but inject the checked-in accessible SVG equivalent into the HTML figure.
+def design_repl(m):
+    figure = m.group(0)
+    if '<img ' not in figure:
+        figure = figure.replace('>',
+            '><img src="figures/study_design.svg" alt="Five-stage clean-rerun study design" loading="lazy"/>',
+            1)
+    return figure
+h = re.sub(r'<figure id="fig:design".*?</figure>', design_repl, h, flags=re.S)
+
 # 4f. figure images -> SVG, and pandoc's <embed> (used for PDFs) -> responsive <img>
 h = re.sub(r'(figures/[A-Za-z0-9_]+)\.pdf', r'\1.svg', h)
-h = re.sub(r'<embed\s+src="(figures/[^"]+)"\s*/?>', r'<img src="\1" alt="Figure" loading="lazy"/>', h)
-# (math is left as TeX in \(...\) / \[...\] for MathJax-SVG to render, per template.html)
+def embed_repl(m):
+    src = m.group('src')
+    if src.endswith('specialization_plane.svg'):
+        alt = ('Scatter plot of twenty seed-level represented-source and transfer AP changes; '
+               'fourteen points are in the specialization quadrant and six in uniform gain.')
+    else:
+        alt = 'Paper figure'
+    return f'<img src="{src}" alt="{alt}" loading="lazy"/>'
+
+h = re.sub(r'<embed\s+src="(?P<src>figures/[^"]+)"\s*/?>', embed_repl, h)
+
+# Pandoc can preserve a LaTeX equation environment *inside* its own \[...\]
+# display wrapper.  MathJax rejects that nested display structure.  Keep the
+# equation label as an HTML anchor and pass only the equation body to MathJax.
+def equation_repl(m):
+    label = m.group('label')
+    body = m.group('body').strip()
+    return f'<span id="{label}" class="math display">\\[{body}\\]</span>'
+
+h = re.sub(
+    r'<span\s+class="math display">\\\[\s*\\begin\{equation\*?\}\s*'
+    r'\\label\{(?P<label>[^}]+)\}\s*(?P<body>.*?)\s*'
+    r'\\end\{equation\*?\}\s*\\\]</span>',
+    equation_repl,
+    h,
+    flags=re.S,
+)
+
+nested_equations = len(re.findall(
+    r'<span[^>]*class="math display"[^>]*>\\\[\s*\\begin\{equation', h
+))
+if nested_equations:
+    raise RuntimeError(f"MathJax-incompatible nested equation wrappers: {nested_equations}")
+# Other math stays as TeX in \(...\) / \[...\] for offline MathJax-SVG.
 
 # restore TOC
 if nav:
@@ -153,4 +208,5 @@ open(OUT, "w").write(h)
 print("wrote", OUT, f"({len(h)//1024} KB)")
 print("tables:", h.count('class="tblock"'), " figures:", h.count('class="tnum">Figure'),
       " xrefs:", h.count('class="xref"'), " leftover brackets:",
-      len(re.findall(r'\[(?:tab|fig|sec):[a-z0-9,:_-]+\]', h)))
+      len(re.findall(r'\[(?:tab|fig|sec):[a-z0-9,:_-]+\]', h)),
+      " nested equations:", nested_equations)
