@@ -48,6 +48,38 @@ landing in [§7](#7-recommended-feasible-path) deliberately, not as a failure mo
 
 ---
 
+## Conclusion — current-data feasibility (2026-07-13)
+
+Stated bluntly, after reviewing every dataset within reach (the repo's own mortgage
+sets plus the public fintech-safety benchmarks in [§9](#9-external-fintech-benchmarks-addendum)):
+
+- **Paper B's flagship claim is infeasible on available datasets.** The confirmatory
+  result — E4 beats E3 on *untouched, naturalistic, fully dual-labeled* mortgage requests —
+  requires a cohort with two properties **no downloadable dataset has, and that no
+  combination of them can synthesize**: (1) *dual* labels (`G` **and** `D` on the same
+  rows — every available set is single-labeled, and single-labeled sets cannot be
+  concatenated into joint gold), and (2) *naturalistic* request traffic (everything
+  available is authored, adversarial, curated-from-cases, or response-labeled). The
+  fintech benchmarks change only the *cost* of annotation, not this fact.
+- **The blocker is data that must be *created*, not *found*.** Reaching the flagship
+  claim is a resourcing decision — expert dual-annotation, authentic-traffic sourcing,
+  SME construct signoff, and multi-party governance (months; not solo) — not a technical
+  gap a dataset release will close.
+- **Paper B is not dead — the *claim* has to change.** Exactly three paths remain:
+  1. **Change the data** — fund/partner for the annotation + naturalistic cohort, then
+     run the confirmatory protocol. Makes the impossible part possible.
+  2. **Change the claim** — the de-scoped *measurement / challenge-set* paper of
+     [§7](#7-recommended-feasible-path): a modest dual-labeled challenge set, the E3/E4
+     overlap mechanism reported *descriptively* (`precision_focused_measurement`), fairness
+     lens retained. Reachable solo in weeks–months; a real contribution, just not
+     "we built a better joint stack."
+  3. **Shelve Paper B** and let Paper A stand.
+
+**Bottom line: the confirmatory-naturalistic Paper B is a no-go on current data; the
+honest measurement paper (§7) is the only version a solo researcher can actually ship.**
+
+---
+
 ## 1. What Paper B actually is
 
 Two request screens over the same input `x`:
