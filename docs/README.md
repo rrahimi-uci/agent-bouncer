@@ -25,8 +25,12 @@ corresponding code is quarantined under [`../legacy/`](../legacy).
 - [paper-b-development-checkpoint-plan.md](paper-b-development-checkpoint-plan.md) —
   development checkpoints for the follow-up (the governing `v2-adversarial-review` plan).
 - [paper-b-feasibility-investigation.md](paper-b-feasibility-investigation.md) —
-  independent assessment of whether the Paper B plan is feasible and can reach a
-  solution; recommends a de-scoped measurement-paper landing.
+  independent assessment of whether the (mortgage joint-stack) Paper B plan is feasible
+  and can reach a solution; recommends a de-scoped measurement-paper landing.
+- [paper-b-topic-proposal.md](paper-b-topic-proposal.md) —
+  recommended alternative Paper B: an objective × base-competence specialization study
+  (SFT vs DPO vs GRPO), whose experiments largely survive on disk; the natural sequel to
+  Paper A, needing a clean rerun but no annotation.
 - [smollm3-guard-plan.md](smollm3-guard-plan.md) — plan behind the SmolLM3 guard
   reproduction notebook (the broad-study notebooks were removed from the repo;
   their builders remain under [`../legacy/experiments/`](../legacy/experiments)).
