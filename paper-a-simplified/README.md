@@ -372,6 +372,58 @@ Together they confirm the theme: fine-tuning did **not** produce a uniformly bet
 
 ---
 
+## 12b. A fix: compose, don't tune
+
+The results pose a problem — fine-tuning wins on familiar data but gives up ground on new data.
+The obvious reaction is to fine-tune *better*. Here's an early look at a cheaper fix (from a
+planned follow-up, "Compose, Don't Tune"): instead of tuning harder, **keep the original untuned
+model in the decision.**
+
+> **Background — combining two guards (an "ensemble").** Run *two* guards on each prompt — the
+> untuned base and the fine-tuned adapter — and **average their unsafe-probabilities** into one
+> score (that's an *ensemble*). A *second opinion*: the tuned specialist is best on prompts like
+> its training; the untuned generalist holds up better on new prompts; averaging keeps much of
+> both. It's cheap — same backbone with the adapter on/off, two quick passes, **no retraining**.
+> *Mini-example:* base says 0.30 unsafe, tuned says 0.90 → ensemble = (0.30+0.90)/2 = **0.60**.
+
+Doing this on the same data (macro-AP, panel mean; higher is better):
+
+| Guard | Familiar (represented) | New (transfer) |
+|---|---|---|
+| untuned base | 0.65 | 0.87 |
+| tuned (SFT) | **0.99** | 0.84 |
+| **composed (base + tuned, averaged)** | 0.97 | **0.90** |
+
+The ensemble keeps almost all the tuned guard's familiar-data gain (0.99 → 0.97) **and** does
+better than the tuned guard on new data (0.84 → 0.90), pulling generalization back toward the
+base — with no extra fine-tuning.
+
+**What it does — and doesn't do (be honest).** Composing **reliably beats the tuned guard** on
+new data for *every* model. It does **not** beat a *strong* untuned base: for the strongest
+model (Qwen3-4B) it's slightly *below* the base on new data (0.93 vs 0.95) and for SmolLM3 it
+only ties. So it **protects against the damage fine-tuning did** — it doesn't dominate
+everything — and it helps most exactly where fine-tuning hurt most (the strong bases):
+
+| Model (new-data strength of base) | untuned base | tuned | composed |
+|---|---|---|---|
+| SmolLM2-1.7B (weakest) | 0.79 | 0.86 | 0.87 |
+| Qwen2.5-1.5B | 0.82 | 0.82 | 0.87 |
+| SmolLM3-3B | 0.91 | 0.82 | 0.91 |
+| Qwen3-4B (strongest) | 0.95 | 0.87 | 0.93 |
+
+**Caveats (early result).** These are the same *legacy* scores as the rest — treat the numbers
+as a signal, not a confirmed result (a clean re-run is needed). Composing improves the *ranking*,
+not the *calibration*: at a fixed yes/no cutoff the false-alarm rate on new data is still too
+high, so you'd re-tune the threshold for new traffic. And it costs two passes per prompt (still
+cheap, not free).
+
+**Takeaway — compose, don't tune.** If you fine-tune a small guard, **don't discard the
+original** — average the two guards' scores. You keep most of the in-domain gain *and* recover
+much of the lost generalization, especially when your base was already strong. Reach for
+composition before more or fancier fine-tuning.
+
+---
+
 ## 13. What this means in practice
 
 - **Fine-tune when your live traffic looks like your training data.** On data like your

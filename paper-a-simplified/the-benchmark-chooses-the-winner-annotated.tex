@@ -14,7 +14,8 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{parskip}
 \usepackage{tocloft}
-\setlength{\cftbeforesecskip}{3pt}
+\setlength{\cftbeforesecskip}{1pt}
+\usepackage[nameinlink]{cleveref}
 
 \graphicspath{{figures/}}
 \captionsetup{font=small,labelfont=bf}
@@ -60,21 +61,19 @@ at a deployed threshold it catches about \emph{one in five fewer} attacks on a h
 held-out harm set (HarmBench recall $78.4\%\!\to\!57.5\%$). Crucially, the average hides a
 pattern: fine-tuning \emph{helps weak base models and hurts strong ones} on new data. The
 lesson --- and the title --- is that \textbf{whichever benchmark you choose to report decides
-whether fine-tuning ``looks like'' a win}. Every concept needed to read this (guard scoring,
-LoRA, average precision, the bootstrap, calibration) is taught inline. The numbers are a
-retrospective ``legacy'' run and are reported as estimates with uncertainty ranges, not as
-proven claims; a clean re-run would be needed to confirm them.
+whether fine-tuning ``looks like'' a win}. We then show an early, cheap \emph{remedy}: instead
+of tuning harder, keep the untuned base in the decision --- averaging the base and the tuned
+guard's scores (a two-model ``ensemble'') keeps almost all the in-domain gain \emph{and}
+recovers much of the lost generalization, most where fine-tuning hurt most. Every concept
+needed to read this (guard scoring, LoRA, average precision, the bootstrap, calibration,
+ensembling) is taught inline. The numbers are a retrospective ``legacy'' run and are reported
+as estimates with uncertainty ranges, not as proven claims; a clean re-run would be needed to
+confirm them. This is a plain-language companion to the formal paper, which remains the source
+of truth wherever this edition simplifies.
 \end{abstract}
 
 \setcounter{tocdepth}{1}
 \tableofcontents
-\bigskip
-\hrule
-\medskip
-
-\noindent\emph{This is a companion to the formal paper; it uses the same committed results
-but trades brevity for teaching. Where it simplifies, the formal paper is the source of
-truth.}
 
 \clearpage
 % ============================================================
@@ -461,6 +460,99 @@ Stress: HarmBench & recall    & 78.4\% & 57.5\% & $-20.9$ & 200 \\
 \end{table}
 
 % ============================================================
+\section{A fix: compose, don't tune}
+\label{sec:fix}
+% ============================================================
+The results so far pose a problem: fine-tuning wins big on familiar data but gives up ground
+on new data and misses more hard attacks (\Cref{tab:op}). The obvious reaction is to fine-tune
+\emph{better}. Here is an early look at a cheaper fix (from a planned follow-up, ``Compose,
+Don't Tune''): instead of tuning harder, \textbf{keep the original untuned model in the decision}.
+
+\begin{background}{combining two guards (an ``ensemble'')}
+\small
+Run \emph{two} guards on each prompt --- the untuned base and the fine-tuned adapter --- and
+average their unsafe-probabilities into one score. (Using more than one model and combining
+their outputs is called an \textbf{ensemble}.) Think of it as a \emph{second opinion}: the
+fine-tuned specialist is best on prompts like the ones it trained on; the untuned generalist
+holds up better on new kinds of prompts; averaging keeps much of both. It is cheap --- the two
+guards share the same backbone with the adapter switched on or off, so it is two quick passes
+and \textbf{no extra training}. \emph{Mini-example:} on a new prompt the base scores $0.30$
+unsafe and the tuned guard scores $0.90$; the ensemble scores $(0.30+0.90)/2 = 0.60$.
+\end{background}
+
+Running this on the same data as before (\Cref{tab:compose}): the ensemble keeps almost all of
+the tuned guard's gain on familiar data ($0.99 \to 0.97$) \emph{and} does clearly better than
+the tuned guard on new data ($0.84 \to 0.90$), pulling generalization back up toward the untuned
+base --- without any extra fine-tuning.
+
+\begin{table}[t]
+\centering\small
+\caption{Composing the base with the tuned guard. Benchmark-macro AP (0--1, higher better),
+averaged over the four checkpoints. The ensemble keeps the tuned guard's familiar-data gain and
+recovers most of its lost new-data score.}
+\label{tab:compose}
+\begin{tabular}{lrr}
+\toprule
+Guard & Familiar (represented) & New (transfer) \\
+\midrule
+Untuned base & 0.65 & 0.87 \\
+Tuned (SFT) & \textbf{0.99} & 0.84 \\
+Composed (base $+$ tuned, averaged) & 0.97 & \textbf{0.90} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{takeaway}{What composing does --- and doesn't do}
+\small
+Composing \textbf{reliably beats the tuned guard} on new data --- for every model in the panel.
+It does \textbf{not} beat a \emph{strong untuned base}: for the strongest model (Qwen3-4B) the
+ensemble is a touch \emph{below} the base on new data (0.93 vs 0.95), and for SmolLM3 it only
+ties. So composing is best understood as \textbf{protecting against the damage fine-tuning did},
+not a free lunch that beats everything. Tellingly, it helps most exactly where fine-tuning hurt
+most --- the strong bases (\Cref{tab:composeperm}).
+\end{takeaway}
+
+Read \Cref{tab:composeperm} across each row: the tuned column is always at or below the untuned
+base on new data (that is the specialization cost from \Cref{tab:primary}); the composed column
+is always at or above the tuned one, and lands back near the base --- most dramatically for
+SmolLM3 (0.82 tuned, back to 0.91) and Qwen3-4B (0.87 tuned, back to 0.93).
+
+\begin{table}[t]
+\centering\small
+\caption{Per-model new-data (transfer) macro-AP. Fine-tuning lowers the base (specialization);
+composing recovers it. The gain from composing is largest for the strong bases fine-tuning hurt
+most.}
+\label{tab:composeperm}
+\begin{tabular}{lrrr}
+\toprule
+Model (new-data strength of base) & Untuned base & Tuned & Composed \\
+\midrule
+SmolLM2-1.7B (weakest) & 0.79 & 0.86 & 0.87 \\
+Qwen2.5-1.5B & 0.82 & 0.82 & 0.87 \\
+SmolLM3-3B & 0.91 & 0.82 & 0.91 \\
+Qwen3-4B (strongest) & 0.95 & 0.87 & 0.93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{background}{is this real, or just a trick of averaging?}
+\small
+A fair worry: does averaging two scores help \emph{automatically}, no matter what? Not here.
+Averaging only helps when the two guards make \emph{different} mistakes --- the specialist and
+the generalist are each right on prompts the other gets wrong, so combining them cancels errors;
+if they agreed on everything, averaging would change nothing. A planned control tests exactly
+this (break the two guards' complementarity and the ensemble's advantage should vanish),
+confirming the gain is genuine \emph{teamwork}, not a free bump from averaging any two numbers.
+\end{background}
+
+\paragraph{What this fix does not solve (yet).} Three honest caveats. (1) These are the same
+\emph{legacy} scores as the rest of the paper, so treat the composition numbers as an early
+signal, not a confirmed result --- a clean re-run is needed. (2) Composing improves the
+\emph{ranking} of prompts, not the \emph{calibration}: at a fixed yes/no cutoff the false-alarm
+rate on new data is still too high, so you would still re-tune the threshold for new traffic.
+(3) It costs two passes per prompt instead of one (still cheap, but not free).
+
+% ============================================================
 \section{What this means in practice}
 % ============================================================
 \begin{takeaway}{Practitioner takeaways}
@@ -476,6 +568,10 @@ groups.
 \item \textbf{Mind the base's starting strength.} A weak base has the most to gain; a strong
 base may be better left \emph{untouched} for screening new/out-of-distribution traffic --- it
 can already be the better guard there. \emph{(A suggestive 4-model pattern, not a proven law.)}
+\item \textbf{Prefer composing over tuning harder.} If you do fine-tune, keep the untuned base
+in the decision --- average the two guards' scores (\Cref{sec:fix}). On this panel that keeps
+almost all the in-domain gain and recovers much of the lost generalization, for two cheap passes
+and no extra training.
 \end{itemize}
 \end{takeaway}
 
@@ -497,6 +593,9 @@ in production.
 of ``unsafe'' (harm vs.\ refusal vs.\ jailbreak), so their macro-average blends distinct
 policies.
 \item \textbf{Prompt-only, English.} No response, tool-call, or multi-turn moderation.
+\item \textbf{The ``compose'' fix (\Cref{sec:fix}) is preliminary.} It runs on the same legacy
+scores, improves ranking but not calibration at a fixed cutoff, and costs two passes per prompt;
+a clean re-run is needed to confirm it.
 \end{itemize}
 
 % ============================================================
@@ -509,7 +608,10 @@ average loss on genuinely new datasets ($-0.05$), and a real drop in catching ha
 helps weak bases and hurts strong ones --- and 14 of 20 fine-tunes land in the
 ``better-on-familiar, worse-on-new'' quadrant. So the benchmark you choose to report decides
 whether fine-tuning looks like a win. Report \emph{both} groups with uncertainty ranges, and
-treat these specific numbers as \emph{suggestive pending a clean re-run}.
+treat these specific numbers as \emph{suggestive pending a clean re-run}. And there is an early,
+cheap way out of the trade-off: rather than tuning harder, \emph{compose} the tuned guard with
+its untuned base (\Cref{sec:fix}) --- on this panel that keeps the in-domain gains while
+recovering much of the lost generalization.
 
 % ============================================================
 \appendix

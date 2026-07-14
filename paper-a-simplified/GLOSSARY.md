@@ -108,3 +108,9 @@ land there.
 ### Specialization (the finding)
 Fine-tuning making a guard **better on its training sources but not broadly better** (and often
 worse on novel data) — as opposed to a general capability upgrade.
+
+### Ensemble / composition
+Using more than one model and combining their outputs into one decision. Here: run the untuned
+base **and** the fine-tuned adapter on the same prompt and **average their unsafe-probabilities**.
+A "second opinion" that keeps the specialist's in-domain skill and the generalist's out-of-domain
+robustness — the "compose, don't tune" fix.

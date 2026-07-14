@@ -236,6 +236,30 @@ GPU dependency is Paper A's own already-scoped clean SFT rerun. No annotation. N
 
 ---
 
+## 10. A plain-language edition is a first-class deliverable
+
+This paper must ship with a **plain-language, paper-format edition** for the same audience as
+[`../paper-a-simplified/`](../paper-a-simplified) — a reader with **basic statistics** and **one
+LoRA fine-tune** of experience — in the same annotated style (teach-as-you-go "Background"
+boxes, worked mini-examples, honest takeaway boxes, full tables + figure). Crystal-clear for that
+reader is a requirement, not a nice-to-have.
+
+- **Already done (early edition):** the annotated Paper A edition has been extended with a
+  plain-language section, *"A fix: compose, don't tune"*
+  ([`../paper-a-simplified/the-benchmark-chooses-the-winner-annotated.pdf`](../paper-a-simplified/the-benchmark-chooses-the-winner-annotated.pdf),
+  §5), teaching what an ensemble is, the base/SFT/composed tables, and the honest
+  *Pareto-improves-over-SFT / recovers-toward-base / gated-by-base-competence* framing (not
+  "beats both"). It is explicitly marked an **early look on legacy scores**.
+- **On the clean rerun:** regenerate that section's numbers from the locked v2 artifacts and
+  keep the plain-language edition in lockstep with the formal Paper B — same discipline Paper A
+  uses (the paper build verifies the generated tables/figure byte-for-byte).
+- **Non-negotiables for the lay edition:** define every new term inline (ensemble, calibration
+  transfer, matched-FPR recall); never headline "beats both"; always show the per-model
+  heterogeneity table; state the two-passes cost and the ranking-not-calibration caveat in plain
+  words.
+
+---
+
 *Bottom line: the composition idea is genuinely strong and empirically supported — it makes the
 work better by turning "fine-tuning specializes" into "so compose instead of tuning harder,"
 tied to the base-competence law. Ship it as one focused, locked-artifact paper. Keep objectives
