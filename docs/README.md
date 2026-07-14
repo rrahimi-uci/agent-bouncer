@@ -11,6 +11,9 @@ the authoritative results live in [`../paper-a/`](../paper-a) and
   specified the auditable pipeline and repository structure this repo implements.
 - [paper-a-specialization-frontier-plan.md](paper-a-specialization-frontier-plan.md) —
   the design of the represented-vs-transfer specialization measurement.
+- [paper-a-improvement-and-extension-recommendations.md](paper-a-improvement-and-extension-recommendations.md) —
+  reviewer recommendations grounded in the current results: run the clean v2 rerun,
+  add an uninspected benchmark, and develop the base-competence law (who FT helps vs hurts).
 
 ## Paper B / broad study (future work)
 
