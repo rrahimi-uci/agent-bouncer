@@ -27,10 +27,15 @@ corresponding code is quarantined under [`../legacy/`](../legacy).
 - [paper-b-feasibility-investigation.md](paper-b-feasibility-investigation.md) —
   independent assessment of whether the (mortgage joint-stack) Paper B plan is feasible
   and can reach a solution; recommends a de-scoped measurement-paper landing.
+- [paper-b-compose-dont-tune-plan.md](paper-b-compose-dont-tune-plan.md) —
+  **recommended near-term Paper B**: "Compose, Don't Tune." A composed guardrail (calibrated
+  average of the untuned base + the SFT adapter) recovers held-out transfer that fine-tuning
+  erodes, while keeping in-domain gains — grounded in a prototype on the committed scores and a
+  4-lens adversarial review. Zero new training; gated on Paper A's clean rerun.
 - [paper-b-topic-proposal.md](paper-b-topic-proposal.md) —
-  recommended alternative Paper B: an objective × base-competence specialization study
-  (SFT vs DPO vs GRPO), whose experiments largely survive on disk; the natural sequel to
-  Paper A, needing a clean rerun but no annotation.
+  the objective × base-competence study (SFT vs DPO vs GRPO). **Deferred to a contingent Paper C**
+  (needs a GPU retrain; reproduces published SFT-vs-RL results) — see the compose-don't-tune plan
+  for why it moves behind the composition paper.
 - [smollm3-guard-plan.md](smollm3-guard-plan.md) — plan behind the SmolLM3 guard
   reproduction notebook (the broad-study notebooks were removed from the repo;
   their builders remain under [`../legacy/experiments/`](../legacy/experiments)).

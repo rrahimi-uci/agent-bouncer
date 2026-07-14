@@ -1,5 +1,11 @@
 # Paper B — Topic Proposal (objective × base-competence specialization)
 
+> **Repositioned 2026-07-14 → this is now Paper C (deferred).** A later prototype + adversarial
+> review found the *composition* idea (ensemble the untuned base with the tuned adapter) is a
+> cheaper, more novel, GPU-free near-term paper. The objective axis below needs a GPU retrain
+> (no per-row DPO/GRPO scores survive) and reproduces published SFT-vs-RL results, so it moves
+> behind the composition paper. See [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md).
+
 A concrete, feasibility-grounded proposal for the next paper, written 2026-07-13 after
 inventorying what survives on disk. It supersedes the mortgage/joint-stack direction for
 practical purposes: that line is blocked on an uncollectable dual-labeled naturalistic
