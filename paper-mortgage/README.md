@@ -1,9 +1,15 @@
 # Paper — Mortgage-Specific Safety-Guardrail Benchmark
 
-Formal draft of the mortgage guardrail benchmark paper.
+Formal draft of the mortgage guardrail benchmark paper (LaTeX, same 11pt-article toolchain as
+[`../paper-a`](../paper-a) and [`../paper-b`](../paper-b)).
 
-- [mortgage_guardrail_benchmark.md](mortgage_guardrail_benchmark.md) — the paper (markdown source;
-  render to PDF with the repo's report-to-pdf workflow — GFM → styled HTML → headless-Chrome print).
+- [mortgage_guardrail_benchmark.tex](mortgage_guardrail_benchmark.tex) — the paper source;
+  [mortgage_guardrail_benchmark.pdf](mortgage_guardrail_benchmark.pdf) — the compiled draft.
+- [refs.bib](refs.bib) — bibliography; [figures/pipeline.dot](figures/pipeline.dot) →
+  `figures/pipeline.png` — the construction-pipeline diagram (Figure 1);
+  [generated/baseline_table.tex](generated/baseline_table.tex) — the `\input`-ed baseline table.
+- Build: `make` (renders the figure via Graphviz, regenerates the baseline table from committed
+  scores, then compiles with tectonic → `build/` and copies the PDF up).
 - Plain-language edition: [`../paper-mortgage-simplified/`](../paper-mortgage-simplified).
 
 ## What it is / isn't
