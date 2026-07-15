@@ -137,6 +137,20 @@ grounding, and minimal-pairs-as-invariance gate are the combination that
 is new here. The agentic generate/judge loop is standard red-team
 practice; we do not claim it as a primitive.</p>
 <h2 id="benchmark-construction">3. Benchmark construction</h2>
+<figure>
+<img src="figures/pipeline.png"
+alt="Figure 1. The agentic mortgage-benchmark construction pipeline. Real HMDA records are reduced to de-identified, banded fact sheets (sampled from marginal distributions, never verbatim); a planner → grounder → generator → adversarial-mutator → rubric-bound-judge loop authors and labels each row, accepting only when the judge’s label matches the planned target (else retry/drop); accepted rows pass provenance + decontamination, a family-isolated split with a sealed private test, and are published as the frozen v1_hmda2022 release, which the reproducible harness scores." />
+<figcaption aria-hidden="true"><strong>Figure 1.</strong> The agentic
+mortgage-benchmark construction pipeline. Real HMDA records are reduced
+to de-identified, banded fact sheets (sampled from marginal
+distributions, never verbatim); a planner → grounder → generator →
+adversarial-mutator → rubric-bound-judge loop authors and labels each
+row, accepting only when the judge’s label matches the planned target
+(else retry/drop); accepted rows pass provenance + decontamination, a
+family-isolated split with a sealed private test, and are published as
+the frozen <code>v1_hmda2022</code> release, which the reproducible
+harness scores.</figcaption>
+</figure>
 <p>The construction is deterministic in structure and stochastic in
 surface wording (the LLM steps run at temperature &gt; 0). <strong>The
 released benchmark is therefore a <em>frozen</em> artifact, not a

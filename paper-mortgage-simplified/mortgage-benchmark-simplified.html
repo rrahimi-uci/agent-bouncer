@@ -78,6 +78,18 @@ above the fine ones. Higher = better.</p>
 </blockquote>
 <hr />
 <h2 id="how-the-benchmark-is-built">How the benchmark is built</h2>
+<figure>
+<img src="figures/pipeline.png"
+alt="How each row is made. Real mortgage records become de-identified “fact sheets,” then a small team of AI agents — a planner, a grounder, a writer, an “adversary” that adds realistic disguises, and a rubric-following judge — builds and labels one request, keeping it only if the judge agrees with the plan. Accepted rows are de-duplicated, split (with a sealed test held back), and frozen into the released benchmark that guards are scored against." />
+<figcaption aria-hidden="true"><strong>How each row is made.</strong>
+Real mortgage records become de-identified “fact sheets,” then a small
+team of AI agents — a planner, a grounder, a writer, an “adversary” that
+adds realistic disguises, and a rubric-following judge — builds and
+labels one request, keeping it only if the judge agrees with the plan.
+Accepted rows are de-duplicated, split (with a sealed test held back),
+and frozen into the released benchmark that guards are scored
+against.</figcaption>
+</figure>
 <ul>
 <li><strong>Grounded in real loans.</strong> We take real
 (de-identified, banded) HMDA records — e.g. “FHA cash-out refi,

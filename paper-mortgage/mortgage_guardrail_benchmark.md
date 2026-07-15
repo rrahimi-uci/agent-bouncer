@@ -84,6 +84,8 @@ practice; we do not claim it as a primitive.
 
 ## 3. Benchmark construction
 
+![**Figure 1.** The agentic mortgage-benchmark construction pipeline. Real HMDA records are reduced to de-identified, banded fact sheets (sampled from marginal distributions, never verbatim); a planner → grounder → generator → adversarial-mutator → rubric-bound-judge loop authors and labels each row, accepting only when the judge's label matches the planned target (else retry/drop); accepted rows pass provenance + decontamination, a family-isolated split with a sealed private test, and are published as the frozen `v1_hmda2022` release, which the reproducible harness scores.](figures/pipeline.png)
+
 The construction is deterministic in structure and stochastic in surface wording (the LLM steps
 run at temperature > 0). **The released benchmark is therefore a *frozen* artifact, not a
 regenerable one** — like the HMDA snapshot it grounds in. Reproducibility is defined at the

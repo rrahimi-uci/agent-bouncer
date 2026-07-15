@@ -1,0 +1,41 @@
+// Mortgage guardrail benchmark — agentic construction pipeline.
+// Render: dot -Tpng -Gdpi=150 pipeline.dot -o pipeline.png
+digraph mortgage_pipeline {
+  rankdir=TB;
+  graph [fontname="Helvetica", fontsize=11, nodesep=0.35, ranksep=0.5, bgcolor="white"];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#eef2ff", color="#334155", penwidth=1.1, margin="0.14,0.09"];
+  edge  [fontname="Helvetica", fontsize=9, color="#475569"];
+
+  hmda [label="HMDA 2022 snapshot\n(FFIEC / CFPB, public)", shape=cylinder, fillcolor="#e2e8f0"];
+  fs   [label="De-identified banded fact sheets\nsample marginal distributions\n(no verbatim row; PII-free assertion)"];
+
+  subgraph cluster_agentic {
+    label="Agentic construction loop  (per coverage cell)";
+    labeljust=l; labelloc=t; fontname="Helvetica-Bold"; fontsize=10;
+    color="#94a3b8"; style="rounded,filled"; fillcolor="#f8fafc";
+    plan   [label="1. Planner\ncoverage cells: quadrant × trap ×\npolicy card × role × protected context"];
+    ground [label="2. HMDA-grounder\ndraw a fact sheet for the cell\n(bias to borderline / higher-risk files)"];
+    gen    [label="3. Generator\nauthor the request in a role voice\n(subtle, deniable; states intent only)"];
+    adv    [label="4. Adversarial mutator\ncompose label-preserving tactics\n(euphemism, coded proxy, business-just.)"];
+    judge  [label="5. Rubric-bound judge\nassign G, D, action, severity\n(24 policy cards; multi-sample vote)"];
+    plan -> ground -> gen -> adv -> judge;
+  }
+
+  accept [label="Accept iff judged label == cell target\n& realism / consensus OK", shape=diamond,
+          style="filled", fillcolor="#fef9c3", color="#a16207"];
+  prov   [label="Provenance + decontamination\ncontent + MinHash near-dup families;\nvs Paper A general sources"];
+  split  [label="Family-isolated split\n+ sealed private test"];
+  freeze [label="Frozen release  v1_hmda2022\n994 rows · dual labels G × D · 39 protected pairs\ntext-free index · SHA-256 checksums",
+          fillcolor="#dcfce7", color="#15803d", penwidth=1.4];
+  eval   [label="Evaluation harness  (score_guards.py)\nmacro-AP (G / D / final) + per-quadrant + Δ_context",
+          fillcolor="#e0e7ff", color="#4338ca", penwidth=1.4];
+
+  hmda -> fs -> plan;
+  judge -> accept;
+  accept -> gen    [label="  retry (≤N) / drop", style=dashed, constraint=false, color="#b91c1c"];
+  accept -> prov   [label="  accepted rows"];
+  prov -> split -> freeze -> eval;
+
+  { rank=same; freeze; }
+}

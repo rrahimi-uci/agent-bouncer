@@ -39,6 +39,8 @@ are **"safe-looking but a mortgage violation"** — and that's exactly what gene
 
 ## How the benchmark is built
 
+![**How each row is made.** Real mortgage records become de-identified "fact sheets," then a small team of AI agents — a planner, a grounder, a writer, an "adversary" that adds realistic disguises, and a rubric-following judge — builds and labels one request, keeping it only if the judge agrees with the plan. Accepted rows are de-duplicated, split (with a sealed test held back), and frozen into the released benchmark that guards are scored against.](figures/pipeline.png)
+
 - **Grounded in real loans.** We take real (de-identified, banded) HMDA records — e.g. "FHA
   cash-out refi, investment property, income under $40k, LTV over 97%, prior denial for
   collateral" — and write realistic requests around them. We never copy a real person's record;
