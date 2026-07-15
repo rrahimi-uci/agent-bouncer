@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Compose, Don't Tune (plain-language)</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="/dev/null" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Compose, Don't Tune (plain-language)</h1>
+</header>
+<h1 id="compose-dont-tune-the-plain-language-version">Compose, Don’t
+Tune? — the plain-language version</h1>
+<p><em>A retrospective study of averaging a base model with its
+fine-tuned safety guard.</em> Reza Rahimi (JazzX AI). Plain-language
+companion to the formal Paper B draft.</p>
+<blockquote>
+<p><strong>Read this first.</strong> This is a <strong>retrospective
+feasibility</strong> result, not a proven claim. The “held-out” transfer
+benchmarks were kept out of fine-tuning, but we looked at them while
+developing the method — so these numbers <em>estimate</em> a trade-off
+and <em>motivate</em> a future, properly-locked study. They do
+<strong>not</strong> prove the method wins in general. Every number
+below is the same one in the formal paper, generated from Paper A’s
+clean-run v2 evidence.</p>
+</blockquote>
+<hr />
+<h2 id="the-idea-in-one-paragraph">The idea in one paragraph</h2>
+<p>When you fine-tune a small model into a safety <strong>guard</strong>
+(a yes/no “is this prompt unsafe?” classifier), it gets <strong>better
+on the kinds of data it was trained on</strong> and often <strong>worse
+on data it wasn’t</strong> — it over-specializes. Paper A measured that.
+This paper asks a cheap question: instead of fine-tuning <em>more
+carefully</em>, what if we just <strong>keep the original model
+too</strong> and <strong>average its answer with the fine-tuned
+one</strong>? No extra training — just run both and combine their
+scores. We find this <strong>gives back most of the lost transfer
+performance</strong> at a <strong>small cost on the trained-on
+data</strong> — but with real caveats.</p>
+<hr />
+<blockquote>
+<p><strong>Background: the words you need.</strong> - <strong>Guard /
+base / SFT adapter.</strong> The <em>base</em> is the untuned
+instruction model. <em>SFT</em> = supervised fine-tuning turns it into a
+guard (here with LoRA, a cheap adapter). <em>Base</em> means “before
+guard fine-tuning” — not “untrained.” - <strong>Represented vs
+transfer.</strong> <em>Represented</em> sources are benchmark families
+the guard was trained on. <em>Transfer</em> sources were held out of
+training — the test of generalization. - <strong>macro-AP.</strong>
+Average Precision measures ranking quality (can the guard put unsafe
+prompts above safe ones?), computed per benchmark then averaged. Higher
+= better; threshold-free. - <strong>Calibration.</strong> Turning a raw
+score into a probability using a held-out <em>calibration</em> split, so
+two different models’ scores are on the same scale before you average
+them.</p>
+</blockquote>
+<hr />
+<h2 id="the-tension-paper-a-found">The tension Paper A found</h2>
+<p>Fine-tuning a guard is a trade. Across a fixed panel of <strong>4
+checkpoints</strong> (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B),
+<strong>5 fine-tuning seeds each</strong>:</p>
+<ul>
+<li>On <strong>represented</strong> sources, SFT is excellent: macro-AP
+<strong>0.982</strong> (vs the base’s 0.658).</li>
+<li>On <strong>transfer</strong> sources, SFT is <em>worse than the
+untuned base</em>: <strong>0.807</strong> vs the base’s
+<strong>0.866</strong>.</li>
+</ul>
+<p>So the fine-tuned guard sharpens where it trained and dulls where it
+didn’t. The base, ironically, ranks held-out data <em>better</em> — it
+just isn’t as sharp on the trained-on data.</p>
+<h2 id="the-move-compose-dont-tune-more">The move: compose, don’t tune
+(more)</h2>
+<p>For each prompt: run the <strong>base</strong> and one <strong>SFT
+adapter</strong>, calibrate each one’s “unsafe” probability on the
+calibration split, and <strong>average the two</strong> with fixed equal
+weights:</p>
+<blockquote>
+<p>composed score = ½ · calibrated(base) + ½ · calibrated(SFT)</p>
+</blockquote>
+<p>No new training. Two model passes at inference.</p>
+<h2 id="what-we-found">What we found</h2>
+<table>
+<thead>
+<tr>
+<th>Regime</th>
+<th style="text-align: right;">Base</th>
+<th style="text-align: right;">SFT</th>
+<th style="text-align: right;"><strong>Composed</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Represented macro-AP</td>
+<td style="text-align: right;">0.658</td>
+<td style="text-align: right;"><strong>0.982</strong></td>
+<td style="text-align: right;">0.962</td>
+</tr>
+<tr>
+<td>Transfer macro-AP</td>
+<td style="text-align: right;">0.866</td>
+<td style="text-align: right;">0.807</td>
+<td style="text-align: right;"><strong>0.883</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Relative to <strong>SFT</strong>, the composed guard: - gives up a
+little on represented data: <strong>−0.019</strong> (95%
+paired-bootstrap interval [−0.031, −0.010]); - recovers transfer:
+<strong>+0.076</strong> ([+0.058, +0.093]).</p>
+<p>That’s the headline exchange: <strong>a small represented-source loss
+buys back the transfer the fine-tune had given away</strong> — landing
+<em>above the base</em> on transfer (0.883 vs 0.866) while staying close
+to SFT on represented (0.962 vs 0.982).</p>
+<p><strong>But it is not a free lunch, and not uniform:</strong> -
+<strong>vs the base, it’s heterogeneous.</strong> The panel-average
+composition-minus-base transfer gain is <strong>+0.017</strong>
+([+0.005, +0.030]), but that hides the spread: <strong>positive for 2
+checkpoints</strong> (SmolLM2, Qwen2.5), <strong>≈ zero</strong> for
+SmolLM3, and <strong>negative for Qwen3-4B</strong> (the strongest base,
+which the composition actually hurts on transfer). So this is
+<em>not</em> “beats both components everywhere.” - <strong>Ranking ≠
+calibration.</strong> At a 5%-FPR target set on calibration data, the
+<em>realized</em> transfer false-positive rate is <strong>8.1%</strong>
+(base), <strong>15.5%</strong> (SFT), <strong>11.4%</strong> (composed).
+The composition improves recall over both but <strong>still misses the
+5% target</strong> — better ranking does not mean a usable threshold
+transfers. - <strong>A tempting ablation we won’t cherry-pick.</strong>
+Averaging <em>logits</em> instead of calibrated probabilities reaches
+transfer <strong>0.891</strong> — higher than our fixed rule. But we saw
+the transfer numbers while developing this, so picking the best-looking
+combiner <em>after</em> the fact would be hidden tuning. We report it as
+an ablation only; the fixed calibrated-average stays primary.</p>
+<h2 id="is-this-real-the-honesty-box">Is this real? (the honesty
+box)</h2>
+<ul>
+<li><strong>Retrospective, not confirmatory.</strong> We inspected the
+transfer benchmarks during development. These are <em>conditional,
+fixed-panel estimates</em> — they justify a future study, they don’t
+settle it.</li>
+<li><strong>Maybe just “a second model helps.”</strong> We have
+<strong>not</strong> run the crucial control: fine-tune two independent
+SFT adapters and average <em>those</em> (an equal-cost SFT+SFT
+ensemble). If that gets the same lift, the benefit is generic variance
+reduction, not something special about keeping the base.</li>
+<li><strong>Not compared to the obvious alternatives yet.</strong> No
+head-to-head against <strong>WiSE-FT</strong> (averaging
+<em>weights</em> instead of scores, which is one pass at inference) or
+against <strong>matched-compute preservation tuning</strong> (KL /
+replay). Those are required before any real claim.</li>
+<li><strong>Two passes cost real money</strong> (latency, memory,
+energy) — the paper does not yet report those.</li>
+</ul>
+<h2 id="what-it-means">What it means</h2>
+<p>In this retrospective panel, a dead-simple average of a base and its
+fine-tuned guard <strong>trades a little trained-on accuracy for a real
+recovery of held-out ranking</strong> — enough to justify a proper,
+pre-registered study, not enough to recommend deploying. The honest next
+step isn’t a bolder headline; it’s a <strong>separately-locked
+prospective study</strong> on a genuinely unseen cohort with the SFT+SFT
+control, real WiSE-FT rescoring, matched-compute preservation baselines,
+an expanded model panel, and full systems-cost measurements. The formal
+draft ships that protocol as an executable, fail-closed checklist.</p>
+<hr />
+<p><em>Numbers: Paper A clean-run v2, lock <code>cabc8dee…</code>,
+composition hash <code>92c2cbc3…</code>. See <a
+href="../paper-b"><code>../paper-b/</code></a> for the formal draft and
+the fail-closed generator that produces every value above.</em></p>
+</body>
+</html>

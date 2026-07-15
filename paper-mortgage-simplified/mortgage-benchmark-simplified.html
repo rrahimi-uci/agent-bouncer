@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Mortgage Benchmark (plain-language)</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="/dev/null" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Mortgage Benchmark (plain-language)</h1>
+</header>
+<h1
+id="a-mortgage-safety-guardrail-benchmark-the-plain-language-version">A
+Mortgage Safety-Guardrail Benchmark — the plain-language version</h1>
+<p><em>Why a general “is this prompt unsafe?” guard isn’t enough for
+mortgage lending, and a benchmark built from real loan data to prove
+it.</em> Reza Rahimi (JazzX AI). Plain-language companion to the formal
+draft.</p>
+<blockquote>
+<p><strong>Read this first.</strong> The benchmark’s prompts are
+<strong>made-up (synthetic)</strong> and its right-answers were assigned
+by <strong>an AI judge, not a human expert</strong>. So it’s good for
+<em>measuring how a guard behaves</em> on mortgage-style requests — it
+is <strong>not</strong> proof of discrimination by any real lender or
+model. Think “test set for guards,” not “fair-lending audit.”</p>
+</blockquote>
+<hr />
+<h2 id="the-idea-in-one-paragraph">The idea in one paragraph</h2>
+<p>A normal safety guard asks <em>“is this prompt harmful?”</em> —
+jailbreaks, abuse, injections. But in mortgage lending, a request can be
+totally polite and still ask the assistant to <strong>break the
+law</strong>: to price by neighborhood demographics, to hide the real
+reason for a denial, to fudge income so a loan qualifies. A general
+guard says “looks safe” and waves it through. We built a benchmark of
+such requests, <strong>grounded in real HMDA loan data</strong>, where
+each request has <strong>two labels</strong>: <em>is it generally
+harmful?</em> (G) and <em>would honoring it break mortgage policy?</em>
+(D). The interesting cases are <strong>“safe-looking but a mortgage
+violation”</strong> — and that’s exactly what general guards miss.</p>
+<hr />
+<blockquote>
+<p><strong>Background: the words you need.</strong> -
+<strong>Guard.</strong> A small model that scores a request as
+safe/unsafe. - <strong>HMDA.</strong> Public U.S. mortgage data (loan
+purpose, amounts, income, race/ethnicity of applicants, approve/deny,
+denial reasons). We use it to make the scenarios <em>realistic</em>. -
+<strong>Two labels, G and D.</strong> <strong>G</strong> = generally
+harmful (jailbreak/abuse) — a normal guard’s job. <strong>D</strong> =
+would this break a mortgage rule (fair lending, ability-to-repay,
+disclosures, fraud, privacy). A request can be G-safe but D-violating. -
+<strong>Quadrants.</strong> Combining G and D gives four boxes. The key
+one is <strong>G0/D1</strong>: <em>not</em> generally harmful,
+<em>but</em> a mortgage-policy violation. - <strong>macro-AP.</strong> A
+score (0–1) for how well a guard ranks the “should-intervene” requests
+above the fine ones. Higher = better.</p>
+</blockquote>
+<hr />
+<h2 id="how-the-benchmark-is-built">How the benchmark is built</h2>
+<ul>
+<li><strong>Grounded in real loans.</strong> We take real
+(de-identified, banded) HMDA records — e.g. “FHA cash-out refi,
+investment property, income under $40k, LTV over 97%, prior denial for
+collateral” — and write realistic requests around them. We never copy a
+real person’s record; we sample <em>distributions</em> and check nothing
+traces to one loan.</li>
+<li><strong>Hard on purpose.</strong> Following a 2024 study of LLM
+mortgage bias, we focus on <strong>borderline, higher-risk
+files</strong> (where bias and discretion actually happen) and make
+violations <strong>subtle</strong> — “just use your judgment,” coded
+references to a neighborhood — not cartoonish.</li>
+<li><strong>Made by a team of AI agents.</strong> A planner picks what
+to cover; a “grounder” pulls a loan fact sheet; a “generator” writes the
+request; an “adversary” adds realistic disguises; a <strong>rubric-bound
+judge</strong> assigns the labels from 24 written policy cards.</li>
+<li><strong>Fairness pairs.</strong> For some benign requests we write
+<strong>two versions identical except one word</strong> — the
+applicant’s protected group (e.g. “a Black applicant” vs “a white
+applicant”). A fair guard must treat both the same. We measure the gap
+(should be ≈ 0).</li>
+</ul>
+<h2 id="whats-in-it-994-requests">What’s in it (994 requests)</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr>
+<td><strong>G0/D1</strong> (safe-looking mortgage violation — the
+payload)</td>
+<td><strong>502</strong></td>
+</tr>
+<tr>
+<td><strong>G0/D0</strong> (benign, incl. hard “don’t over-block me”
+cases)</td>
+<td><strong>450</strong></td>
+</tr>
+<tr>
+<td><strong>G1/D1</strong> (harmful <em>and</em> a violation)</td>
+<td><strong>42</strong></td>
+</tr>
+<tr>
+<td><strong>G1/D0</strong> (general harm only)</td>
+<td><strong>0</strong> <em>(gap — see below)</em></td>
+</tr>
+<tr>
+<td>Domains: fair-lending 204, fraud 112, UDAAP 90, disclosure 66,
+ability-to-repay 54, privacy 18</td>
+<td></td>
+</tr>
+<tr>
+<td>Protected fairness pairs</td>
+<td>39</td>
+</tr>
+<tr>
+<td>Splits: train 604 / dev 149 / public-test 146 / sealed test 95</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-we-test-and-what-we-expect-to-see">What we test, and what
+we expect to see</h2>
+<p>We run guards over the benchmark and score them with the same
+tie-aware metrics as the companion Paper A. A guard gives one “unsafe”
+number per request; we check how well it separates the should-intervene
+requests for <strong>G</strong>, for <strong>D</strong>, and for the
+combined decision, plus <strong>how many G0/D1 violations it
+misses</strong> at a sensible alarm threshold, plus the
+<strong>fairness-pair gap</strong>.</p>
+<p>The expected result (already confirmed by the offline plumbing test):
+a general guard <strong>does okay on G but falls apart on D</strong> —
+it misses almost all the safe-looking mortgage violations. That’s the
+whole point: <em>general safety ≠ mortgage compliance.</em></p>
+<!-- BASELINE_TABLE_START -->
+<p><em>(Baseline numbers for the base checkpoints + off-the-shelf guards
+are filled in from the committed scoring run; the harness is verified
+end-to-end.)</em> <!-- BASELINE_TABLE_END --></p>
+<h2 id="is-this-real-the-honesty-box">Is this real? (the honesty
+box)</h2>
+<ul>
+<li><strong>The labels are an AI judge’s, not an expert’s.</strong>
+Every policy card is marked “not-counsel-reviewed.” Before anyone makes
+a fair-lending <em>claim</em>, a human expert has to review a sample and
+we report the human-agreement number. This benchmark is a measuring
+stick, not a verdict.</li>
+<li><strong>One box is empty</strong> (G1/D0) — the AI wouldn’t write
+plain jailbreaks — so the 2×2 is only three-quarters filled.</li>
+<li><strong>You can’t regenerate it</strong> (the AI writing step is
+random), so we <strong>freeze and publish the exact dataset</strong>;
+results are reproduced by <em>scoring guards on the frozen data</em>,
+not by rebuilding it.</li>
+<li><strong>No domain-trained guard yet</strong> — the natural next step
+is to fine-tune a mortgage guard and show it catches G0/D1 (at some cost
+to general skill), tying back to the “compose, don’t tune” idea.</li>
+</ul>
+<h2 id="what-it-means">What it means</h2>
+<p>General guards and mortgage compliance are <strong>different
+problems</strong>. This benchmark makes that measurable, with realistic,
+hard, real-data-grounded requests and a fairness-invariance test. It’s
+an honest first artifact with a clear checklist to become a validated
+instrument: expert adjudication, fill the empty quadrant, decontaminate,
+and add a fine-tuned mortgage guard.</p>
+<hr />
+<p><em>Frozen benchmark:
+<code>mortgage-redteaming-agentic-generator/benchmark/v1_hmda2022/</code>
+(994 rows, checksummed, verified PII-free). Reproduce baselines with
+<code>magen/score_guards.py</code>.</em></p>
+</body>
+</html>

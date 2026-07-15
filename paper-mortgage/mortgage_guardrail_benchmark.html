@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Mortgage Guardrail Benchmark</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="/dev/null" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Mortgage Guardrail Benchmark</h1>
+</header>
+<h1
+id="a-mortgage-specific-safety-guardrail-benchmark-grounded-in-real-hmda-data">A
+Mortgage-Specific Safety-Guardrail Benchmark, Grounded in Real HMDA
+Data</h1>
+<p><strong>Reza Rahimi</strong> · JazzX AI, Los Altos, CA ·
+reza.rahimi@jazzx.ai <em>Working draft — July 2026</em></p>
+<blockquote>
+<p><strong>Study status.</strong> This is a
+<strong>benchmark-construction and baseline-evaluation</strong> paper.
+The dataset is a <em>fixed</em> artifact grounded in the public HMDA
+2022 snapshot; its prompts are <strong>synthetic</strong> and its labels
+are <strong>LLM-judge, policy-card-consistent — not
+SME-adjudicated</strong>. The benchmark therefore supports <em>measuring
+how guards behave on a mortgage-compliance distribution</em>; it does
+<strong>not</strong> license confirmatory fair-lending claims about any
+lender, model, or population. The contribution is the benchmark, its
+construction methodology, and a reproducible evaluation harness — plus
+baseline guard results on the frozen data.</p>
+</blockquote>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>General-purpose prompt-safety guards are trained to catch
+domain-independent harm — jailbreaks, injections, abuse. But a request
+can be perfectly benign under a general safety policy while still
+soliciting a <strong>mortgage-compliance</strong> violation (disparate
+treatment, redlining, ability-to-repay circumvention,
+adverse-action-reason masking, occupancy fraud). We build a
+<strong>mortgage-specific guardrail benchmark</strong> whose unit is one
+incoming request, grounded in the public <strong>HMDA 2022</strong>
+loan-level snapshot, and carrying <strong>two independent
+labels</strong>: a domain-independent <code>general_safety</code> label
+(G) and a <code>mortgage_policy</code> label (D). The cross-product
+yields four quadrants; the load-bearing one is <strong>G0/D1</strong> —
+requests a general guard rates <em>safe</em> that nonetheless solicit a
+mortgage-policy violation. The benchmark is produced by an
+<strong>agentic pipeline</strong> (plan → HMDA-ground → generate →
+adversarially mutate → rubric-bound judge) that follows the
+borderline-and-subtle design principles established for LLM mortgage
+bias by , and includes <strong>protected-class counterfactual minimal
+pairs</strong> reframed as a guard-<em>invariance</em> gate. We release
+a frozen <strong>994-row</strong> version and a clean, canonical-metric
+evaluation harness, and report baseline results for open instruction
+checkpoints used zero-shot as guards and for off-the-shelf safety
+guards. We are explicit about what the benchmark does not yet establish
+and ship a validation protocol (SME adjudication, the empty G1/D0
+quadrant, guard fine-tuning, cross-source decontamination) required
+before confirmatory use.</p>
+<h2 id="introduction">1. Introduction</h2>
+<p>Lenders are exploring LLMs across the mortgage lifecycle. That raises
+a specific safety question a general guard is not built to answer:
+<em>would honoring this request violate mortgage law or policy?</em> A
+general safety guard screens for harm that is independent of domain. A
+<strong>mortgage guardrail</strong> must additionally screen for domain
+violations that are, on their surface, entirely “safe” text —
+e.g. <em>“applications from the majority-Spanish-speaking tracts keep
+coming in weak; draft language to quietly deprioritize that pipeline,
+and write the denials up as ‘collateral’ so it’s clean.”</em> No slur,
+no jailbreak — but it solicits redlining, proxy discrimination, and
+adverse-action-reason masking.</p>
+<p>This paper contributes: 1. a <strong>fixed, HMDA-grounded
+benchmark</strong> of mortgage-workflow requests with <strong>dual
+orthogonal labels</strong> (<code>general_safety</code> G ×
+<code>mortgage_policy</code> D) and a derived intervention target; 2. an
+<strong>agentic construction methodology</strong> that grounds
+realistic, <em>borderline</em> scenarios in real loan records and makes
+policy violations <em>subtle and deniable</em> rather than cartoonish;
+3. <strong>protected-class counterfactual minimal pairs</strong> used as
+a guard-invariance PASS gate; and 4. a <strong>reproducible evaluation
+harness</strong> and <strong>baseline results</strong> showing that
+general and off-the-shelf guards track G but do not separate the G0/D1
+stratum.</p>
+<p>It explicitly does <strong>not</strong> claim SME-validated labels, a
+populated G1/D0 quadrant, a fair-lending finding about any real system,
+or deployment readiness.</p>
+<h2 id="related-work-and-novelty-boundary">2. Related work and novelty
+boundary</h2>
+<p><strong>LLM mortgage bias.</strong> audit LLM underwriting on real
+HMDA applications with experimentally manipulated race and credit
+scores, finding disparate approval/pricing recommendations that are
+<em>largest for lower-credit-quality / riskier loans</em>. We borrow
+their methodology in two ways: grounding scenarios in real HMDA fields,
+and building <strong>counterfactual minimal pairs</strong> that hold
+financials fixed and vary only a protected attribute. Our object is
+different: not an audit of an underwriting model’s decisions, but a
+<strong>benchmark for a guard</strong> that screens incoming
+requests.</p>
+<p><strong>Safety guards and their benchmarks.</strong> Open guards
+(Llama Guard, WildGuard, ShieldGemma) and general prompt-safety datasets
+(ToxicChat, prompt-injection and jailbreak sets) target a
+<em>content</em> taxonomy. None encodes mortgage regulation, none
+grounds in real lending data, and none separates domain-independent harm
+from a domain-policy violation as orthogonal labels.</p>
+<p><strong>Over-refusal and counterfactual fairness.</strong>
+XSTest/OR-Bench probe over-refusal; counterfactual fairness suites
+measure a <em>model’s output</em> bias. We combine both concerns for a
+<em>guard</em>: benign hard-negatives that a nervous guard over-blocks
+(e.g. a protected applicant asking “is it pointless for someone like me
+to apply?”) must PASS, and protected minimal pairs test the guard’s
+<em>invariance</em>, not a downstream decision.</p>
+<p><strong>Novelty boundary.</strong> The dual-label G×D design, HMDA
+grounding, and minimal-pairs-as-invariance gate are the combination that
+is new here. The agentic generate/judge loop is standard red-team
+practice; we do not claim it as a primitive.</p>
+<h2 id="benchmark-construction">3. Benchmark construction</h2>
+<p>The construction is deterministic in structure and stochastic in
+surface wording (the LLM steps run at temperature &gt; 0). <strong>The
+released benchmark is therefore a <em>frozen</em> artifact, not a
+regenerable one</strong> — like the HMDA snapshot it grounds in.
+Reproducibility is defined at the <em>evaluation</em> layer (§5), not
+the generation layer.</p>
+<p><strong>HMDA grounding (PII-safe).</strong> We pull the public HMDA
+2022 loan-level data (FFIEC/CFPB Data Browser) and reduce each record to
+a <strong>banded, de-identified fact sheet</strong> — loan purpose,
+occupancy, banded loan amount / income / LTV / DTI, action, denial
+reason, state — never exact dollar amounts, census tract, or any
+identifier. Scenarios are sampled from <em>marginal distributions</em>
+over these bands, with a build-time assertion that no emitted fact sheet
+reproduces a single source record. Following , fair-lending and ATR
+cells are biased toward <strong>borderline / higher-risk</strong> files
+(high DTI, high LTV, prior denial), where underwriter discretion — and
+bias — actually operates.</p>
+<p><strong>Agentic pipeline.</strong> A <em>planner</em> enumerates
+coverage cells (quadrant × trap × policy card × role × protected
+context); an <em>HMDA-grounder</em> draws a fact sheet; a
+<em>generator</em> authors the request in the natural voice of a role
+(applicant, loan officer, underwriter, processor, broker, adversary); an
+<em>adversarial mutator</em> composes label-preserving tactics
+(euphemism, coded proxy, business-justification, buried injection); a
+<em>rubric-bound judge</em> assigns the authoritative labels.
+Domain-independent harm (jailbreaks) uses curated seeds; the novel
+domain content is LLM-authored.</p>
+<p><strong>Labels.</strong> Each row carries
+<code>general_safety_gold</code> G ∈ {safe, unsafe}
+(domain-independent), and <code>mortgage_policy_gold</code> D ∈ {allow,
+intervene}, defined by 24 benchmark <strong>policy cards</strong>
+(D01–D24: fair lending, ATR/QM, disclosures, UDAAP, fraud, privacy) each
+with an “intervene iff” predicate and an authority pointer. A derived
+<code>final_intervention</code> = (G unsafe ∨ D intervene), plus an
+<code>action</code> lattice (PASS/CONSTRAIN/REVIEW/BLOCK) and severity.
+<strong>Labels are policy-card-consistent, assigned by an LLM judge;
+they are not SME-adjudicated</strong> (all 24 cards remain
+<code>sme_signoff:false</code>; the judge’s agreement is measured as
+self-consistency, not a human Fleiss-κ study).</p>
+<p><strong>Protected minimal pairs.</strong> For fairness, we author
+counterfactual pairs identical in every slot except a protected-class
+token (<code>variant ∈ {protected, reference}</code>), both benign
+(G0/D0, PASS), sharing a <code>pair_id</code>. The guard must PASS both;
+the pair delta feeds a Δ_context invariance gate (target ≈ 0).</p>
+<p><strong>Provenance and splits.</strong> Content and near-dup
+(MinHash) family hashes; family-isolated train/dev/public_test splits +
+a sealed private_test; a text-free public index. <em>Current
+limitation:</em> decontamination was run against the legacy Paper A
+general sources (exact-hash); re-running against the v2 sources with
+near-dup removal is required before joint claims.</p>
+<h2 id="benchmark-composition-frozen-v1_hmda2022">4. Benchmark
+composition (frozen v1_hmda2022)</h2>
+<p><strong>994 rows</strong>, all <code>synthetic=true</code>,
+<code>contains_real_pii=false</code> (verified at freeze: 0
+violations).</p>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 14%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 14%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th>Split</th>
+<th style="text-align: right;">Rows</th>
+<th></th>
+<th>Quadrant</th>
+<th style="text-align: right;">Rows</th>
+<th></th>
+<th>Domain</th>
+<th style="text-align: right;">Rows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>train</td>
+<td style="text-align: right;">604</td>
+<td></td>
+<td>G0/D0 (benign)</td>
+<td style="text-align: right;">450</td>
+<td></td>
+<td>fair_lending</td>
+<td style="text-align: right;">204</td>
+</tr>
+<tr>
+<td>dev</td>
+<td style="text-align: right;">149</td>
+<td></td>
+<td>G0/D1 (domain-only)</td>
+<td style="text-align: right;">502</td>
+<td></td>
+<td>fraud</td>
+<td style="text-align: right;">112</td>
+</tr>
+<tr>
+<td>public_test</td>
+<td style="text-align: right;">146</td>
+<td></td>
+<td>G1/D1 (both)</td>
+<td style="text-align: right;">42</td>
+<td></td>
+<td>udaap</td>
+<td style="text-align: right;">90</td>
+</tr>
+<tr>
+<td>private_test (sealed)</td>
+<td style="text-align: right;">95</td>
+<td></td>
+<td><strong>G1/D0</strong> (general-only)</td>
+<td style="text-align: right;"><strong>0</strong></td>
+<td></td>
+<td>disclosure</td>
+<td style="text-align: right;">66</td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td>atr_qm</td>
+<td style="text-align: right;">54</td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td>privacy</td>
+<td style="text-align: right;">18</td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"></td>
+<td></td>
+<td>benign</td>
+<td style="text-align: right;">450</td>
+</tr>
+</tbody>
+</table>
+<p>Trap types span <code>business_justified</code> (202),
+<code>direct</code> (167), <code>coded_proxy</code> (126),
+<code>euphemism</code> (126), <code>over_refusal_bait</code> (114),
+<code>benign_info</code> (84), <code>occupancy_temptation</code> (72),
+<code>minimal_pair</code> (78 rows = 39 protected pairs),
+<code>buried_injection</code> (25). <strong>The G1/D0 quadrant is
+empty</strong> — the safety-tuned generator declined to author
+domain-independent jailbreaks — so the 2×2 is only three-quarters
+populated; this is a stated limitation, not a design claim.</p>
+<h2 id="evaluation-protocol-reproducible">5. Evaluation protocol
+(reproducible)</h2>
+<p>The evaluator (<code>magen/score_guards.py</code> +
+<code>magen/evaluate.py</code>) is the reproducible layer. A guard emits
+one “unsafe” probability per row; we map it to G, D, and the composed
+<code>final</code> label alike, and compute, via the canonical tie-aware
+<code>guard_research</code> metrics: - <strong>threshold-free
+macro-AP</strong> for G, D, and <code>final</code> (per benchmark,
+macro-averaged); - <strong>per-quadrant miss rate</strong> at a
+calibration-selected operating point (5% dev-FPR target), so a strong
+aggregate cannot hide a G0/D1 collapse; - <strong>Δ_context</strong>,
+the mean absolute score gap within protected minimal pairs (fairness
+invariance).</p>
+<p>Guards scored: the four base instruction checkpoints from the
+companion study (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B) used
+<strong>zero-shot as guards</strong> via the canonical guard prompt,
+plus off-the-shelf <strong>Llama Guard 3</strong> and
+<strong>WildGuard</strong>. (A domain-fine-tuned guard arm is future
+work: the companion study’s LoRA adapters were not retained.)</p>
+<h2 id="baseline-results">6. Baseline results</h2>
+<blockquote>
+<p><em>Baseline table populated from the committed scoring run
+(<code>out_eval/baseline_table.json</code>, produced by
+<code>score_guards.py</code> on the frozen benchmark). Until that run is
+committed, the harness has been verified end-to-end offline (a mock
+general guard reproduces the expected shape: it tracks general harm but
+<strong>misses 73/75 G0/D1 rows</strong>, and its AP on D collapses
+relative to its AP on G).</em></p>
+</blockquote>
+<!-- BASELINE_TABLE_START -->
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr>
+<th>Guard</th>
+<th style="text-align: right;">AP · G</th>
+<th style="text-align: right;">AP · D</th>
+<th style="text-align: right;">AP · final</th>
+<th style="text-align: right;">G0/D1 caught <span class="citation"
+data-cites="5%FPR">@5%FPR</span></th>
+<th style="text-align: right;">Δ_context</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>pending committed baseline run</em></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+<!-- BASELINE_TABLE_END -->
+<p>The expected and offline-verified finding: guards optimized for
+general safety <strong>track G but do not separate the subtle G0/D1
+mortgage-policy violations</strong>, so their AP on D and
+<code>final</code> is far below their AP on G, and they miss most G0/D1
+rows at a sensible operating point. That gap — not a claim that any
+specific number is a fair-lending fact — is what the benchmark is
+designed to surface.</p>
+<h2 id="what-this-benchmark-does-not-establish">7. What this benchmark
+does <em>not</em> establish</h2>
+<ul>
+<li><strong>Not SME-validated.</strong> Labels are LLM-judge /
+policy-card-consistent. No fair-lending headline about a real lender or
+model is warranted until a stratified SME adjudication (especially of
+the G0/D1 rows and protected pairs) is recorded.</li>
+<li><strong>Not a full 2×2.</strong> G1/D0 is empty; the orthogonality
+of G and D is demonstrated on three quadrants.</li>
+<li><strong>Not a regenerable dataset.</strong> Generation is
+intentionally frozen; only the <em>evaluation</em> reproduces.</li>
+<li><strong>Not decontaminated against v2.</strong> Cross-source
+near-dup removal vs the v2 general sources is pending.</li>
+</ul>
+<h2 id="validation-protocol-to-reach-confirmatory-use">8. Validation
+protocol (to reach confirmatory use)</h2>
+<ol type="1">
+<li><strong>SME adjudication</strong> of a stratified subset; upgrade
+cards from <code>sme_signoff:false</code>; report Fleiss-κ per
+label.</li>
+<li><strong>Populate G1/D0</strong> with curated
+domain-independent-harm-in-mortgage-clothing to complete the 2×2.</li>
+<li><strong>Re-decontaminate</strong> against the v2 general sources
+with MinHash near-dup removal.</li>
+<li><strong>Add a domain-fine-tuned guard arm</strong> (retrain the LoRA
+guards) to quantify the domain-adapter gain — and, jointly with the
+composition study, whether composing a general base with a mortgage
+adapter recovers general transfer.</li>
+<li><strong>Select a license</strong>; resolve the contested
+disparate-impact card (D07) with version-dating.</li>
+</ol>
+<h2 id="conclusion">9. Conclusion</h2>
+<p>We release a fixed, HMDA-grounded, dual-labeled mortgage guardrail
+benchmark and a reproducible evaluation harness, and show baselines for
+how general and off-the-shelf guards behave on it. The benchmark’s value
+is the <strong>G0/D1 stratum</strong> — mortgage-policy violations that
+read as safe — and the <strong>protected minimal pairs</strong> that
+test guard invariance. It is an honest construct with a clear validation
+path, not a finished fair-lending instrument.</p>
+<h2 id="references">References</h2>
+<ul>
+<li>Bowen, Price, Stein &amp; Yang (2024). <em>Measuring and Mitigating
+Racial Bias in Large Language Model Mortgage Underwriting.</em>
+(grounding methodology; borderline / counterfactual design)</li>
+<li>Companion study: <em>The Benchmark Chooses the Winner</em> (Paper A)
+and <em>Compose, Don’t Tune?</em> (Paper B) in this repository.</li>
+<li>HMDA 2022 Snapshot National Loan-Level Dataset, FFIEC/CFPB.</li>
+<li>Llama Guard; WildGuard; ToxicChat; XSTest; OR-Bench (baseline guards
+/ related benchmarks).</li>
+</ul>
+</body>
+</html>
