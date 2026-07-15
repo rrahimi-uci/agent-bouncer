@@ -1,4 +1,7 @@
-# A Mortgage Safety-Guardrail Benchmark — the plain-language version
+
+# Safe-Looking but Non-Compliant — the plain-language version
+
+*A mortgage safety-guardrail benchmark, in plain words.*
 
 *Why a general "is this prompt unsafe?" guard isn't enough for mortgage lending, and a benchmark
 built from real loan data to prove it.* Reza Rahimi (JazzX AI). Plain-language companion to the
@@ -24,6 +27,7 @@ are **"safe-looking but a mortgage violation"** — and that's exactly what gene
 ---
 
 > **Background: the words you need.**
+>
 > - **Guard.** A small model that scores a request as safe/unsafe.
 > - **HMDA.** Public U.S. mortgage data (loan purpose, amounts, income, race/ethnicity of
 >   applicants, approve/deny, denial reasons). We use it to make the scenarios *realistic*.
@@ -39,7 +43,7 @@ are **"safe-looking but a mortgage violation"** — and that's exactly what gene
 
 ## How the benchmark is built
 
-![**How each row is made.** Real mortgage records become de-identified "fact sheets," then a small team of AI agents — a planner, a grounder, a writer, an "adversary" that adds realistic disguises, and a rubric-following judge — builds and labels one request, keeping it only if the judge agrees with the plan. Accepted rows are de-duplicated, split (with a sealed test held back), and frozen into the released benchmark that guards are scored against.](figures/pipeline.png)
+![How each row is made. Real mortgage records become de-identified ](figures/pipeline.png)
 
 - **Grounded in real loans.** We take real (de-identified, banded) HMDA records — e.g. "FHA
   cash-out refi, investment property, income under $40k, LTV over 97%, prior denial for
@@ -57,15 +61,15 @@ are **"safe-looking but a mortgage violation"** — and that's exactly what gene
 
 ## What's in it (994 requests)
 
-| | |
-|---|---|
-| **G0/D1** (safe-looking mortgage violation — the payload) | **502** |
-| **G0/D0** (benign, incl. hard "don't over-block me" cases) | **450** |
-| **G1/D1** (harmful *and* a violation) | **42** |
-| **G1/D0** (general harm only) | **0** *(gap — see below)* |
-| Domains: fair-lending 204, fraud 112, UDAAP 90, disclosure 66, ability-to-repay 54, privacy 18 | |
-| Protected fairness pairs | 39 |
-| Splits: train 604 / dev 149 / public-test 146 / sealed test 95 | |
+|                                                                                                |                                    |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **G0/D1** (safe-looking mortgage violation — the payload)                               | **502**                      |
+| **G0/D0** (benign, incl. hard "don't over-block me" cases)                               | **450**                      |
+| **G1/D1** (harmful *and* a violation)                                                  | **42**                       |
+| **G1/D0** (general harm only)                                                            | **0** *(gap — see below)* |
+| Domains: fair-lending 204, fraud 112, UDAAP 90, disclosure 66, ability-to-repay 54, privacy 18 |                                    |
+| Protected fairness pairs                                                                       | 39                                 |
+| Splits: train 604 / dev 149 / public-test 146 / sealed test 95                                 |                                    |
 
 ## What we test, and what we expect to see
 
@@ -87,16 +91,18 @@ differently (gap up to 0.51). So: *general safety ≠ mortgage compliance*, and 
 catches problems accuracy alone misses. (Small sample — a measuring stick, not a verdict.)
 
 <!-- BASELINE_TABLE_START -->
+
 *Baseline zero-shot instruction guards on the frozen benchmark (public_test split; 146 rows: 75 G0/D1, 6 G1, 3 protected pairs), via `score_guards.py`; AP recomputed in the repo canonical env from the committed per-row scores (exactly reproducible). Threshold-free, base guards rank mortgage-policy violations moderately (AP·D 0.67–0.85) — soliciting fraud/discrimination reads as "unsafe" even without a jailbreak, so G and D are only PARTIALLY orthogonal. Protected-pair invariance (Δ_context; 3 pairs) varies sharply across guards. The fixed 5%-FPR operating point is threshold-knife-edge for these clustered-score zero-shot guards (its G0/D1 catch count flips across library versions), so it is not tabulated per guard — see text. Small-sample, LLM-judge labels — illustrative, not confirmatory.*
 
-| Guard | AP · G | AP · D | AP · final | Δ_context (fairness) |
-|---|---:|---:|---:|---:|
-| qwen25_15b_base | 0.681 | 0.793 | 0.793 | 0.183 |
-| qwen3_4b_base | 1.000 | 0.851 | 0.851 | 0.000 |
-| smollm2_17b_base | 0.261 | 0.672 | 0.672 | 0.023 |
-| smollm3_3b_base | 0.546 | 0.733 | 0.733 | 0.010 |
+| Guard            | AP · G | AP · D | AP · final | Δ_context (fairness) |
+| ---------------- | ------: | ------: | ----------: | --------------------: |
+| qwen25_15b_base  |   0.681 |   0.793 |       0.793 |                 0.183 |
+| qwen3_4b_base    |   1.000 |   0.851 |       0.851 |                 0.000 |
+| smollm2_17b_base |   0.261 |   0.672 |       0.672 |                 0.023 |
+| smollm3_3b_base  |   0.546 |   0.733 |       0.733 |                 0.010 |
 
 *Not scored (unavailable in this run): llama_guard_3_1b, wildguard_7b.*
+
 <!-- BASELINE_TABLE_END -->
 
 ## Is this real? (the honesty box)

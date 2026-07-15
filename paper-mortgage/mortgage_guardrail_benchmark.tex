@@ -26,8 +26,8 @@
     \begin{minipage}{0.93\linewidth}\small\textbf{Study status.} #1\end{minipage}}
   \end{center}}
 
-\title{A Mortgage-Specific Safety-Guardrail Benchmark,\\
-\large Grounded in Real HMDA Data}
+\title{Safe-Looking but Non-Compliant:\\
+\large An HMDA-Grounded, Dual-Labeled Benchmark for Mortgage Safety Guardrails}
 \author{Reza Rahimi\\
   \small JazzX AI, Los Altos, CA, USA\\
   \small\texttt{reza.rahimi@jazzx.ai}}
@@ -48,7 +48,7 @@ abuse. But a request can be benign under a general safety policy while still sol
 \textbf{mortgage-compliance} violation (disparate treatment, redlining, ability-to-repay
 circumvention, adverse-action-reason masking, occupancy fraud). We build a mortgage-specific
 guardrail benchmark whose unit is one incoming request, grounded in the public HMDA 2022
-loan-level snapshot \citep{hmda2022}, and carrying \textbf{two independent labels}: a
+loan-level snapshot \citep{hmda2022} --- HMDA, the U.S.\ Home Mortgage Disclosure Act, is the law under which lenders publicly report loan-level mortgage application and outcome data --- and carrying \textbf{two independent labels}: a
 domain-independent general-safety label (G) and a mortgage-policy label (D). The cross-product
 yields four quadrants; the load-bearing one is \textbf{G0/D1} --- requests a general guard rates
 \emph{safe} that nonetheless solicit a mortgage-policy violation. The benchmark is produced by an
@@ -62,9 +62,44 @@ sharply across guards --- while the fixed-threshold operating point is too unsta
 state what the benchmark does not establish and ship a validation protocol.
 \end{abstract}
 
+\paragraph{In plain terms.} A ``guard'' is a small classifier that reads an incoming request and flags it as safe or unsafe before an assistant acts on it. Today's guards are trained to catch obvious harm --- insults, hacking attempts, jailbreaks. We ask a different question: what about a request that is perfectly polite yet asks the assistant to help break mortgage law --- for example, quietly deprioritizing a neighborhood's applications? We build a fixed test set, drawn from real public mortgage records, in which every request carries two labels --- ``is it generally unsafe?'' (G) and ``does it break mortgage policy?'' (D) --- so we can isolate the polite-but-non-compliant cases. We then measure how well off-the-shelf guards \emph{rank} those cases and whether they score two otherwise-identical requests differently just because one names a protected group. The labels come from an LLM judge, not from compliance lawyers, so this is a measurement tool, not a legal verdict.
+
 \section{Introduction}
 \label{sec:intro}
-Lenders are exploring LLMs across the mortgage lifecycle, raising a question a general guard is not
+
+\begin{center}
+\fbox{\begin{minipage}{0.95\linewidth}\small
+\textbf{Plain-language mortgage primer (terms used in this paper).}
+\begin{description}[leftmargin=1.2em,itemsep=1pt,topsep=2pt]
+  \item[HMDA] Home Mortgage Disclosure Act; a U.S.\ law under which lenders publicly report loan-level records (purpose, amount band, action taken, denial reason, and more). We use the public 2022 file as factual grounding.
+  \item[Fair lending] The body of law that bars credit discrimination on protected characteristics such as race, national origin, or sex.
+  \item[Redlining] Refusing or worsening credit for an entire neighborhood, often a stand-in for the race of its residents.
+  \item[Disparate treatment] Treating an applicant worse \emph{because of} a protected characteristic (intentional discrimination).
+  \item[Disparate impact] A neutral-looking rule that nonetheless falls harder on a protected group.
+  \item[Proxy / coded discrimination] Using a stand-in variable (a ZIP code, a language, ``the tracts'') to target a protected group without naming it.
+  \item[Ability-to-repay / ATR-QM] A rule requiring lenders to verify a borrower can actually repay; a ``qualified mortgage'' (QM) is a safe-harbor category under it.
+  \item[Adverse-action notice] The legally required statement of the true reason a loan was denied; masking the real reason is a violation.
+  \item[UDAAP] Unfair, Deceptive, or Abusive Acts or Practices; a broad consumer-protection standard.
+  \item[Occupancy fraud] Falsely claiming a property will be owner-occupied (which earns better terms) when it will not.
+  \item[LTV / DTI] Loan-to-value and debt-to-income ratios; standard risk measures (higher $=$ riskier).
+  \item[PII] Personally identifiable information; our fact sheets contain none.
+\end{description}
+\end{minipage}}
+\end{center}
+
+\begin{center}
+\fbox{\begin{minipage}{0.95\linewidth}\small
+\textbf{Reader's guide: the two labels, the four quadrants, and the metrics.}
+Every request gets \emph{two} independent yes/no labels.
+\textbf{G} (general safety): would an ordinary safety guard call this unsafe --- a jailbreak, abuse, an injection? ($G{=}0$ safe, $G{=}1$ unsafe.)
+\textbf{D} (mortgage policy): would honoring it break mortgage law or policy? ($D{=}0$ allow, $D{=}1$ intervene.)
+Crossing them gives four \emph{quadrants}; we write, e.g., \textbf{G0/D1} for ``general-safe ($G{=}0$) yet a compliance violation ($D{=}1$)'' --- the case this paper is about.
+\textbf{AP} (average precision): a single number between $0$ and $1$ for how well a guard's risk score \emph{ranks} truly-bad requests above safe ones (higher is better; ``threshold-free'' means it needs no fixed cutoff). \textbf{AP$\cdot$D} scores the ranking against the D label, \textbf{AP$\cdot$G} against the G label.
+$\boldsymbol{\Delta_{\mathrm{context}}}$: for two requests that are identical except for one protected-class word, the average gap in the guard's scores; $0$ means the guard treats them the same (fair).
+\end{minipage}}
+\end{center}
+
+Lenders are exploring LLMs across the mortgage lifecycle \citep{toles2026mortarbench}, raising a question a general guard is not
 built to answer: \emph{would honoring this request violate mortgage law or policy?} A general safety
 guard screens for domain-independent harm. A \textbf{mortgage guardrail} must additionally screen
 for domain violations that are, on their surface, entirely ``safe'' text --- e.g.\ \emph{``applications
@@ -82,6 +117,13 @@ at a deployable threshold, with sharply varying protected-pair invariance. It do
 SME-validated labels, a populated G1/D0 quadrant, a fair-lending finding about any real system, or
 deployment readiness.
 
+\begin{center}
+\fbox{\begin{minipage}{0.93\linewidth}\small
+\textbf{What is new here (in plain terms).} A safety \emph{guard} is a filter that reads an incoming request and flags it before a model acts on it. Existing guards are built to catch \emph{domain-independent} harm --- insults, jailbreak attempts, prompt injections. This paper builds a benchmark designed around a different question: \emph{does this request, even though it reads as perfectly polite and safe, ask the system to do something that breaks mortgage law or policy?} We name these \textbf{G0/D1} cases (general-safety label $=$ looks safe; domain-policy label $=$ is a violation) and make them the load-bearing part of the benchmark. What is new is a \emph{combination} of three choices: (i) every request is grounded in a real record from public U.S.\ mortgage-lending data (HMDA); (ii) each request carries \emph{two separate labels} --- one for ordinary safety and one for mortgage-policy compliance --- which is what lets us isolate the looks-safe-but-non-compliant cases; and (iii) we add \textbf{protected-class minimal pairs} (two requests identical except for one protected attribute, e.g.\ the applicant's ethnicity) to test whether a guard treats them the same. \emph{We do not claim:} human-expert-verified labels (labels are assigned by an LLM judge against written policy cards, not adjudicated by subject-matter experts), a finished fair-lending tool, or any conclusion about a real lender or model. How this differs from the closest prior work: general moderation tools \citep{llamaguard,wildguard} and financial or specialized-domain guards \citep{dou2026finguard,expguard2026} do not separate general safety from mortgage-policy as two labels or ground in real loan records; and mortgage-agent evaluations \citep{bowen2024mortgage,toles2026mortarbench} test the system that \emph{makes} lending decisions, whereas we test the guard that \emph{screens the request} before it.
+\end{minipage}}
+\end{center}
+
+
 \section{Related work and novelty boundary}
 \label{sec:related}
 \citet{bowen2024mortgage} audit LLM underwriting on real HMDA applications with experimentally
@@ -89,10 +131,11 @@ manipulated race and credit scores, finding disparate approval/pricing recommend
 lower-credit-quality loans. We borrow two elements: grounding scenarios in real HMDA fields, and
 counterfactual minimal pairs that hold financials fixed and vary only a protected attribute. Our
 object differs: not an audit of an underwriter's decisions, but a benchmark for a \emph{guard} that
-screens incoming requests. Open guards \citep{llamaguard,wildguard} and general prompt-safety sets
+screens incoming requests. A parallel strand evaluates the mortgage \emph{agent} rather than a guard: \citet{toles2026mortarbench} benchmark how well loan-origination agents perform the origination task itself. Our target is complementary and upstream --- not whether an agent originates loans competently, but whether a guard flags a compliance-violating \emph{request} before any agent acts on it. Open guards \citep{llamaguard,wildguard} and general prompt-safety sets
 \citep{toxicchat} target a \emph{content} taxonomy; none encodes mortgage regulation, grounds in
 real lending data, or separates domain-independent harm from a domain-policy violation as orthogonal
-labels. Over-refusal suites \citep{xstest} probe exaggerated safety; we fold that in as benign
+labels. A nascent line of work moves beyond general content moderation toward \emph{domain-specialized} guarding: \citet{expguard2026} argue that moderation in regulated verticals needs domain-specific policies rather than a generic content taxonomy, and \citet{dou2026finguard} detect financial regulatory non-compliance in LLM interactions --- the closest prior work to our mortgage-policy label $D$. We differ on three axes: our benchmark is \emph{mortgage-specific} and grounded in real HMDA loan records rather than finance-general; it carries \emph{two orthogonal labels} (general-safety $G$ and mortgage-policy $D$) rather than a single compliance verdict; and it adds protected-class counterfactual minimal pairs as an explicit guard-\emph{invariance} gate.
+Over-refusal suites \citep{xstest} probe exaggerated safety; we fold that in as benign
 hard-negatives that must PASS, and add protected minimal pairs that test a guard's \emph{invariance}.
 The dual-label G$\times$D design, HMDA grounding, and minimal-pairs-as-invariance gate are the novel
 combination; the agentic generate/judge loop is standard red-team practice.
@@ -118,13 +161,13 @@ family-isolated split with a sealed private test, and are published as the froze
 \end{figure}
 
 \paragraph{HMDA grounding (PII-safe).} We pull public HMDA 2022 loan-level data (FFIEC/CFPB Data
-Browser) and reduce each record to a banded, de-identified fact sheet --- loan purpose, occupancy,
+Browser --- the U.S.\ agencies that collect and publish HMDA data) and reduce each record to a banded, de-identified fact sheet --- loan purpose, occupancy,
 banded loan amount / income / LTV / DTI, action, denial reason, state --- never exact dollar
 amounts, census tract, or any identifier. Scenarios are sampled from \emph{marginal distributions}
 over these bands, with a build-time assertion that no emitted fact sheet reproduces a single source
 record. Following \citet{bowen2024mortgage}, fair-lending and ability-to-repay cells are biased
 toward \textbf{borderline / higher-risk} files (high DTI, high LTV, prior denial), where underwriter
-discretion --- and bias --- operates.
+discretion --- and bias --- operates. \emph{Plain reading.} ``Banded'' means every exact figure is replaced by a range (an income \emph{band} rather than a dollar amount, and likewise for LTV and DTI). ``Sampled from marginal distributions'' means each field is drawn from how often each band occurs \emph{on its own}, not from real combinations of fields, so no actual borrower's record can be reassembled --- which is what ``PII-safe'' / de-identified means here: the fact sheets carry no personally identifiable information.
 
 \paragraph{Agentic pipeline.} A \emph{planner} enumerates coverage cells (quadrant $\times$ trap
 $\times$ policy card $\times$ role $\times$ protected context); an \emph{HMDA-grounder} draws a fact
@@ -142,6 +185,8 @@ an action lattice, and severity. \textbf{Labels are policy-card-consistent, assi
 they are not SME-adjudicated} (all 24 cards remain unsigned; judge agreement is measured as
 self-consistency, not a human Fleiss-$\kappa$ study).
 
+\paragraph{Plain reading of the labels.} A ``policy card'' is a one-page rule with a machine-checkable ``intervene iff'' condition (exactly when the guard \emph{should} step in) plus a pointer to the law it rests on. The derived $\mathrm{final}$ label simply flags a request when it is \emph{either} generally unsafe \emph{or} a mortgage-policy violation (or both). The ``action lattice'' is the ordered menu of responses (from allow, through warn, to block), and ``severity'' grades how serious a violation is. On label quality: an \emph{SME} is a subject-matter expert (here a compliance lawyer), and \emph{Fleiss-$\kappa$} is a standard measure, between $0$ and $1$, of how much several \emph{independent human} raters agree beyond chance --- the usual gold standard, which we do \emph{not} yet have. Instead we report \emph{self-consistency}: re-running the same LLM judge and checking it agrees with itself, a much weaker guarantee, which is why every result here is a diagnostic rather than a certified finding.
+
 \paragraph{Protected minimal pairs.} Counterfactual pairs identical in every slot except a
 protected-class token, both benign (G0/D0, PASS), sharing a \texttt{pair\_id}. A fair guard must
 PASS both; the pair delta feeds a $\Delta_{\mathrm{context}}$ invariance gate (target $\approx 0$).
@@ -150,6 +195,8 @@ PASS both; the pair delta feeds a $\Delta_{\mathrm{context}}$ invariance gate (t
 train/dev/public-test splits plus a sealed private test; a text-free public index. \emph{Current
 limitation:} decontamination ran against the legacy general sources (exact-hash); re-running against
 the v2 sources with near-dup removal is required before joint claims.
+
+\paragraph{Plain reading of provenance and splits.} \emph{Provenance} records where each row came from and hashes its text so duplicates can be found. A \emph{family-isolated} split groups near-duplicate rows into ``families'' and sends an entire family to \emph{either} train \emph{or} test, never both, so a model cannot ace the test by having memorized a near-twin in training. The \emph{sealed private test} is a held-back slice we do not release, kept to detect overfitting later. \emph{Decontamination} means removing any test row that also appears --- exactly, or as a near-duplicate found by \emph{MinHash}, a standard near-duplicate detector --- in the training sources; the stated limitation is that this near-duplicate pass has not yet been re-run against the newer (``v2'') general-safety sources.
 
 \section{Benchmark composition (frozen v1\_hmda2022)}
 \label{sec:composition}
@@ -160,6 +207,8 @@ three-quarters populated (a stated limitation). Trap types span \texttt{business
 \texttt{direct} (167), \texttt{coded\_proxy} (126), \texttt{euphemism} (126),
 \texttt{over\_refusal\_bait} (114), \texttt{benign\_info} (84), \texttt{occupancy\_temptation} (72),
 \texttt{minimal\_pair} (78 rows = 39 protected pairs), \texttt{buried\_injection} (25).
+
+\paragraph{What the trap types mean.} Each row is built around one ``trap'' --- the tactic that makes a violation hard to catch. \texttt{direct} states the ask plainly; \texttt{business\_justified} wraps it in a business rationale; \texttt{coded\_proxy} substitutes a stand-in for a protected group (a neighborhood, a language); \texttt{euphemism} softens the wording; \texttt{occupancy\_temptation} invites lying about owner-occupancy; \texttt{buried\_injection} hides an instruction inside otherwise ordinary text; \texttt{over\_refusal\_bait} looks alarming but is in fact benign, so a good guard should \emph{not} flag it; \texttt{benign\_info} is a plain safe request; and \texttt{minimal\_pair} is the protected-class counterfactual described above.
 
 \begin{table}[H]
 \centering\small
@@ -186,8 +235,10 @@ The evaluator (\texttt{score\_guards.py} + \texttt{evaluate.py}) is the reproduc
 emits one unsafe probability per row, mapped to G, D, and the composed final label; we compute, via
 the canonical tie-aware \texttt{guard\_research} metrics: threshold-free macro-AP for G, D, and final;
 per-quadrant miss rate at a calibration-selected operating point; and $\Delta_{\mathrm{context}}$, the
-mean absolute score gap within protected minimal pairs. We score the four base instruction checkpoints
-from the companion study \citep{rahimi2026benchmark} used zero-shot as guards. Off-the-shelf guards
+mean absolute score gap within protected minimal pairs.
+
+\paragraph{What the metrics mean (in plain terms).} \emph{Average precision} (AP) collapses a precision--recall curve into a single number between $0$ and $1$: it measures how well the guard's risk score \emph{ranks} truly-bad requests above safe ones, without committing to any cutoff (that is what ``threshold-free'' means). \emph{Macro}-AP averages this across the labels so each label counts equally, and \emph{tie-aware} means rows that receive identical guard scores are handled fairly rather than ordered arbitrarily. A \emph{calibration-selected operating point} is a single probability cutoff, chosen on the dev split, above which a request is flagged; the ``miss rate'' at that point is the share of true violations whose score falls below it. $\Delta_{\mathrm{context}}$ is the average absolute gap between the guard's scores on the two halves of a protected minimal pair --- ideally $0$, meaning the protected word alone does not move the guard. We score the four base instruction checkpoints
+from the companion study \citep{rahimi2026benchmark} used \emph{zero-shot} as guards --- that is, exactly as shipped, driven only by a prompt, with no mortgage-specific fine-tuning. Off-the-shelf guards
 \citep{llamaguard,wildguard} are gated and were not scored in this run; a domain-fine-tuned arm is
 future work (the companion LoRA adapters were not retained).
 
@@ -199,7 +250,7 @@ future work (the companion LoRA adapters were not retained).
 \emph{Threshold-free}, the base guards rank D-violations moderately well (AP$\cdot$D 0.67--0.85, at
 or above their AP$\cdot$G): soliciting discrimination or fraud reads as ``unsafe'' to a general
 instruction model even when it is not a jailbreak, so \textbf{G and D are only partially orthogonal
-in practice}. None reaches AP$\cdot$D near 1, so a large fraction of the subtle G0/D1 stratum is
+in practice}. (\emph{Orthogonal} would mean the two labels carry independent information --- knowing a request's general-safety label would tell you nothing about its mortgage-policy label; ``partially'' means that in practice they overlap more than that.) None reaches AP$\cdot$D near 1, so a large fraction of the subtle G0/D1 stratum is
 unresolved by ranking alone. We deliberately do \textbf{not} report a fixed-threshold ``caught at
 5\% FPR'' count: for these zero-shot guards the unsafe-probability distribution is clustered, so the
 dev-calibrated threshold sits on a knife-edge and its G0/D1 catch count is \emph{not reproducible}

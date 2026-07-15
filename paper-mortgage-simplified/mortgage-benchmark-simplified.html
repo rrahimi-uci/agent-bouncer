@@ -4,11 +4,156 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Mortgage Benchmark (plain-language)</title>
+  <title>Safe-Looking but Non-Compliant (plain-language)</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
     */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
     div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -25,15 +170,15 @@
     }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <link rel="stylesheet" href="/dev/null" />
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Mortgage Benchmark (plain-language)</h1>
+<h1 class="title">Safe-Looking but Non-Compliant (plain-language)</h1>
 </header>
 <h1
-id="a-mortgage-safety-guardrail-benchmark-the-plain-language-version">A
-Mortgage Safety-Guardrail Benchmark — the plain-language version</h1>
+id="safe-looking-but-non-compliant-the-plain-language-version">Safe-Looking
+but Non-Compliant — the plain-language version</h1>
+<p><em>A mortgage safety-guardrail benchmark, in plain words.</em></p>
 <p><em>Why a general “is this prompt unsafe?” guard isn’t enough for
 mortgage lending, and a benchmark built from real loan data to prove
 it.</em> Reza Rahimi (JazzX AI). Plain-language companion to the formal
@@ -61,34 +206,33 @@ harmful?</em> (G) and <em>would honoring it break mortgage policy?</em>
 violation”</strong> — and that’s exactly what general guards miss.</p>
 <hr />
 <blockquote>
-<p><strong>Background: the words you need.</strong> -
-<strong>Guard.</strong> A small model that scores a request as
-safe/unsafe. - <strong>HMDA.</strong> Public U.S. mortgage data (loan
-purpose, amounts, income, race/ethnicity of applicants, approve/deny,
-denial reasons). We use it to make the scenarios <em>realistic</em>. -
-<strong>Two labels, G and D.</strong> <strong>G</strong> = generally
+<p><strong>Background: the words you need.</strong></p>
+<ul>
+<li><strong>Guard.</strong> A small model that scores a request as
+safe/unsafe.</li>
+<li><strong>HMDA.</strong> Public U.S. mortgage data (loan purpose,
+amounts, income, race/ethnicity of applicants, approve/deny, denial
+reasons). We use it to make the scenarios <em>realistic</em>.</li>
+<li><strong>Two labels, G and D.</strong> <strong>G</strong> = generally
 harmful (jailbreak/abuse) — a normal guard’s job. <strong>D</strong> =
 would this break a mortgage rule (fair lending, ability-to-repay,
-disclosures, fraud, privacy). A request can be G-safe but D-violating. -
-<strong>Quadrants.</strong> Combining G and D gives four boxes. The key
-one is <strong>G0/D1</strong>: <em>not</em> generally harmful,
-<em>but</em> a mortgage-policy violation. - <strong>macro-AP.</strong> A
-score (0–1) for how well a guard ranks the “should-intervene” requests
-above the fine ones. Higher = better.</p>
+disclosures, fraud, privacy). A request can be G-safe but
+D-violating.</li>
+<li><strong>Quadrants.</strong> Combining G and D gives four boxes. The
+key one is <strong>G0/D1</strong>: <em>not</em> generally harmful,
+<em>but</em> a mortgage-policy violation.</li>
+<li><strong>macro-AP.</strong> A score (0–1) for how well a guard ranks
+the “should-intervene” requests above the fine ones. Higher =
+better.</li>
+</ul>
 </blockquote>
 <hr />
 <h2 id="how-the-benchmark-is-built">How the benchmark is built</h2>
 <figure>
 <img src="figures/pipeline.png"
-alt="How each row is made. Real mortgage records become de-identified “fact sheets,” then a small team of AI agents — a planner, a grounder, a writer, an “adversary” that adds realistic disguises, and a rubric-following judge — builds and labels one request, keeping it only if the judge agrees with the plan. Accepted rows are de-duplicated, split (with a sealed test held back), and frozen into the released benchmark that guards are scored against." />
-<figcaption aria-hidden="true"><strong>How each row is made.</strong>
-Real mortgage records become de-identified “fact sheets,” then a small
-team of AI agents — a planner, a grounder, a writer, an “adversary” that
-adds realistic disguises, and a rubric-following judge — builds and
-labels one request, keeping it only if the judge agrees with the plan.
-Accepted rows are de-duplicated, split (with a sealed test held back),
-and frozen into the released benchmark that guards are scored
-against.</figcaption>
+alt="How each row is made. Real mortgage records become de-identified" />
+<figcaption aria-hidden="true">How each row is made. Real mortgage
+records become de-identified</figcaption>
 </figure>
 <ul>
 <li><strong>Grounded in real loans.</strong> We take real
@@ -115,8 +259,8 @@ applicant”). A fair guard must treat both the same. We measure the gap
 <h2 id="whats-in-it-994-requests">What’s in it (994 requests)</h2>
 <table>
 <colgroup>
-<col style="width: 50%" />
-<col style="width: 50%" />
+<col style="width: 73%" />
+<col style="width: 26%" />
 </colgroup>
 <tbody>
 <tr>
@@ -193,6 +337,13 @@ across library versions), so it is not tabulated per guard — see text.
 Small-sample, LLM-judge labels — illustrative, not
 confirmatory.</em></p>
 <table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 17%" />
+<col style="width: 33%" />
+</colgroup>
 <thead>
 <tr>
 <th>Guard</th>
@@ -234,7 +385,8 @@ confirmatory.</em></p>
 </tbody>
 </table>
 <p><em>Not scored (unavailable in this run): llama_guard_3_1b,
-wildguard_7b.</em> <!-- BASELINE_TABLE_END --></p>
+wildguard_7b.</em></p>
+<!-- BASELINE_TABLE_END -->
 <h2 id="is-this-real-the-honesty-box">Is this real? (the honesty
 box)</h2>
 <ul>

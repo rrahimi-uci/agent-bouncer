@@ -1,7 +1,8 @@
-# Mortgage benchmark paper — plain-language edition
+# Safe-Looking but Non-Compliant — plain-language edition
 
 Teaching-oriented version of the formal draft
-([`../paper-mortgage/mortgage_guardrail_benchmark.md`](../paper-mortgage/mortgage_guardrail_benchmark.md)),
+([`../paper-mortgage/mortgage_guardrail_benchmark.tex`](../paper-mortgage/mortgage_guardrail_benchmark.tex),
+[PDF](../paper-mortgage/mortgage_guardrail_benchmark.pdf)),
 for readers with basic ML knowledge — same benchmark, same honest caveats, gentler exposition.
 
 - [mortgage-benchmark-simplified.md](mortgage-benchmark-simplified.md) — the plain-language paper.

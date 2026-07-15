@@ -34,7 +34,7 @@
 \input{generated/pilot_macros}
 
 \title{Compose, Don't Tune?\\
-\large A Retrospective Fixed-Panel Study of Base--Adapter Score Composition for Safety Guards}
+\large Recovering Held-Out Transfer by Averaging Base and Fine-Tuned Guard Scores --- A Retrospective Fixed-Panel Pilot}
 \author{Reza Rahimi\\
   \small JazzX AI, Los Altos, CA, USA\\
   \small\texttt{reza.rahimi@jazzx.ai}}
@@ -51,12 +51,12 @@ future validation are protocol, not results.}
 \begin{abstract}
 Fine-tuning a compact language model into a binary safety guard can improve discrimination on
 benchmark sources represented during adaptation while weakening transfer to other datasets.  We
-ask whether keeping the same checkpoint's pre-adaptation decision in an output-space composition
-can recover transfer relative to its SFT adapter.  Using the lock-verified per-row scores from a
+ask whether keeping the same checkpoint's pre-adaptation decision in an output-space composition (that is, by averaging the two models' final calibrated scores rather than merging their internal weights)
+can recover transfer relative to its supervised fine-tuning (SFT) adapter.  Using the lock-verified per-row scores from a
 companion study, we retrospectively compare \PilotNModels{} unadapted instruction checkpoints,
 \PilotNSeeds{} LoRA-SFT adapters per checkpoint, and a fixed average of separately calibrated
 unsafe probabilities.  Relative to SFT, the observed composition contrast is
-\PilotRepDeltaSFT{} in represented-source macro average precision (AP), with a descriptive
+\PilotRepDeltaSFT{} in represented-source macro average precision (AP: ranking quality measured as the area under the precision--recall curve, with ``macro'' meaning averaged equally across benchmarks), with a descriptive
 paired-bootstrap 95\% interval [\PilotRepDeltaSFTLow, \PilotRepDeltaSFTHigh], and
 \PilotTransferDeltaSFT{} on dataset-held-out transfer
 ([\PilotTransferDeltaSFTLow, \PilotTransferDeltaSFTHigh]).  The transfer contrast relative to the
@@ -70,6 +70,25 @@ locked prospective comparison against WiSE-FT, an equal-inference-cost SFT+SFT e
 matched-compute preservation tuning.
 \end{abstract}
 
+\begin{center}
+\fbox{\begin{minipage}{0.95\linewidth}\small
+\textbf{Reader's guide (plain-language terms used throughout).}
+\begin{description}[leftmargin=1.2em,style=nextline,itemsep=1pt,topsep=2pt]
+  \item[Base / SFT adapter.] The \emph{base} is the instruction-tuned checkpoint before we train it into a guard; the \emph{SFT adapter} is that same checkpoint after supervised fine-tuning (SFT) on labeled safe/unsafe prompts, done with LoRA.
+  \item[Unsafe score / calibration.] Each guard outputs a number meaning ``how unsafe.'' \emph{Calibration} rescales that number on a held-out development split so it reads as a probability that is comparable across guards.
+  \item[Output-space composition.] Combining two guards by averaging their (calibrated) output scores, rather than by averaging their internal weights; it needs only comparable scores but runs both models.
+  \item[Represented-source vs.\ dataset-held-out (transfer).] \emph{Represented} benchmarks contributed rows to SFT; \emph{transfer} benchmarks did not, so they test generalization to other datasets.
+  \item[AP / macro-AP.] Average precision (AP) summarizes ranking quality across all cutoffs (area under the precision--recall curve); \emph{macro-AP} averages AP equally over benchmarks.
+  \item[Operating point / FPR / TPR.] Picking one cutoff turns scores into decisions; FPR is the fraction of safe prompts wrongly flagged, TPR the fraction of unsafe prompts caught.
+  \item[Estimand.] The exact quantity we set out to estimate (here, a difference in macro-AP), stated before looking at the result.
+  \item[Paired hierarchical bootstrap / percentile interval.] Re-sampling the data many times---keeping the two guards paired on the same rows and respecting the checkpoint$\to$seed grouping---to get a 95\% range for a contrast.
+  \item[Noninferiority margin ($m$).] A small, pre-chosen allowed drop: ``no worse than the reference by more than $m$.''
+  \item[LCB.] Lower confidence bound---the low end of a one-sided interval.
+  \item[clean-v2 / lock / hash.] ``clean-v2'' is the reviewed Paper~A data snapshot used here; a \emph{lock}/\emph{hash} is a fingerprint of the exact inputs, so every table can be traced back to specific data.
+\end{description}
+\end{minipage}}
+\end{center}
+
 \section{Introduction}
 \label{sec:introduction}
 
@@ -77,7 +96,7 @@ Parameter-efficient adaptation makes it inexpensive to specialize an instruction
 prompt-safety guard.  LoRA, for example, updates a low-rank parameterization rather than all model
 weights \citep{hu2021lora}.  Yet specialization creates a practical tension: a guard can become
 better at the policies and benchmark sources represented during SFT while losing useful ranking
-information on dataset-held-out sources.  The companion Paper A study measures this tension under
+information on dataset-held-out sources. Here \emph{represented sources} are the datasets whose rows were used to train the guard, while \emph{dataset-held-out} (or \emph{transfer}) sources are other datasets whose rows were never used for training, so they test how well the guard generalizes.  The companion Paper A study measures this tension under
 a controlled base-to-adapter design \citep{rahimi2026benchmark}.  This draft asks the next, narrower
 question: can a fixed composition recover some transfer relative to SFT without another training
 run?
@@ -100,18 +119,49 @@ uninspected cohort is evaluated.
 This draft makes three bounded contributions:
 
 \begin{enumerate}[leftmargin=1.5em]
-  \item a generated, provenance-gated summary of the clean-v2 retrospective composition pilot;
+  \item a generated, provenance-gated summary of the clean-v2 retrospective composition pilot
+        (every reported number is auto-filled from a locked results file, so the prose cannot
+        silently drift from the underlying data);
   \item an explicit claim boundary separating score composition from prior weight-space and
-        calibrated-ensemble methods; and
+        calibrated-ensemble methods (a clear statement of what is and is not new relative to
+        averaging model \emph{weights} or calibrating existing ensembles); and
   \item an executable prospective-protocol contract that fails claim-bearing validation until
-        the cohort, margin, controls, statistics, systems measurements, and software lock are fixed.
+        the cohort, margin, controls, statistics, systems measurements, and software lock are fixed
+        (a machine-checked checklist that refuses to certify the study as confirmatory until every
+        required piece is in place).
 \end{enumerate}
 
-It does \emph{not} claim Pareto dominance, universal improvement, a causal mechanism, a validated
+It does \emph{not} claim Pareto dominance (being at least as good on \emph{every} axis and strictly better on at least one), universal improvement, a causal mechanism, a validated
 base-competence rule, or deployment readiness.
+
+\begin{center}
+\fbox{\begin{minipage}{0.93\linewidth}\small
+\textbf{What is new here (and what is not).}
+\emph{The invention} is one fixed, no-retraining decision rule for safety guards: on the same input,
+run the model \emph{before} guard fine-tuning (the \emph{base}) and one guard-fine-tuned \emph{adapter},
+convert each model's raw unsafe score into a probability using a held-out development split
+(\emph{calibration}), and report the plain equal-weight average of the two probabilities---fixed at
+$\tfrac12$ and $\tfrac12$---as the guard's score (\Cref{eq:composition}). Nothing is retrained and no
+weight is chosen from the test rows.
+\emph{Why it might help:} guard fine-tuning tends to sharpen ranking on the data sources it was trained
+on while eroding ranking on unseen sources; keeping the base inside the average retains some of that
+unseen-source signal.
+\emph{What is genuinely new} is \emph{not} score averaging itself---calibrated ensembles, weight-space
+interpolation, and weight averaging already exist
+\citep{kumar2022calibrated,wortsman2022wiseft,wortsman2022modelsoups}---but its use as a
+retraining-free rule for recovering the base-versus-fine-tuned safety-guard trade-off documented in the
+companion study \citep{rahimi2026benchmark}, together with an explicit claim boundary and a
+machine-checked prospective-validation contract.
+\emph{What is not claimed:} not that the average beats both of its parts everywhere, not a proven
+mechanism, not a validated when-to-use rule, and not deployment readiness. The evidence in this draft is
+retrospective and estimation-only.
+\end{minipage}}
+\end{center}
 
 \section{Related work and novelty boundary}
 \label{sec:related}
+
+The single most closely related work is the companion Paper~A study, which under a controlled base-to-adapter design documents the specialization trade-off this draft tries to counteract: guard SFT can sharpen represented-source ranking while eroding dataset-held-out transfer \citep{rahimi2026benchmark}. That study supplies the fixed panel and the row-keyed base and SFT scores reused here, but it does not itself propose or evaluate any score-composition operator, so it establishes the problem rather than the remedy examined below.
 
 The underlying ensemble idea is not new.  Calibrated ensembling has been shown to mitigate
 in-distribution and distribution-shift trade-offs in image classification when component models
@@ -119,6 +169,8 @@ are calibrated using in-distribution data \citep{kumar2022calibrated}.  WiSE-FT 
 weights of a zero-shot model and its fine-tuned descendant to improve robustness under shift
 \citep{wortsman2022wiseft}.  Model soups average compatible fine-tuned weights and can avoid the
 runtime cost of a conventional multi-pass ensemble \citep{wortsman2022modelsoups}.
+
+In plain terms, these prior lines all \emph{combine} models, but in different ways. Calibrated ensembles average the predictions of separately and \emph{independently} trained models \citep{kumar2022calibrated}; WiSE-FT and model soups combine models in \emph{weight space}, blending internal parameters into a single network that then runs in one pass \citep{wortsman2022wiseft,wortsman2022modelsoups}. WiSE-FT is the closest analog to the rule studied here, because it likewise combines a model with its own fine-tuned descendant---the same base-and-its-own-adapter pairing used below---but it averages \emph{weights}, whereas this paper averages the two models' final calibrated decision scores in \emph{output space}. Output-space blending is more portable (it works even when the two networks' weights cannot be averaged, e.g.\ across different architectures) but pays for that flexibility by running both models on every input.
 
 This study does not present score averaging as a novel primitive.  Its narrower target is a safety-
 guard setting in which a single guard SFT may improve represented-source ranking while degrading
@@ -129,6 +181,8 @@ compare against actual WiSE-FT rescoring, not merely discuss it, and must measur
 SFT+SFT two-pass ensemble obtains the same benefit.  Without the latter control, any gain could be
 generic variance reduction from a second model pass rather than information uniquely retained by
 the base.
+
+The concern in plain terms: averaging \emph{any} two models tends to smooth out noise and help a little. So the base+SFT average must be checked against an average of two \emph{independently fine-tuned} adapters (the SFT+SFT control). If SFT+SFT helps just as much, the gain is generic ``two-model'' averaging rather than anything special about keeping the base.
 
 \section{Evidence status and research questions}
 \label{sec:status}
@@ -190,13 +244,14 @@ prospective Paper B lock.
 \subsection{Fixed primary operator}
 
 Let $s_b(x)$ and $s_{a,j}(x)$ denote the unsafe scores for base $b$ and SFT seed $j$.  Let
-$C_b$ and $C_{a,j}$ be calibrators fit only on the development calibration split.  The fixed
+$C_b$ and $C_{a,j}$ be calibrators fit only on the development calibration split. A \emph{calibrator} is a simple order-preserving rescaling, learned only on a separate development split, that maps a guard's raw score onto a $0$--$1$ probability, so that ``$0.7$'' means roughly the same thing for both systems and the two can be averaged meaningfully.  The fixed
 primary composition is
 \begin{equation}
   s_{\mathrm{comp},j}(x)
   = \tfrac{1}{2} C_b(s_b(x)) + \tfrac{1}{2} C_{a,j}(s_{a,j}(x)).
   \label{eq:composition}
 \end{equation}
+In words, \Cref{eq:composition} says: pass each system's raw ``how unsafe'' score through its own calibrator $C$ to get a comparable unsafe probability, then report the plain midpoint of the two. Scoring uses \emph{both} the pre-fine-tuning \emph{base} checkpoint and one \emph{fine-tuned adapter}; nothing is retrained, and the equal $\tfrac{1}{2}$ weights are fixed in advance, so the operator has no free parameter that could be tuned to the reported test rows.
 The analyzer fixes equal weights without fitting reported test rows.  Because the rule was formalized
 after earlier transfer exposure, this implementation fact is not human test blindness.  The remaining
 score combiners are exposed ablations and cannot become primary after observing transfer.
@@ -269,7 +324,7 @@ The operating-point result is less favorable than the ranking result.  Against a
 \PilotBaseTransferFPRPct\% for the base, \PilotSFTTransferFPRPct\% for SFT, and
 \PilotCompositionTransferFPRPct\% for the composition.  Composition improves macro-TPR relative
 to both components in this diagnostic, but it still misses the FPR target.  Any deployment claim
-based only on AP would omit this calibration-transfer failure.
+based only on AP would omit this calibration-transfer failure. Here \emph{macro-FPR} and \emph{macro-TPR} average each benchmark's false-positive and true-positive rate equally, whereas \emph{pooled FPR} lumps all safe prompts together before computing the rate; the gap between the \PilotTargetFPRPct\% target and the realized FPR means the cutoff calibrated on development data does not carry over to the transfer benchmarks.
 
 \section{What the pilot does not establish}
 \label{sec:not-establish}
@@ -322,7 +377,7 @@ margin $m$.  A prospective success rule should require both
   \operatorname{LCB}(\Delta_{\mathrm{represented}}) &> -m, \\
   \operatorname{LCB}(\Delta_{\mathrm{transfer}}) &> 0,
 \end{align}
-under pre-specified one-sided intervals and a multiplicity policy.  The value of $m$ cannot be
+under pre-specified one-sided intervals and a multiplicity policy. Here $\operatorname{LCB}(\cdot)$ is the \emph{lower confidence bound}: the low end of a one-sided interval. In words, the rule requires that---with high confidence---represented-source AP falls by less than the margin $m$, \emph{and} that transfer AP genuinely rises above zero. Demanding \emph{both} at once (an intersection rule) is deliberately stricter than checking either one alone, and the multiplicity policy just fixes how the two tests are combined so the joint error rate stays controlled.  The value of $m$ cannot be
 chosen from the observed pilot loss.  Even if both criteria pass, the claim should be bounded
 retention plus transfer recovery relative to SFT, not Pareto dominance.
 
