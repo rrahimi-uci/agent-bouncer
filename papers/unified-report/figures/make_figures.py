@@ -69,7 +69,7 @@ def act3_composition():
     labels = [_short(r[0]) for r in rows]
     base = [r[1] for r in rows]; sft = [r[2] for r in rows]; comp = [r[3] for r in rows]
     x = range(len(rows)); w = 0.26
-    fig, ax = plt.subplots(figsize=(6.2, 3.4))
+    fig, ax = plt.subplots(figsize=(6.4, 3.8))
     ax.bar([i - w for i in x], base, w, label="base", color=GREY)
     ax.bar(list(x), sft, w, label="SFT", color=ORANGE)
     ax.bar([i + w for i in x], comp, w, label="base+SFT composition", color=GREEN)
@@ -77,7 +77,9 @@ def act3_composition():
     ax.set_ylim(min(base + sft + comp) - 0.05, 1.0)
     ax.set_ylabel("dataset-held-out transfer macro-AP")
     ax.set_title("Act III: composition recovers transfer above SFT\n(recovery, not dominance — it can dip below base, e.g. Qwen3-4B)")
-    ax.legend(frameon=False, fontsize=9, loc="lower right", ncol=3)
+    # legend BELOW the axis (clear of the 2-line x labels) so it never overlaps the bars
+    ax.legend(frameon=False, fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3)
+    fig.subplots_adjust(bottom=0.24)
     fig.savefig(HERE / "fig_act3_composition.pdf", metadata={"CreationDate": None}); plt.close(fig)
 
 
@@ -124,18 +126,27 @@ def mortgage_baseline():
     apg = [r.get("AP_G") or 0 for r in tbl]; apd = [r.get("AP_D") or 0 for r in tbl]
     dctx = [r.get("delta_context") or 0 for r in tbl]
     x = range(len(tbl)); w = 0.26
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 3.3), gridspec_kw={"width_ratios": [1.6, 1]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.9), gridspec_kw={"width_ratios": [1.6, 1]})
     ax1.bar([i - w/2 for i in x], apg, w, label="AP$\\cdot$G (general safety)", color=BLUE)
     ax1.bar([i + w/2 for i in x], apd, w, label="AP$\\cdot$D (mortgage policy)", color=GREEN)
     ax1.set_xticks(list(x)); ax1.set_xticklabels(labels, fontsize=7.5)
     ax1.set_ylabel("average precision"); ax1.set_ylim(0, 1.05)
-    ax1.set_title("Zero-shot ranking (AP)"); ax1.legend(frameon=False, fontsize=8, loc="lower left")
-    bars = ax2.bar(list(x), dctx, 0.5, color=[RED if v > 0.1 else GREY for v in dctx])
+    ax1.set_title("Zero-shot ranking (AP)")
+    # legend below ax1 so it clears the (2-line) guard labels and never sits over a bar
+    ax1.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.20), ncol=2)
+    thr = 0.1
+    ax2.bar(list(x), dctx, 0.5, color=[RED if v > thr else GREY for v in dctx])
+    ax2.axhline(thr, color=RED, lw=0.9, ls=":")
+    ax2.text(len(tbl) - 0.5, thr, "  gap $>0.1$\n  (flagged)", ha="right", va="bottom",
+             fontsize=6.5, color=RED)
     ax2.set_xticks(list(x)); ax2.set_xticklabels(labels, fontsize=7.5)
-    ax2.set_ylabel("$\\Delta_{\\mathrm{context}}$ (0 = fair)")
+    ax2.set_ylabel("$\\Delta_{\\mathrm{context}}$  (0 = fair)")
+    ax2.set_ylim(0, max(dctx + [thr]) * 1.35)
     ax2.set_title("Protected-pair gap")
-    for i, v in enumerate(dctx): ax2.text(i, v + 0.005, f"{v:.3f}", ha="center", va="bottom", fontsize=7)
-    fig.suptitle("Act IV: general guards rank mortgage violations only moderately, and fairness varies", fontsize=10)
+    for i, v in enumerate(dctx): ax2.text(i, v + 0.004, f"{v:.3f}", ha="center", va="bottom", fontsize=7)
+    fig.suptitle("Act IV: general guards rank mortgage violations only moderately, and fairness varies",
+                 fontsize=10.5, y=1.00)
+    fig.subplots_adjust(top=0.84, bottom=0.28, wspace=0.34, left=0.085, right=0.985)
     fig.savefig(HERE / "fig_mortgage_baseline.pdf", metadata={"CreationDate": None}); plt.close(fig)
 
 
