@@ -1,4 +1,4 @@
-# Paper B — Topic Proposal (objective × base-competence specialization)
+# Paper C — Deferred Topic Proposal (objective × independent competence specialization)
 
 > **Repositioned 2026-07-14 → this is now Paper C (deferred).** A later prototype + adversarial
 > review found the *composition* idea (ensemble the untuned base with the tuned adapter) is a
@@ -6,31 +6,30 @@
 > (no per-row DPO/GRPO scores survive) and reproduces published SFT-vs-RL results, so it moves
 > behind the composition paper. See [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md).
 
-A concrete, feasibility-grounded proposal for the next paper, written 2026-07-13 after
-inventorying what survives on disk. It supersedes the mortgage/joint-stack direction for
-practical purposes: that line is blocked on an uncollectable dual-labeled naturalistic
-cohort (see [`paper-b-feasibility-investigation.md`](paper-b-feasibility-investigation.md)).
-This topic is chosen because **its core experiments were already run and their results
-survive**, it needs **no human annotation**, and it is the natural sequel to Paper A.
+A concrete, feasibility-grounded proposal written 2026-07-13 after inventorying what survives
+on disk, and corrected after the 2026-07-14 review. Legacy directional summaries survive, but no
+re-analyzable DPO/GRPO result does. The topic remains a natural contingent sequel to Paper A; it
+no longer governs Paper B.
 
 ---
 
-## 1. Recommended topic
+## 1. Recommended contingent topic
 
 > **Which fine-tuning objective specializes least? A controlled study of SFT vs DPO vs
 > GRPO for small prompt-safety guards, and whether the specialization trade-off is
-> predictable from base competence.**
+> predictable from an independently measured base-competence covariate.**
 
 **Core question.** Paper A fixed the objective (LoRA-SFT) and varied the base, and found
-*in-source specialization*: fine-tuning saturates represented-source AP while degrading
-transfer, worst for the strongest bases. Paper B fixes the specialization lens and varies
+*in-source specialization*: fine-tuning saturates represented-source AP while producing
+heterogeneous transfer changes across four checkpoints. Paper C fixes the specialization lens and varies
 the **training objective**:
 
 - **RQ1.** Does the objective change the represented-vs-transfer trade-off — does a
   preference/RL objective (DPO, GRPO) preserve dataset-held-out transfer better than SFT
   at a given represented-source gain?
-- **RQ2.** Does the **base-competence law** (fine-tuning helps weak bases, hurts strong
-  ones on transfer) hold across objectives, and does the objective modulate its slope?
+- **RQ2.** Does base competence measured on an independent locked development cohort predict
+  transfer change on a disjoint prospective cohort, and does the objective modulate that
+  interaction? Same-row base AP and `SFT − base` must not be used as predictor/outcome.
 - **RQ3 (deployment).** How do the objectives differ on the realized FPR / HarmBench-recall
   costs that Paper A surfaced?
 
@@ -71,8 +70,8 @@ how much OOD behavior you are willing to disturb.*
   `notebooks/outputs/nb-smollm3-guard/summary_*.json`: DeepSeek-R1-1.5B, Qwen2.5-1.5B,
   SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B, Qwen3-8B. Missing only Qwen3-8B-DPO and a
   standalone SmolLM3-3B base file (recoverable). Each summary carries in-dist +
-  novel/held-out AUPRC (+CI), per-benchmark P/R/F1, base-vs-tuned decomposition, matched-FPR
-  points, HarmBench recall, and open-guard baselines.
+  novel/held-out AUPRC (+CI), per-benchmark P/R/F1, base-vs-tuned decomposition, legacy
+  fixed-FPR points, HarmBench recall, and open-guard baselines.
 - **HPO results per objective** (`outputs/hpo/hpo_{sft,dpo,grpo}_smollm3-3b.json` + `best`):
   the objective hyperparameters were already searched — the recipe is not guesswork.
 - **Training + eval code** in `legacy/experiments/` (`train_guard.py`, `train_guard_pref.py`
@@ -99,12 +98,12 @@ how much OOD behavior you are willing to disturb.*
   the pinned recipe/HPO).
 
 **Net:** the experiment is designed, HPO'd, proven runnable, and shows a clear directional
-result — but it is **not publishable from the surviving files**. A publishable Paper B
+result — but it is **not publishable from the surviving files**. A publishable Paper C
 needs a clean rerun; the surviving data's job is to de-risk it and scope it precisely.
 
 ---
 
-## 4. What a publishable Paper B requires (the plan)
+## 4. What a publishable Paper C requires (the plan)
 
 Run the objective matrix through **Paper A's v2 pipeline**, reusing its locks, canonical
 metrics, decontaminated manifest, and analysis:
@@ -113,29 +112,29 @@ metrics, decontaminated manifest, and analysis:
    the same 1,200-row decontaminated manifest (DPO/GRPO need a preference/reward
    construction over the same rows — the legacy `train_guard_pref.py` shows how; freeze it
    as a v2 recipe). Reuse the surviving HPO for the objective hyperparameters.
-2. **Score** base + all adapters on the *locked* Paper A benchmark set (represented,
-   transfer, stress) with the correct prompt and the identity-keyed scorer, emitting
-   per-row logits (so canonical macro-AP is recomputable — the thing the legacy run lost).
+2. **Score** base + all adapters on the *locked* Paper A benchmark set for retrospective
+   development/comparability and once on a genuinely uninspected prospective cohort after the
+   Paper C protocol is locked, emitting per-row logits with the identity-keyed scorer.
 3. **Analyze** with `analyze_paper_a_sft.py`'s canonical macro-AP + represented/transfer
-   split + hierarchical bootstrap, adding the objective as a factor and fitting the
-   base-competence regression across the expanded panel.
+   split + hierarchical bootstrap, adding the objective as a factor. Measure competence on the
+   locked development cohort and estimate its treatment interaction only on the disjoint
+   prospective outcome; never fit the same-row `base AP` versus `adapter − base` regression.
 
-**Synergy with Paper A.** Paper A's own top recommendation is to run its clean SFT rerun.
-That rerun **is the SFT slice of this matrix.** Doing them together — one v2 campaign that
-trains SFT/DPO/GRPO across 4–6 bases × 5 seeds — yields Paper A (the SFT specialization
-result) *and* Paper B (the objective × base-competence result) from one pipeline execution.
-This is the efficient program.
+**Synergy with Paper A.** Paper A's clean five-seed SFT slice is complete and supplies a verified
+recipe plus retrospective baseline. Paper C still requires new DPO/GRPO training and a separately
+locked prospective cohort; reusing Paper A's exposed transfer rows cannot make the objective study
+prospective.
 
 ---
 
 ## 5. Scope, framing, and two size options
 
-- **Minimal Paper B (objective axis):** 4 Paper-A bases × {SFT, DPO, GRPO} × 5 seeds, same
+- **Minimal Paper C (objective axis):** 4 Paper-A bases × {SFT, DPO, GRPO} × 5 seeds, same
   benchmarks. Clean, tight, directly answers RQ1/RQ3.
-- **Stronger Paper B (objective × base-competence):** add DeepSeek-R1-1.5B, Qwen3-8B (both
-  already in the legacy panel) to get 6 bases spanning 1.5–8B and two-plus lineages, and
-  formalize the base-competence law across objectives (RQ2). Delivers a practitioner
-  decision surface: *which objective for which base, given a transfer budget.*
+- **Stronger Paper C (objective × base-competence):** add DeepSeek-R1-1.5B, Qwen3-8B (both
+  already in the legacy panel) to get 6 bases spanning 1.5–8B and two-plus lineages, and test
+  the independent-covariate base-competence hypothesis across objectives (RQ2). A practitioner
+  decision surface is allowed only if that prospectively locked interaction replicates.
 
 **Keep out of scope** (Paper A's discipline): ensembling, GPT parity, fairness, the
 mortgage/domain case study, and a guardrail leaderboard. Objective is the single new axis.
@@ -153,24 +152,23 @@ mortgage/domain case study, and a guardrail leaderboard. Objective is the single
 - **Primary risk:** the effect could shrink under the corrected metric/decontamination
   (as Paper A cautions for its own legacy numbers). Mitigation: the study is a *paired,
   same-manifest* comparison, so even a null ("objective does not change the trade-off") is
-  a clean, publishable result — the honest-negative property Paper A already relies on.
+  an interpretable result rather than an automatic positive claim.
 - **Second risk:** GRPO's low in-distribution gain may mean it is simply undertrained
   rather than "transfer-preserving." The HPO artifacts and a learning-curve check guard
   against reporting an undertraining artifact as an objective effect.
 
 ---
 
-## 7. Why this over the alternatives
+## 7. Why this remains a contingent Paper C
 
 | Candidate | Feasible solo, no annotation? | Data on hand | Verdict |
 |---|---|---|---|
-| **Objective × base-competence (this)** | ✅ needs rerun compute only | near-complete legacy matrix + HPO + code | **Recommended** |
-| Base-competence scaling law (standalone) | ✅ | subsumed here as RQ2 | Merge into this |
+| **Objective × independent competence covariate (this)** | ⚠️ needs GPU rerun + prospective cohort | legacy matrix + HPO + code are motivation only | **Deferred Paper C** |
+| Base-competence interaction (standalone) | ⚠️ needs independent predictor/outcome data | same-row Paper A pattern is coupled | Merge only with corrected RQ2 |
 | Financial-policy request screening | ⚠️ needs external data + G-labeling | single-labeled external benchmarks | Fallback; harder (see feasibility doc) |
 | Decontaminated guardrail landscape | ✅ | baselines survive | Weak novelty (prior review: "methodology, not contribution") |
 
-**Bottom line:** the objective × base-competence specialization paper is the strongest,
-most feasible Paper B on hand. Its experiments are designed, HPO-tuned, and show a clear
-directional result; its only real cost is a disciplined clean rerun that **shares the
-pipeline execution with Paper A's own recommended rerun** — no annotation, no naturalistic
-cohort, no domain-SME dependency.
+**Bottom line:** this is a viable objective-axis Paper C, not the governing near-term Paper B.
+The legacy experiments motivate it but do not supply claim-bearing evidence. It needs disciplined
+GPU retraining, an independently measured competence covariate, and a separately locked prospective
+cohort; the completed Paper A rerun cannot substitute for those steps.

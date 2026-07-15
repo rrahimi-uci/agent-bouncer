@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import numbers
 import os
 import subprocess
 import sys
@@ -135,8 +136,25 @@ PROMPT_VERSION = "paper_a_sft_prompt_v1"
 # place or represented as a strict/final lock.
 LOCK_CONTRACT_VERSION = 2
 AUDIT_CONTRACT_VERSION = 2
+RELEASE_CONTRACT_VERSION = 1
+RELEASE_ANCHOR_CONTRACT_VERSION = 1
+RELEASE_FILENAME = "RELEASE.json"
+DEFAULT_RELEASE_ANCHOR_PATH = "configs/paper_a_sft_v2_release_anchor.json"
 FULL_COMMIT_SHA_RE = r"^[0-9a-fA-F]{40}$"
 SUPPORTED_TORCH_DTYPES = ("bfloat16", "float16", "float32")
+
+# The score-only release is useful only if the verifier and every scientific
+# analyzer that can consume it are part of the external commitment.  This is
+# intentionally broader than either analyzer's local provenance list: one
+# release/anchor pair authorizes both canonical Paper A and composition runs.
+RELEASE_CACHE_SOURCE_FILES = (
+    "experiments/paper_a_common.py",
+    "experiments/analyze_paper_a_sft.py",
+    "experiments/analyze_composition.py",
+    "guard_research/__init__.py",
+    "guard_research/metrics.py",
+    "guard_research/thresholds.py",
+)
 
 AUDIT_HARD_ASSERTION_KEYS = (
     "config_hash_matches == true",
@@ -562,12 +580,25 @@ def normalize_threshold_result(res) -> dict:
 # --------------------------------------------------------------------------------------
 # Labels / row text
 # --------------------------------------------------------------------------------------
-def to_gold(label) -> int:
-    """Map a manifest label to gold 1(unsafe)/0(safe)."""
+def normalize_binary_label(label) -> int:
+    """Return an exact binary label, rejecting lossy numeric coercions.
+
+    In particular, ``int(1.5) == 1`` and ``int(-0.5) == 0`` must never turn a
+    malformed gold label into apparently valid evidence.  Numeric inputs are
+    admitted only when they are finite and exactly equal to zero or one.
+    Text labels retain the protocol's explicit vocabulary.
+    """
     if isinstance(label, bool):
         return int(label)
-    if isinstance(label, (int, float)):
-        return 1 if int(label) == 1 else 0
+    if isinstance(label, numbers.Real):
+        try:
+            value = float(label)
+        except (OverflowError, TypeError, ValueError):
+            raise ValueError(
+                f"numeric label must be exactly finite 0 or 1: {label!r}") from None
+        if math.isfinite(value) and value in (0.0, 1.0):
+            return int(value)
+        raise ValueError(f"numeric label must be exactly finite 0 or 1: {label!r}")
     s = str(label).strip().lower()
     if s in ("unsafe", "harmful", "1", "true", "positive", "injection", "jailbreak"):
         return 1
@@ -576,14 +607,16 @@ def to_gold(label) -> int:
     raise ValueError(f"unrecognized label: {label!r}")
 
 
+def to_gold(label) -> int:
+    """Map a manifest label to gold 1(unsafe)/0(safe)."""
+    return normalize_binary_label(label)
+
+
 def row_gold(row: dict) -> int:
     """Gold 1(unsafe)/0(safe). Prefer the manifest's explicit `gold` field
     (already 0/1 in the real manifests); fall back to mapping `label`."""
-    g = row.get("gold")
-    if isinstance(g, (int, float, bool)) and not isinstance(g, bool):
-        return 1 if int(g) == 1 else 0
-    if isinstance(g, bool):
-        return int(g)
+    if "gold" in row and row["gold"] is not None:
+        return normalize_binary_label(row["gold"])
     return to_gold(row.get("label"))
 
 
@@ -1157,6 +1190,29 @@ def _verify_source_bindings(lock: dict, repo_root: pathlib.Path) -> dict:
             "runtime_execution_clean": runtime_git.get("execution_clean")}
 
 
+def _verify_locked_source_record(lock: dict) -> dict:
+    """Validate the immutable source commitment without inspecting this checkout."""
+    rec = lock.get("execution_sources") or {}
+    files = rec.get("files") or {}
+    _require_contract(isinstance(files, dict) and files,
+                      "strict lock has no execution source-file hashes")
+    _require_contract(all(
+        isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest)
+        for digest in files.values()),
+        "strict lock contains an invalid execution source-file hash")
+    aggregate = rec.get("aggregate_sha256")
+    _require_contract(isinstance(aggregate, str)
+                      and aggregate == canonical_obj_sha256(files),
+                      "execution source aggregate hash is invalid")
+    return {
+        "aggregate_sha256": aggregate,
+        "n_files": len(files),
+        "local_files_verified": False,
+        "original_paper_a_execution_source_verification":
+            "separate_immutable_source_bundle",
+    }
+
+
 def _verify_strict_lock_structure(
     lock: dict,
     allow_development: bool,
@@ -1348,6 +1404,328 @@ def verify_lock(
             report["execution_sources"] = _verify_source_bindings(lock, root)
             report["power_report"] = _verify_power_binding(lock, root)
         report["files_verified"] = True
+    return report
+
+
+def _contract_relative_path(
+    path: str | os.PathLike,
+    repo_root: pathlib.Path,
+    label: str,
+) -> str:
+    """Return one portable repo-relative path or fail outside the trust root."""
+    resolved = resolved_path(path, repo_root)
+    _require_contract(path_is_within(resolved, repo_root, repo_root=repo_root),
+                      f"{label} resolves outside the repository: {resolved}")
+    return resolved.relative_to(repo_root.resolve()).as_posix()
+
+
+def _exact_file_tree(directory: pathlib.Path) -> dict[str, str]:
+    """Hash every regular file below *directory*, rejecting symlink indirection."""
+    _require_contract(directory.is_dir() and not directory.is_symlink(),
+                      f"release file-tree root is missing or symlinked: {directory}")
+    files: dict[str, str] = {}
+    for path in sorted(directory.rglob("*")):
+        _require_contract(not path.is_symlink(),
+                          f"release file tree contains a symlink: {path}")
+        if path.is_dir():
+            continue
+        _require_contract(path.is_file(),
+                          f"release file tree contains a non-regular entry: {path}")
+        files[path.relative_to(directory).as_posix()] = sha256_file(path)
+    _require_contract(bool(files), f"release file tree is empty: {directory}")
+    return files
+
+
+def verify_release_self_hash(release: dict) -> str:
+    """Verify and return the canonical self-hash embedded in ``RELEASE.json``."""
+    stored = release.get("release_sha256")
+    _require_contract(isinstance(stored, str)
+                      and re.fullmatch(r"[0-9a-f]{64}", stored) is not None,
+                      "RELEASE.json has no valid release_sha256")
+    observed = canonical_obj_sha256(
+        {key: value for key, value in release.items() if key != "release_sha256"})
+    _require_contract(observed == stored,
+                      f"RELEASE.json self-hash mismatch: stored={stored} observed={observed}")
+    return observed
+
+
+def build_release_cache_index(
+    lock: dict,
+    *,
+    repo_root: str | os.PathLike | None = None,
+) -> dict:
+    """Build (but do not write) the strict score-only release commitment.
+
+    The returned object binds exact bytes for the lock, complete text-free
+    public-manifest tree, scores, score metadata, and all code allowed to
+    analyze the cache.  Callers must write it to the canonical ``RELEASE.json``
+    path and place :func:`build_release_cache_anchor` at the tracked config path.
+    """
+    root = pathlib.Path(repo_root).resolve() if repo_root is not None else REPO_ROOT.resolve()
+    lock_report = verify_lock(lock, repo_root=root)
+    _require_contract(not lock_report["legacy"]
+                      and lock.get("finalization_status") == "final",
+                      "release index requires a strict final v2 lock")
+    paths = artifact_paths(lock)
+    lock_path = resolved_path(paths["lock"], root)
+    public_dir = resolved_path(paths["public_manifests"], root)
+    scores_path = resolved_path(os.path.join(paths["scores"], "scores.parquet"), root)
+    metadata_path = resolved_path(os.path.join(paths["scores"], "metadata.json"), root)
+    for label, path in (
+        ("lock", lock_path), ("scores", scores_path), ("score metadata", metadata_path),
+    ):
+        _require_contract(path.is_file() and not path.is_symlink(),
+                          f"release {label} file is missing or symlinked: {path}")
+    _require_contract(read_json(lock_path) == lock,
+                      "canonical lock file differs from the lock object being released")
+    _verify_public_release_binding(lock, root)
+    public_files = _exact_file_tree(public_dir)
+    source_record = execution_source_hashes(
+        repo_root=root, required_files=RELEASE_CACHE_SOURCE_FILES)
+    release = {
+        "release_contract_version": RELEASE_CONTRACT_VERSION,
+        "lock": {
+            "path": _contract_relative_path(lock_path, root, "release lock"),
+            "file_sha256": sha256_file(lock_path),
+            "lock_sha256": lock["lock_sha256"],
+        },
+        "public_manifest_tree": {
+            "root": _contract_relative_path(public_dir, root, "public-manifest root"),
+            "files": public_files,
+            "aggregate_sha256": canonical_obj_sha256(public_files),
+        },
+        "score_artifacts": {
+            "scores": {
+                "path": _contract_relative_path(scores_path, root, "scores"),
+                "sha256": sha256_file(scores_path),
+            },
+            "metadata": {
+                "path": _contract_relative_path(metadata_path, root, "score metadata"),
+                "sha256": sha256_file(metadata_path),
+            },
+        },
+        "analyzer_verifier_sources": source_record,
+    }
+    release["release_sha256"] = canonical_obj_sha256(release)
+    return release
+
+
+def build_release_cache_anchor(
+    release_path: str | os.PathLike,
+    *,
+    repo_root: str | os.PathLike | None = None,
+) -> dict:
+    """Build the small config-side trust root for an already-written release."""
+    root = pathlib.Path(repo_root).resolve() if repo_root is not None else REPO_ROOT.resolve()
+    path = resolved_path(release_path, root)
+    _require_contract(path.is_file() and not path.is_symlink(),
+                      f"RELEASE.json is missing or symlinked: {path}")
+    release = read_json(path)
+    release_sha = verify_release_self_hash(release)
+    return {
+        "release_anchor_contract_version": RELEASE_ANCHOR_CONTRACT_VERSION,
+        "release_path": _contract_relative_path(path, root, "RELEASE.json"),
+        "release_sha256": release_sha,
+        "release_file_sha256": sha256_file(path),
+    }
+
+
+def write_release_cache_contract(
+    lock: dict,
+    *,
+    repo_root: str | os.PathLike | None = None,
+) -> dict:
+    """Write canonical release and anchor files after all released bytes are final.
+
+    This helper is intentionally never called by analysis.  Creating or updating
+    the tracked anchor is a deliberate release operation, not an automatic cache
+    repair path.
+    """
+    root = pathlib.Path(repo_root).resolve() if repo_root is not None else REPO_ROOT.resolve()
+    release_path = resolved_path(
+        os.path.join(artifact_paths(lock)["root"], RELEASE_FILENAME), root)
+    anchor_path = resolved_path(DEFAULT_RELEASE_ANCHOR_PATH, root)
+    release = build_release_cache_index(lock, repo_root=root)
+    write_json(release_path, release)
+    anchor = build_release_cache_anchor(release_path, repo_root=root)
+    write_json(anchor_path, anchor)
+    return {
+        "release_path": str(release_path),
+        "release_sha256": release["release_sha256"],
+        "release_file_sha256": sha256_file(release_path),
+        "anchor_path": str(anchor_path),
+    }
+
+
+def _require_exact_keys(value: Any, expected: set[str], label: str) -> None:
+    _require_contract(isinstance(value, dict) and set(value) == expected,
+                      f"{label} schema is incomplete or unexpected")
+
+
+def _verify_release_file_record(
+    record: dict,
+    expected_path: pathlib.Path,
+    repo_root: pathlib.Path,
+    label: str,
+) -> dict:
+    _require_exact_keys(record, {"path", "sha256"}, label)
+    expected_rel = _contract_relative_path(expected_path, repo_root, label)
+    _require_contract(record["path"] == expected_rel,
+                      f"{label} path differs from the canonical release namespace")
+    _require_contract(expected_path.is_file() and not expected_path.is_symlink(),
+                      f"{label} is missing or symlinked: {expected_path}")
+    observed = sha256_file(expected_path)
+    _require_contract(record["sha256"] == observed,
+                      f"{label} hash mismatch: stored={record['sha256']} observed={observed}")
+    return {"path": str(expected_path), "sha256": observed}
+
+
+def _verify_release_contract(
+    lock: dict,
+    repo_root: pathlib.Path,
+    release_path: str | os.PathLike | None,
+    anchor_path: str | os.PathLike | None,
+) -> dict:
+    paths = artifact_paths(lock)
+    expected_release = resolved_path(
+        os.path.join(paths["root"], RELEASE_FILENAME), repo_root)
+    expected_anchor = resolved_path(DEFAULT_RELEASE_ANCHOR_PATH, repo_root)
+    selected_release = resolved_path(release_path or expected_release, repo_root)
+    selected_anchor = resolved_path(anchor_path or expected_anchor, repo_root)
+    _require_contract(selected_release == expected_release,
+                      "release index override differs from the canonical RELEASE.json path")
+    _require_contract(selected_anchor == expected_anchor,
+                      "release anchor override differs from the tracked config path")
+    for label, path in (("RELEASE.json", selected_release),
+                        ("release anchor", selected_anchor)):
+        _require_contract(path.is_file() and not path.is_symlink(),
+                          f"{label} is missing or symlinked: {path}")
+
+    anchor = read_json(selected_anchor)
+    _require_exact_keys(anchor, {
+        "release_anchor_contract_version", "release_path", "release_sha256",
+        "release_file_sha256",
+    }, "release anchor")
+    _require_contract(anchor["release_anchor_contract_version"]
+                      == RELEASE_ANCHOR_CONTRACT_VERSION,
+                      "release anchor has an unsupported contract version")
+    _require_contract(anchor["release_path"]
+                      == _contract_relative_path(selected_release, repo_root, "RELEASE.json"),
+                      "release anchor points at a different RELEASE.json")
+    observed_release_file_sha = sha256_file(selected_release)
+    _require_contract(anchor["release_file_sha256"] == observed_release_file_sha,
+                      "tracked release anchor does not match RELEASE.json bytes")
+
+    release = read_json(selected_release)
+    _require_exact_keys(release, {
+        "release_contract_version", "release_sha256", "lock",
+        "public_manifest_tree", "score_artifacts", "analyzer_verifier_sources",
+    }, "RELEASE.json")
+    _require_contract(release["release_contract_version"] == RELEASE_CONTRACT_VERSION,
+                      "RELEASE.json has an unsupported contract version")
+    release_sha = verify_release_self_hash(release)
+    _require_contract(anchor["release_sha256"] == release_sha,
+                      "tracked release anchor does not match RELEASE.json self-hash")
+
+    lock_record = release["lock"]
+    _require_exact_keys(lock_record, {"path", "file_sha256", "lock_sha256"},
+                        "release lock record")
+    expected_lock = resolved_path(paths["lock"], repo_root)
+    _require_contract(lock_record["path"]
+                      == _contract_relative_path(expected_lock, repo_root, "release lock"),
+                      "RELEASE.json points at a different lock file")
+    _require_contract(expected_lock.is_file() and not expected_lock.is_symlink(),
+                      f"release lock is missing or symlinked: {expected_lock}")
+    observed_lock_file_sha = sha256_file(expected_lock)
+    _require_contract(lock_record["file_sha256"] == observed_lock_file_sha,
+                      "RELEASE.json lock-file hash mismatch")
+    _require_contract(lock_record["lock_sha256"] == lock.get("lock_sha256"),
+                      "RELEASE.json lock self-hash differs from loaded LOCK.json")
+    _require_contract(read_json(expected_lock) == lock,
+                      "loaded lock differs from the exact RELEASE.json lock file")
+
+    public_record = release["public_manifest_tree"]
+    _require_exact_keys(public_record, {"root", "files", "aggregate_sha256"},
+                        "public-manifest tree record")
+    public_dir = resolved_path(paths["public_manifests"], repo_root)
+    _require_contract(public_record["root"]
+                      == _contract_relative_path(public_dir, repo_root,
+                                                 "public-manifest root"),
+                      "RELEASE.json public-manifest root differs from the lock namespace")
+    _require_contract(isinstance(public_record["files"], dict)
+                      and public_record["aggregate_sha256"]
+                      == canonical_obj_sha256(public_record["files"]),
+                      "RELEASE.json public-manifest tree aggregate is invalid")
+    observed_public_files = _exact_file_tree(public_dir)
+    _require_contract(observed_public_files == public_record["files"],
+                      "release public-manifest file tree mismatch")
+
+    score_records = release["score_artifacts"]
+    _require_exact_keys(score_records, {"scores", "metadata"},
+                        "release score-artifact record")
+    score_root = paths["scores"]
+    scores = _verify_release_file_record(
+        score_records["scores"],
+        resolved_path(os.path.join(score_root, "scores.parquet"), repo_root),
+        repo_root, "release scores")
+    metadata = _verify_release_file_record(
+        score_records["metadata"],
+        resolved_path(os.path.join(score_root, "metadata.json"), repo_root),
+        repo_root, "release score metadata")
+
+    source_record = release["analyzer_verifier_sources"]
+    _require_exact_keys(source_record, {"files", "aggregate_sha256"},
+                        "release analyzer/verifier source record")
+    _require_contract(set(source_record["files"]) == set(RELEASE_CACHE_SOURCE_FILES)
+                      and source_record["aggregate_sha256"]
+                      == canonical_obj_sha256(source_record["files"]),
+                      "release analyzer/verifier source commitment is invalid")
+    observed_sources = execution_source_hashes(
+        repo_root=repo_root, required_files=RELEASE_CACHE_SOURCE_FILES)
+    _require_contract(observed_sources == source_record,
+                      "release analyzer/verifier source tree mismatch")
+    return {
+        "path": str(selected_release),
+        "release_sha256": release_sha,
+        "release_file_sha256": observed_release_file_sha,
+        "anchor_path": str(selected_anchor),
+        "public_manifest_tree": {
+            "aggregate_sha256": public_record["aggregate_sha256"],
+            "n_files": len(observed_public_files),
+        },
+        "score_artifacts": {"scores": scores, "metadata": metadata},
+        "analyzer_verifier_sources": observed_sources,
+    }
+
+
+def verify_release_cache_lock(
+    lock: dict,
+    *,
+    repo_root: str | os.PathLike | None = None,
+    release_path: str | os.PathLike | None = None,
+    anchor_path: str | os.PathLike | None = None,
+) -> dict:
+    """Verify a strict score-only release from an external tracked trust root.
+
+    Raw prompt manifests and adapters may be absent, but release mode now
+    requires two independent commitments: a self-hashed ``RELEASE.json`` beside
+    the artifacts and a small anchor under ``configs/``.  Together they bind
+    exact score/metadata bytes, the complete public identity tree, the exact
+    lock file, and the current verifier/analyzer sources.  Rewriting internally
+    consistent scores and metadata therefore cannot silently mint new evidence.
+    """
+    root = pathlib.Path(repo_root).resolve() if repo_root is not None else REPO_ROOT.resolve()
+    report = verify_lock(lock, repo_root=root)
+    _require_contract(not report["legacy"],
+                      "release-cache analysis requires a strict v2 lock")
+    _require_contract(lock.get("finalization_status") == "final",
+                      "release-cache analysis requires a final lock")
+    report["release_contract"] = _verify_release_contract(
+        lock, root, release_path, anchor_path)
+    report["config"] = _verify_config_binding(lock, root, None, legacy=False)
+    report["execution_sources"] = _verify_locked_source_record(lock)
+    report["public_release"] = _verify_public_release_binding(lock, root)
+    report["release_cache_only"] = True
     return report
 
 

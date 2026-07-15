@@ -2,7 +2,8 @@
 
 Working notes behind the study. They are historical design documents, not the paper;
 the authoritative results live in [`../paper-a/`](../paper-a) and
-[`../artifacts/paper_a_sft/`](../artifacts/paper_a_sft).
+[`../artifacts/paper_a_sft_v2/`](../artifacts/paper_a_sft_v2). The v1
+[`../artifacts/paper_a_sft/`](../artifacts/paper_a_sft) tree is archival.
 
 ## Paper A — *The Benchmark Chooses the Winner*
 
@@ -12,30 +13,39 @@ the authoritative results live in [`../paper-a/`](../paper-a) and
 - [paper-a-specialization-frontier-plan.md](paper-a-specialization-frontier-plan.md) —
   the design of the represented-vs-transfer specialization measurement.
 - [paper-a-improvement-and-extension-recommendations.md](paper-a-improvement-and-extension-recommendations.md) —
-  reviewer recommendations grounded in the current results: run the clean v2 rerun,
-  add an uninspected benchmark, and develop the base-competence law (who FT helps vs hurts).
+  reviewer recommendations grounded in the current results: add an uninspected benchmark and
+  test the base-competence hypothesis on an independent development/outcome split.
 
 ## Paper B / broad study (future work)
 
-Planning notes for the earlier broad study and the planned follow-up. The
-corresponding code is quarantined under [`../legacy/`](../legacy).
+Planning notes for the earlier broad study and the planned follow-up. The Compose, Don't Tune
+plan is the authoritative near-term Paper B plan; the mortgage joint-stack/checkpoint plans are
+historical alternatives. Their corresponding code is quarantined under [`../legacy/`](../legacy).
 
 - [paper-b-joint-compliance-stack-plan.md](paper-b-joint-compliance-stack-plan.md) —
-  a joint general + domain-specific compliance guard stack.
+  archived historical joint general + domain-specific compliance guard-stack plan.
 - [paper-b-development-checkpoint-plan.md](paper-b-development-checkpoint-plan.md) —
-  development checkpoints for the follow-up (the governing `v2-adversarial-review` plan).
+  archived historical checkpoints for the superseded mortgage direction; these do not govern
+  composition work.
 - [paper-b-feasibility-investigation.md](paper-b-feasibility-investigation.md) —
-  independent assessment of whether the (mortgage joint-stack) Paper B plan is feasible
-  and can reach a solution; recommends a de-scoped measurement-paper landing.
+  historical assessment explaining why the mortgage joint-stack direction was dropped.
 - [paper-b-compose-dont-tune-plan.md](paper-b-compose-dont-tune-plan.md) —
   **recommended near-term Paper B**: "Compose, Don't Tune." A composed guardrail (calibrated
-  average of the untuned base + the SFT adapter) recovers held-out transfer that fine-tuning
-  erodes, while keeping in-domain gains — grounded in a prototype on the committed scores and a
-  4-lens adversarial review. Zero new training; gated on Paper A's clean rerun.
+  average of the untuned base + the SFT adapter) trades a small represented-source loss for
+  transfer recovery relative to SFT in the completed clean-v2 retrospective estimate. It is not
+  prospective or confirmatory; Paper B still requires its own lock, a prospective cohort,
+  WiSE-FT GPU rescoring, a same-inference-cost SFT+SFT control, and matched-compute KL/replay
+  baselines.
 - [paper-b-topic-proposal.md](paper-b-topic-proposal.md) —
   the objective × base-competence study (SFT vs DPO vs GRPO). **Deferred to a contingent Paper C**
   (needs a GPU retrain; reproduces published SFT-vs-RL results) — see the compose-don't-tune plan
   for why it moves behind the composition paper.
+- [paper-c-objective-axis-reward-and-design.md](paper-c-objective-axis-reward-and-design.md) —
+  **grounded design layer for the objective axis (Paper C)**: answers *what reward/preference
+  signal works* (verifiable label, no learned RM), *which objectives to select and drop*
+  (SFT · DPO · KTO · GRPO core, +ORPO; drop SimPO/PPO/BCO), and a five-facet literature review
+  that grounds feasibility and novelty. Ties the axis to the composition remedy via reference-KL
+  anchoring; pre-registers GRPO's likely single-token null. Companion to the topic proposal.
 - [smollm3-guard-plan.md](smollm3-guard-plan.md) — plan behind the SmolLM3 guard
   reproduction notebook (the broad-study notebooks were removed from the repo;
   their builders remain under [`../legacy/experiments/`](../legacy/experiments)).

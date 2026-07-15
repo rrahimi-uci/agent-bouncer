@@ -1,0 +1,16 @@
+# build outputs (regenerable) and the sealed private test
+out/
+SEALED_private_test.jsonl
+
+# real HMDA downloads (large; not redistributed — pull per README)
+data/hmda_real/
+*.zip
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# NOTE: data/hmda_sample/ (bundled SYNTHETIC sample) IS tracked on purpose.
+out_real/
+*.log

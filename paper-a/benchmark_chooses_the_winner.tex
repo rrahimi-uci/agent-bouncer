@@ -1,28 +1,28 @@
-\documentclass[sigconf,nonacm]{acmart}
+\documentclass[11pt]{article}
 
 % ---- Packages ----
+\usepackage[letterpaper,margin=0.8in]{geometry}
+\usepackage[T1]{fontenc}
 \usepackage{booktabs,graphicx}
 \usepackage{amsmath}
 \usepackage{makecell}
 \usepackage{tikz}
 \usepackage{placeins}
+\usepackage[numbers,sort&compress]{natbib}
 \usetikzlibrary{positioning,arrows.meta,calc}
 \usepackage[capitalize]{cleveref}
 \usepackage{microtype}                 % char protrusion + font expansion: fixes text spilling past the margin
 \setlength{\emergencystretch}{3em}     % allow extra glue on hard lines so nothing overflows the text block
-\raggedbottom
+\flushbottom
 \setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
-\setlength{\dbltextfloatsep}{9pt plus 2pt minus 2pt}
 \setlength{\floatsep}{8pt plus 2pt minus 2pt}
-\setlength{\dblfloatsep}{8pt plus 2pt minus 2pt}
 \setlength{\intextsep}{8pt plus 2pt minus 2pt}
 \setlength{\abovecaptionskip}{5pt}
 \setlength{\belowcaptionskip}{0pt}
+\setlength{\bibsep}{0pt}
 \renewcommand{\topfraction}{0.95}
-\renewcommand{\dbltopfraction}{0.95}
 \renewcommand{\textfraction}{0.05}
-\renewcommand{\floatpagefraction}{0.82}
-\renewcommand{\dblfloatpagefraction}{0.82}
+\renewcommand{\floatpagefraction}{0.65}
 
 \definecolor{stagebluefill}{HTML}{EAF2FF}
 \definecolor{stageblueedge}{HTML}{2563EB}
@@ -39,9 +39,7 @@
 \definecolor{stageslatefill}{HTML}{F8FAFC}
 \definecolor{stageslateedge}{HTML}{475569}
 
-% ---- acmart housekeeping (nonacm) ----
-\settopmatter{printacmref=false}
-\setcopyright{none}
+% ---- Article housekeeping ----
 \pagestyle{plain}
 \graphicspath{{figures/}}
 \input{results_macros_gen}
@@ -51,24 +49,20 @@
 % ---- Title / authors ----
 \title{The Benchmark Chooses the Winner: Measuring Fine-Tuning Specialization Across Safety-Guard Benchmarks}
 
-\author{Reza Rahimi}
-\email{reza.rahimi@jazzx.ai}
-\affiliation{%
-  \institution{JazzX AI}
-  \city{Los Altos}
-  \state{CA}
-  \country{USA}
-}
+\author{Reza Rahimi\\
+  \small JazzX AI, Los Altos, CA, USA\\
+  \small\texttt{reza.rahimi@jazzx.ai}}
+\date{}
+
+\maketitle
 
 \begin{abstract}
-Small language models are increasingly adapted into binary prompt-safety guards, but improvement on benchmark sources represented during training does not establish transfer to other datasets. We retrospectively analyze a fixed legacy run that compares four untuned checkpoints (1.5B--4B parameters) with five LoRA-SFT seeds per checkpoint. The training rows, semantic classification instruction, LoRA capacity, and evaluation rows are fixed; rendered chat serialization is model-specific. We separate represented-source tests from four dataset-held-out transfer benchmarks and report macro average precision (AP), per-source effects, and calibration-only operating points.
+Small language models are increasingly adapted into binary prompt-safety guards, but improvement on benchmark sources represented during training does not establish transfer to other datasets. We report a clean-v2 execution comparing four untuned checkpoints (1.5B--4B parameters) with five LoRA-SFT seeds per checkpoint. The source revisions, training rows, semantic classification instruction, LoRA capacity, evaluation rows, and analysis are lock-bound; rendered chat serialization is model-specific. We separate represented-source tests from four dataset-held-out transfer benchmarks and report macro average precision (AP), per-source effects, and calibration-only operating points.
 
 The fixed-panel base-to-SFT changes are $\RepDelta$ in represented-source macro AP (95\% two-sided paired-bootstrap interval $[\RepCILower,\RepCIUpper]$) and $\TransferDelta$ in transfer macro AP ($[\TransferCILower,\TransferCIUpper]$). Transfer is heterogeneous across checkpoints, but every leave-one-checkpoint-out and leave-one-transfer-benchmark-out sensitivity estimate remains negative. At calibration-targeted thresholds, benchmark-macro transfer FPR rises from \TransferBaseFPRPct\% (base) to \TransferSFTFPRPct\% (SFT), while pooled-negative FPR rises from \TransferBasePooledFPRPct\% to \TransferSFTPooledFPRPct\%; HarmBench recall falls from \HarmBenchBaseRecallPct\% to \HarmBenchSFTRecallPct\%.
 
-Prior work has established policy overfitting, calibration sensitivity, and safety degradation after fine-tuning. Our contribution is narrower: a same-checkpoint, same-training-manifest characterization of how compact prompt guards move across benchmark sources. Conditional on these four checkpoints and seven fixed AP datasets, the estimates are consistent with in-source specialization, not a general moderation upgrade. Because the committed scores predate the strengthened provenance and lock contract released with this paper, we treat the result as estimation-only and identify the clean rerun required for confirmatory use.
+Prior work has established policy overfitting, calibration sensitivity, and safety degradation after fine-tuning. Our contribution is narrower: a same-checkpoint, same-training-manifest characterization of how compact prompt guards move across benchmark sources. Conditional on these four checkpoints and seven fixed AP datasets, the estimates are consistent with in-source specialization, not a general moderation upgrade. The v2 rerun repairs execution provenance and preprocessing defects found in the archived v1 artifact, but prior development inspected part of the transfer cohort and informed the protocol. We therefore treat the result as retrospective and estimation-only; confirmatory use requires a prospectively locked analysis on a genuinely uninspected cohort or benchmark.
 \end{abstract}
-
-\maketitle
 
 \section{Introduction}
 \label{sec:intro}
@@ -83,7 +77,7 @@ We organize the analysis around the following deliberately panel-limited questio
 For a fixed four-checkpoint panel and one frozen LoRA-SFT recipe, does guard adaptation change discrimination differently on represented-source and dataset-held-out tests?
 \end{quote}
 
-The design and analysis were not publicly preregistered, and the committed run is analyzed retrospectively. We therefore report estimates, intervals, heterogeneity, and sensitivity checks without confirmatory rejection language.
+The design and analysis were not publicly preregistered and were informed by earlier development, so the clean-v2 run is analyzed retrospectively. We therefore report estimates, intervals, heterogeneity, and sensitivity checks without confirmatory rejection language.
 
 \paragraph{Scope.} The study is deliberately narrow: English input-prompt classification, binary safe/unsafe decision-token scoring, small instruction models from 1.5B to 4B parameters, one fixed LoRA-SFT recipe, three represented-source datasets, four dataset-held-out transfer benchmarks, two single-class stress sets, and a fixed, purposively chosen four-checkpoint panel. It is not a guardrail leaderboard, an objective comparison, an ensembling study, a fairness audit, a frontier-API parity or latency study, or a domain-compliance case study; those questions --- including the mortgage-compliance case study --- are out of scope here and are treated in separate work. Response, tool-call, and full-dialogue moderation, arbitrary unseen policies, production traffic, and universal claims about fine-tuning are likewise out of scope.
 
@@ -128,11 +122,11 @@ RQ4 is descriptive and secondary: it does not provide a distribution-free produc
 \section{Controlled Study Design}
 \label{sec:design}
 
-\Cref{fig:design} summarizes the intended pipeline: pinned source snapshots are compiled into manifests, audited, and locked; four bases are each adapted with five SFT seeds; the base and adapted guards are scored on represented-source, transfer, and stress manifests; and paired deltas feed estimation and sensitivity analyses. Training does not read evaluation rows. Manifest construction, audit, threshold fitting on calibration data, and analysis necessarily read their corresponding labels. The committed score table is from a legacy contract; the corrected builder and lock verifier require a new GPU run before claims can be called clean-run results.
+\Cref{fig:design} summarizes the clean-v2 execution design. Pinned source snapshots are compiled into manifests, independently audited, and bound to a clean-source v2 lock before model execution; four bases are each adapted with five SFT seeds; the base and adapted guards are scored on represented-source, transfer, and stress manifests; and paired deltas feed estimation and sensitivity analyses. Training does not read evaluation rows. Manifest construction, audit, threshold fitting on calibration data, and analysis necessarily read their corresponding labels. The clean execution contract repairs the legacy chain of custody, but the study remains a retrospective, precision-focused analysis because its protocol and benchmark choices were informed by prior development.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
-\resizebox{\columnwidth}{!}{%
+\resizebox{0.55\textwidth}{!}{%
 \begin{tikzpicture}[
   >=Stealth,
   node distance=5mm,
@@ -150,8 +144,7 @@ RQ4 is descriptive and secondary: it does not provide a distribution-free produc
   \draw[flow] (eval) -- (gate);
 \end{tikzpicture}%
 }
-\caption{Study design for a clean rerun. Source snapshots are frozen and audited before training; evaluation manifests are scored only after all twenty adapters and four base bundles exist. Paired base-versus-SFT deltas drive estimation and sensitivity analyses.}
-\Description{Five connected stages: pinned source snapshots; manifest construction, audit, and lock; four base models with five SFT seeds each; represented-source, transfer, and stress evaluation; and paired estimation with sensitivity checks.}
+\caption{Clean-v2 execution design. Source snapshots are frozen, audited, and locked before training; evaluation manifests are scored only after all twenty adapters and four base bundles exist. Paired base-versus-SFT deltas drive estimation and sensitivity analyses.}
 \label{fig:design}
 \end{figure}
 
@@ -173,7 +166,7 @@ and the derived probability is the two-way softmax
 \label{eq:prob}
 p(\text{unsafe}\mid x) = \frac{\exp(z_{\text{unsafe}})}{\exp(z_{\text{safe}}) + \exp(z_{\text{unsafe}})}.
 \end{equation}
-Raw \texttt{safe}/\texttt{unsafe} logits are the canonical stored values; probabilities and temperature-scaled values are derived from them. Generated verdict text is never used as the primary score. For each checkpoint we verify that the decision tokens are distinct single tokens under a fixed convention (leading-space \texttt{" safe"}/\texttt{" unsafe"} first, no-leading-space fallback), and store token IDs, token strings, truncation state, and scored/original token counts. The semantic system instruction is shared, but model-specific chat templates produce three distinct rendered-template hashes across the four checkpoints. The corrected runner preserves the classification instruction under truncation; the legacy scores include left-truncated examples, quantified in \Cref{sec:limitations}.
+Raw \texttt{safe}/\texttt{unsafe} logits are the canonical stored values; probabilities and temperature-scaled values are derived from them. Generated verdict text is never used as the primary score. For each checkpoint we verify that the decision tokens are distinct single tokens under a fixed convention (leading-space \texttt{" safe"}/\texttt{" unsafe"} first, no-leading-space fallback), and store token IDs, token strings, truncation state, truncation strategy, and scored/original token counts. The semantic system instruction is shared, but model-specific chat templates produce three distinct rendered-template hashes across the four checkpoints. The v2 runner budgets and truncates user content before final rendering, then asserts that the complete classification instruction and wrapper remain. The archived v1 artifact instead left-truncated complete renderings and motivates this contract check (\Cref{sec:limitations}).
 
 \subsection{Training manifest and exclusions}
 \label{subsec:manifest}
@@ -182,13 +175,14 @@ Training reads one frozen 1{,}200-row manifest and never resamples live datasets
 
 \textbf{BeaverTails and OR-Bench are excluded from training.} BeaverTails' \texttt{is\_safe} annotation labels the prompt--response interaction rather than the prompt alone, and OR-Bench is reserved for the benign stress set and shares an evaluation family; including either would confound the prompt-only, dataset-held-out design. The study uses the non-commercial academic data branch (ToxicChat is CC BY-NC 4.0), so any released adapter is marked non-commercial. We do not redistribute third-party raw text; the release provides pinned identifiers, revisions, and content hashes.
 
-\textbf{Decontamination audit.} The corrected builder preserves authoritative upstream conversation/pair/scenario identifiers, adds deterministic character 5-gram MinHash edges, constructs connected components before splitting represented-source calibration and ID rows, and fails closed if any family crosses train/evaluation or calibration/any reported test or stress boundary. It also hard-asserts source exclusions, exact/conflicting-label overlap, source revisions, content hashes, selection provenance, and near-duplicate dispositions. The historical audit associated with the committed scores reported zero exact and conflicting-label train/evaluation overlaps, but its family keys failed to join 36 JailbreakBench matched-index pairs and 58 XSTest safe/unsafe pairs; two represented-source families also crossed calibration and ID. Its six approximate train/evaluation pairs at the 0.80 sensitivity threshold were reported rather than adjudicated. Consequently, the historical family bootstrap and operating-point split are descriptive artifacts; the repaired family graph must be used in a clean rerun.
+\textbf{Decontamination audit.} The v2 builder preserves authoritative upstream conversation, pair, and scenario identifiers, adds deterministic character 5-gram MinHash edges, constructs connected components before splitting represented-source calibration and ID rows, and fails closed if any family crosses train/evaluation or calibration/any reported test or stress boundary. It connects all 36 selected JailbreakBench matched-index pairs and all 58 selected XSTest safe/unsafe pairs. The independent v2 audit passed all 24 hard assertions covering source exclusions, schema and row identity, exact/conflicting-label overlap, source revisions and content hashes, selection provenance, family disjointness, licenses, and deterministic near-duplicate dispositions. The locked manifests contain 1{,}200 training, 451 calibration, 677 represented-source ID, 1{,}580 transfer, 400 OR-Bench, and 200 HarmBench rows. The archived v1 audit's missing pair links and two calibration/ID-crossing families motivated this rebuild; they do not define the v2 family graph.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \small
-\caption{Data sources and roles in the legacy score artifact. Train counts are 400 per source (200 safe / 200 unsafe). Dataset revisions, content hashes, redistribution fields, and license evidence are recorded in the text-free public manifest index. WildGuardTest and WildJailbreak counts are legacy seed-7 cohorts; the corrected builder defaults to pinned-source hash ranking, so a clean rerun will produce different cohorts.}
+\caption{Data sources and roles in the clean-v2 contract. Train counts are 400 per source (200 safe / 200 unsafe). Dataset revisions, content hashes, redistribution fields, license evidence, and deterministic selection provenance are recorded in the text-free public manifest index. WildGuardTest and WildJailbreak use pinned-source hash-ranked cohorts rather than the archived v1 seed-7 subsets.}
 \label{tab:data-roles}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lllll}
 \toprule
 Source (Hugging Face) & Native label origin & Role & Count (target) & License \\
@@ -206,33 +200,36 @@ Source (Hugging Face) & Native label origin & Role & Count (target) & License \\
 \texttt{walledai/HarmBench} & harmful & stress: recall only & 200 (200:0) & MIT \\
 \bottomrule
 \end{tabular}
+}
 \vspace{2pt}\parbox{0.97\textwidth}{\footnotesize $^\dagger$At the pinned Prompt-Injections revision, top-level card metadata says Apache-2.0 while nested dataset metadata says CC BY 4.0; the public index records the conflict rather than silently choosing one.}
-\end{table*}
+\end{table}
 
 \subsection{Model panel and frozen SFT recipe}
 \label{subsec:panel}
 
-The estimand is a fixed, purposively chosen four-checkpoint panel; we do not bootstrap model identities or infer over model families. All checkpoints, revisions, and the LoRA-SFT recipe are in \Cref{tab:panel-recipe}. Each base is adapted with five training seeds (42--46) sharing data-order seed 42, giving 20 adapters; four untuned bases are scored once and reused ($4+20=24$ model bundles). The executed recipe uses completion-only loss on the verdict and appended EOS tokens, LoRA $r{=}32$, $\alpha{=}64$, dropout $0.05$ on q/k/v/o/gate/up/down projections, 300 steps, learning rate $2\times10^{-4}$ with cosine schedule and 0.03 warmup, effective batch 4, and maximum sequence length 1{,}024. The historical tokenizer left-truncated overlength inputs; the corrected runner preserves the system instruction and records the truncation strategy.
+The estimand is a fixed, purposively chosen four-checkpoint panel; we do not bootstrap model identities or infer over model families. All checkpoints, revisions, and the LoRA-SFT recipe are in \Cref{tab:panel-recipe}. Each base is adapted with five training seeds (42--46) sharing data-order seed 42, giving 20 adapters; four untuned bases are scored once and reused ($4+20=24$ model bundles). The executed recipe uses completion-only loss on the verdict and appended EOS tokens, LoRA $r{=}32$, $\alpha{=}64$, dropout $0.05$ on q/k/v/o/gate/up/down projections, 300 steps, learning rate $2\times10^{-4}$ with cosine schedule and 0.03 warmup, effective batch 4, and maximum sequence length 1{,}024. V2 preprocessing truncates user content within a model-specific token budget while preserving the complete classification instruction and records the strategy and token counts.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \small
-\caption{Fixed model panel and executed LoRA-SFT recipe. Revisions are pinned and decision tokens are verified as distinct single tokens. Training-token and wall-time values are medians across five legacy runs; run metadata also records the A100 device, peak memory, and per-run timing, but not every software/driver field required by the new contract.}
+\caption{Fixed model panel and executed clean-v2 LoRA-SFT recipe. Revisions are pinned and decision tokens are verified as distinct single tokens. Training-token and wall-time values are medians across five runs. Every run records the A100 device, peak memory, exact software/runtime versions, truncation statistics, and per-run timing.}
 \label{tab:panel-recipe}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lllll}
 \toprule
 Checkpoint & Params & Revision (pinned) & Decision tokens & Tokens seen / wall time \\
 \midrule
-Qwen/Qwen2.5-1.5B-Instruct & 1.5B & \texttt{989aa79\ldots71aa306} & \{\,safe, unsafe\,\} single-token & 215k / 7.0\,min \\
-HuggingFaceTB/SmolLM2-1.7B-Instruct & 1.7B & \texttt{31b70e2\ldots46d38674} & \{\,safe, unsafe\,\} single-token & 226k / 6.2\,min \\
-HuggingFaceTB/SmolLM3-3B & 3B & \texttt{a07cc9a\ldots335b0ac1} & \{\,safe, unsafe\,\} single-token & 259k / 9.2\,min \\
-Qwen/Qwen3-4B & 4B & \texttt{1cfa9a7\ldots03b3df60c} & \{\,safe, unsafe\,\} single-token & 220k / 10.4\,min \\
+Qwen/Qwen2.5-1.5B-Instruct & 1.5B & \texttt{989aa79\ldots71aa306} & \{\,safe, unsafe\,\} single-token & 215k / 8.7\,min \\
+HuggingFaceTB/SmolLM2-1.7B-Instruct & 1.7B & \texttt{31b70e2\ldots46d38674} & \{\,safe, unsafe\,\} single-token & 226k / 7.4\,min \\
+HuggingFaceTB/SmolLM3-3B & 3B & \texttt{a07cc9a\ldots335b0ac1} & \{\,safe, unsafe\,\} single-token & 260k / 11.3\,min \\
+Qwen/Qwen3-4B & 4B & \texttt{1cfa9a7\ldots03b3df60c} & \{\,safe, unsafe\,\} single-token & 220k / 12.6\,min \\
 \midrule
 \multicolumn{5}{l}{\emph{Recipe (all cells):} completion-only SFT (verdict $+$ EOS); LoRA $r{=}32$, $\alpha{=}64$, dropout $0.05$; q,k,v,o,gate,up,down;}\\
 \multicolumn{5}{l}{\phantom{\emph{Recipe (all cells):}} 300 steps; lr $2\times10^{-4}$ cosine, warmup 0.03; effective batch 4; max len 1{,}024; seeds 42--46; data-order seed 42.}\\
 \bottomrule
 \end{tabular}
-\end{table*}
+}
+\end{table}
 
 \subsection{Evaluation regimes}
 \label{subsec:regimes}
@@ -267,29 +264,29 @@ and the fixed-panel aggregate averages the four checkpoint deltas without resamp
 \end{equation}
 The primary result is the joint vector $\theta = (\bar\Delta_{\text{represented}}, \bar\Delta_{\text{transfer}})$; we retain both dimensions and visualize them as a plane rather than collapsing them into a scalar ``specialization score.''
 
-\textbf{Uncertainty.} We use 10{,}000 paired hierarchical-bootstrap replicates (RNG seed 20260712): checkpoint identities remain fixed, SFT seed indices are resampled within checkpoint, and one Poisson(1) weight is applied per recorded global \texttt{family\_id}. Because training rows and order are fixed, seed variation reflects initialization, dropout, and execution nondeterminism, not training-sample or order uncertainty. The intervals are conditional on the named checkpoints, constructed evaluation subsets, and datasets; they do not support inference to a population of model families or benchmarks. The legacy family-link defects above mean these intervals can understate dependence, so they are sensitivity summaries pending a clean rerun. Leave-one-transfer-benchmark-out and leave-one-base-out values are deterministic sensitivity analyses, not resampling or population inference.
+\textbf{Uncertainty.} We use 10{,}000 paired hierarchical-bootstrap replicates (RNG seed 20260712): checkpoint identities remain fixed, SFT seed indices are resampled within checkpoint, and one Poisson(1) weight is applied per recorded global \texttt{family\_id}. Because training rows and order are fixed, seed variation reflects initialization, dropout, and execution nondeterminism, not training-sample or order uncertainty. The v2 family graph supplies the shared weights for every recorded upstream and MinHash-linked component. The intervals are conditional on the named checkpoints, constructed evaluation subsets, recorded family graph, and datasets; they do not support inference to a population of model families or benchmarks. Leave-one-transfer-benchmark-out and leave-one-base-out values are deterministic sensitivity analyses, not resampling or population inference.
 
-\textbf{Analysis mode.} The legacy lock records \texttt{analysis\_mode} as \texttt{precision\_focused} and no valid power report. Accordingly, the joint represented/transfer result is descriptive: we report observed fixed-panel points, two-sided bootstrap intervals, and leave-one-out sensitivities, but no formal intersection--union rejection, Holm correction, bootstrap-derived $p$-value, or pass/fail claim gate. A future confirmatory analysis would require a clean lock, prospective protocol, justified null-calibrated test, and rerun under the repaired manifests.
+\textbf{Analysis mode.} The clean v2 lock records \texttt{analysis\_mode} as \texttt{precision\_focused}, with no power report or seed-count decision. Accordingly, the joint represented/transfer result remains descriptive: we report observed fixed-panel points, two-sided bootstrap intervals, and leave-one-out sensitivities, but no formal intersection--union rejection, Holm correction, bootstrap-derived $p$-value, or pass/fail claim gate. Clean execution provenance does not retroactively make the study confirmatory. A future confirmatory analysis would additionally require a prospectively registered protocol, a justified null-calibrated test, and a genuinely uninspected cohort or benchmark.
 
 \section{Results}
 \label{sec:results}
 
-\emph{Tables, figures, JSON, and CSV outputs are generated from the row-keyed legacy scores under \texttt{artifacts/paper\_a\_sft/analysis}; the repository's paper target verifies that its copied table/figure files match those outputs. Narrative aggregate, operating-point, and stress values are generated as macros from the same analysis. Strict analysis rejects the legacy lock unless the explicit legacy-reproduction flag is supplied.}
+\emph{Tables, figures, JSON, and CSV outputs are generated from the lock-bound v2 scores under \texttt{artifacts/\allowbreak paper\_a\_sft\_v2/\allowbreak analysis}; the repository's paper target verifies that its copied table/figure files match those outputs. Narrative aggregate, operating-point, and stress values are generated as macros from the same analysis. The immutable v1 scores remain available only through the separately labeled legacy-compatibility path.}
 
 \subsection{Primary fixed-panel result (RQ1, RQ2)}
 \label{subsec:primary}
 
 \Cref{tab:primary} reports, per base, the untuned-base and mean-SFT macro AP in each regime, the observed paired base-to-SFT delta with a two-sided 95\% bootstrap interval, and the fixed-panel aggregate $\theta = (\bar\Delta_{\text{represented}}, \bar\Delta_{\text{transfer}})$. Per-seed deltas are in \Cref{tab:seed-values}.
 
-On the constructed evaluation subsets, the represented-source point estimate is positive for every checkpoint. Mean SFT macro AP is approximately 0.98 while the untuned checkpoints differ substantially; \Cref{tab:primary} gives every per-checkpoint value. The observed fixed-panel aggregate is $\bar\Delta_{\text{represented}}=\RepDelta$ (95\% two-sided bootstrap interval $[\RepCILower,\RepCIUpper]$). Transfer is heterogeneous: three checkpoint estimates are negative and one is positive; Qwen2.5-1.5B is one of the negative estimates, but its interval spans zero. The fixed-panel transfer estimate is $\TransferDelta$ ($[\TransferCILower,\TransferCIUpper]$). Every leave-one-checkpoint-out and leave-one-transfer-benchmark-out estimate remains negative, but these are sensitivity checks, not formal rejection tests. The observed pattern is consistent with specialization on this legacy panel; it does not establish a general mechanism.
+On the constructed evaluation subsets, the represented-source point estimate is positive for every checkpoint. Mean SFT macro AP is approximately 0.98 while the untuned checkpoints differ substantially; \Cref{tab:primary} gives every per-checkpoint value. The observed fixed-panel aggregate is $\bar\Delta_{\text{represented}}=\RepDelta$ (95\% two-sided bootstrap interval $[\RepCILower,\RepCIUpper]$). Transfer is heterogeneous: three checkpoint estimates are negative and one is positive; Qwen2.5-1.5B is one of the negative estimates, but its interval spans zero. The fixed-panel transfer estimate is $\TransferDelta$ ($[\TransferCILower,\TransferCIUpper]$). Every leave-one-checkpoint-out and leave-one-transfer-benchmark-out estimate remains negative, but these are sensitivity checks, not formal rejection tests. The observed pattern is consistent with specialization on this fixed panel; it does not establish a general mechanism.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \small
-\caption{Legacy fixed-panel result. Base and mean-SFT benchmark-macro AP, with observed paired base-to-SFT deltas and two-sided 95\% hierarchical-bootstrap intervals. The last row is the observed fixed-panel aggregate $\theta$; intervals are descriptive because the legacy family graph is incomplete.}
+\caption{Clean-v2 retrospective fixed-panel result. Base and mean-SFT benchmark-macro AP, with observed paired base-to-SFT deltas and two-sided 95\% hierarchical-bootstrap intervals. The last row is the observed fixed-panel aggregate $\theta$; intervals are descriptive under the locked precision-focused analysis mode and conditional fixed-panel scope.}
 \label{tab:primary}
-\input{tab_primary_gen}
-\end{table*}
+\resizebox{\textwidth}{!}{\input{tab_primary_gen}}
+\end{table}
 
 \subsection{Per-base and per-benchmark heterogeneity (RQ3)}
 \label{subsec:heterogeneity}
@@ -299,7 +296,7 @@ The aggregate deltas are decomposed into per-benchmark paired deltas and cross-c
 \subsection{Secondary operating point at a calibration-targeted 5\% FPR (RQ4)}
 \label{subsec:operating-point}
 
-As a deployment diagnostic only, we fit one positive temperature per base and adapter on calibration rows (never on transfer or stress rows), then select the threshold that maximizes calibration recall subject to a one-sided 95\% Clopper--Pearson upper bound of at most 5\% on \emph{pooled calibration-negative} FPR; if none is feasible the cell reports \texttt{NO\_FEASIBLE\_THRESHOLD}. This row-level bound assumes independent Bernoulli negatives even though related families can remain, so it is a pooled diagnostic rather than an exact family-aware or production guarantee. \Cref{tab:sensitivity} distinguishes pooled from benchmark-macro test FPR and reports base, SFT, changes, and sample sizes. Because two legacy families cross calibration and ID, clean operating-point results require rerunning the corrected split.
+As a deployment diagnostic only, we fit one positive temperature per base and adapter on calibration rows (never on transfer or stress rows), then select the threshold that maximizes calibration recall subject to a one-sided 95\% Clopper--Pearson upper bound of at most 5\% on \emph{pooled calibration-negative} FPR; if none is feasible the cell reports \texttt{NO\_FEASIBLE\_THRESHOLD}. The v2 split assigns whole connected components and the audit hard-asserts that calibration shares no family with any reported test or stress surface. The row-level Clopper--Pearson bound still assumes independent Bernoulli negatives, so it is a pooled diagnostic rather than an exact family-aware or production guarantee. \Cref{tab:sensitivity} distinguishes pooled from benchmark-macro test FPR and reports base, SFT, changes, and sample sizes.
 
 \subsection{Stress-set results}
 \label{subsec:stress}
@@ -308,25 +305,24 @@ The two single-class stress sets are diagnostics only. OR-Bench-Hard benign FPR 
 
 Except for rows explicitly labeled pooled-negative, operating-point rates are first averaged across benchmarks and then across the fixed four-checkpoint panel; SFT rates additionally average the five seeds. Stress rates are fixed-panel means, again averaging seeds for SFT. In each rate row, $N$ is the unique positive- or negative-row denominator in one bundle, not the number of model predictions across checkpoints and seeds.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \small
 \setlength{\tabcolsep}{6pt}
-\caption{Per-benchmark and operating-point sensitivity. Upper panel: per-source observed paired base-to-SFT AP delta. Lower panel: calibration-targeted 5\% FPR operating point and single-class stress diagnostics, reporting base, SFT, change, and $N$. Values are generated from the legacy score artifact.}
+\caption{Per-benchmark and operating-point sensitivity. Upper panel: per-source observed paired base-to-SFT AP delta. Lower panel: calibration-targeted 5\% FPR operating point and single-class stress diagnostics, reporting base, SFT, change, and $N$. Values are generated from the lock-bound clean-v2 score artifact.}
 \label{tab:sensitivity}
 \input{tab_sensitivity_gen}
-\end{table*}
+\end{table}
 
 \subsection{Specialization plane}
 \label{subsec:plane}
 
 \Cref{fig:plane} shows the interpretation plane used to read the joint result: the horizontal axis is the represented-source macro-AP delta, the vertical axis is the transfer macro-AP delta, one point per seed is colored by checkpoint, and the zero lines create four quadrants (uniform gain, specialization, uniform loss, and transfer-favored). The fixed-panel mean is drawn separately. The point cloud is populated from analysis artifacts after the locked run; the axes and quadrant interpretation are result-independent.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.94\columnwidth]{figures/specialization_plane.pdf}
-\caption{Specialization plane. Each point is one (checkpoint, seed): horizontal axis is represented-source macro-AP change and vertical axis is transfer macro-AP change. Fourteen of twenty seeds lie in the lower-right specialization quadrant; six lie in uniform gain---all five SmolLM2-1.7B seeds and Qwen2.5-1.5B seed 43. The fixed-panel observed point is shown separately.}
-\Description{Scatter plot of twenty seed-level base-to-SFT changes. All points have positive represented-source change; fourteen have negative transfer change and six have positive transfer change. The fixed-panel mean lies in the specialization quadrant.}
+\includegraphics[width=0.62\textwidth]{figures/specialization_plane.pdf}
+\caption{Specialization plane. Each point is one (checkpoint, seed): horizontal axis is represented-source macro-AP change and vertical axis is transfer macro-AP change. \SpecializationSeedCount{} of \TotalSeedCount{} seeds lie in the lower-right specialization quadrant and \UniformGainSeedCount{} lie in uniform gain; \ZeroAxisSeedCount{} lies exactly on an axis. The fixed-panel observed point is shown separately.}
 \label{fig:plane}
 \end{figure}
 
@@ -341,9 +337,9 @@ We frame this as a controlled measurement study, and several caveats bound its i
 
 \textbf{Previously inspected benchmarks.} The public or gated benchmark datasets have been examined during pipeline development, so they are held out from SFT but were not prospectively unseen during development; measured transfer is dataset-held-out, not a guarantee against distributional familiarity.
 
-\textbf{Retrospective legacy artifact.} The committed lock predates the strengthened code/artifact contract and records a dirty source tree. WildGuardTest and WildJailbreak use frozen seed-7 cohorts rather than the corrected pinned-source hash selection. Local HPO code and logs show that the frozen-cache evaluation pathway was repeatedly scored during development, although the optimization objective used represented-source development AP; the logs do not fingerprint the cache bytes. This creates adaptive-exposure risk even though the final SFT loss did not consume transfer rows. Rebuilding by the declared hash rule replaces 605 of the 1{,}220 WildGuard/WildJailbreak cohort rows but retains 615 previously inspected rows, so it repairs selection provenance without creating a genuinely untouched confirmatory set. The repaired pipeline invalidates the old lock; prospective confirmation requires a new uninspected cohort or benchmark.
+\textbf{Clean execution, retrospective evidence.} The v2 lock binds a clean source commit, pinned hash-ranked cohorts, audited manifests, prompt rendering, and the fixed execution and analysis protocol. This repairs the v1 chain of custody but does not erase prior exposure. Local HPO code and logs show that the archived frozen-cache evaluation pathway was repeatedly scored during development, although the optimization objective used represented-source development AP; the logs do not fingerprint the cache bytes. The v2 hash-ranked WildGuardTest/WildJailbreak cohorts replace 605 of the 1{,}220 archived rows but retain 615 previously inspected rows. The study is therefore a clean retrospective rerun, not a genuinely untouched confirmatory test; prospective confirmation still requires a new uninspected cohort or benchmark.
 
-\textbf{Family links and truncation.} The historical manifest failed to join 36 JailbreakBench matched-index pairs and 58 XSTest safe/unsafe pairs, and two represented-source families cross calibration and ID. In addition, 26 unique evaluation prompts were truncated (21--25 per checkpoint); nearly every truncated model rendering lost the full system instruction. Depending on the chat template, 16--17 training rows per checkpoint exceed the legacy prompt budget and are left-truncated, generally removing the system instruction. Corrected code preserves the family relationships and instruction, but only a new manifest, training run, and evaluation can replace the reported estimates.
+\textbf{Historical family and truncation defects.} In the archived v1 artifact, 36 JailbreakBench matched-index pairs and 58 XSTest safe/unsafe pairs were not joined, two represented-source families crossed calibration and ID, and left truncation often removed the full system instruction from long training and evaluation renderings. These defects motivated the v2 rerun. The v2 builder links the known pairs, assigns connected components atomically, hard-asserts family-disjoint calibration, and truncates user content while preserving the complete instruction. The v1 defects remain relevant to the archived estimates but do not describe v2 preprocessing or family assignment.
 
 \textbf{Balanced prevalence.} Represented-source and transfer test pools are near-balanced, whereas inline screening usually runs at much lower unsafe prevalence; precision, F1, and AP are prevalence-dependent, so balanced-set numbers overstate production precision at a fixed FPR.
 
@@ -356,24 +352,25 @@ We frame this as a controlled measurement study, and several caveats bound its i
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper estimates what one LoRA-SFT recipe changed relative to its untuned bases on a fixed four-checkpoint panel. In the legacy artifact, the observed represented-source change is $\RepDelta$ and the observed dataset-held-out transfer change is $\TransferDelta$; all leave-one-checkpoint-out and leave-one-transfer-benchmark-out transfer estimates remain negative. The per-checkpoint effects are heterogeneous, one checkpoint improves on transfer, and HarmBench recall falls substantially. These facts support an estimation-only description of \emph{in-source specialization on this panel}, not a universal claim that fine-tuning harms transfer or a confirmatory rejection.
+This paper estimates what one LoRA-SFT recipe changed relative to its untuned bases on a fixed four-checkpoint panel. In the clean-v2 retrospective execution, the observed represented-source change is $\RepDelta$ and the observed dataset-held-out transfer change is $\TransferDelta$; all leave-one-checkpoint-out and leave-one-transfer-benchmark-out transfer estimates remain negative. The per-checkpoint effects are heterogeneous, one checkpoint improves on transfer, and HarmBench recall falls substantially. Fifteen of twenty seed-level points show positive represented-source and negative transfer change. These facts support an estimation-only description of \emph{in-source specialization on this panel}, not a universal claim that fine-tuning harms transfer or a confirmatory rejection.
 
-The practical takeaway survives the narrower wording: evaluate an adapted guard against its own base on represented sources, dataset-held-out benchmarks, and safety/over-refusal stress sets. The corrected fail-closed pipeline makes the remaining evidentiary boundary explicit: a new manifest, training run, and scoring run are required before this panel-limited result can be promoted from legacy-artifact status to a clean-run result.
+The practical takeaway survives the narrower wording: evaluate an adapted guard against its own base on represented sources, dataset-held-out benchmarks, and safety/over-refusal stress sets. The fail-closed v2 pipeline establishes a reproducible clean execution; it cannot make previously inspected benchmarks prospective. Promoting the panel-limited estimate to confirmatory evidence requires a separately locked study on a new, genuinely uninspected cohort or benchmark.
 
 \appendix
 
 \section{Provenance and Statistical Appendix}
 \label{app:provenance}
 
-The release separates two artifact contracts. The historical \texttt{LOCK.json}, row-keyed score table, score metadata, run metadata, and analysis outputs reproduce the legacy estimates only when the explicit legacy flag is supplied. New locks are self-hashed and bind the configuration, every manifest, audit, text-free public release, prompt rendering, source state, and expected score schema/code version. Score metadata then binds the lock, adapters/manifests, cache-producer runtime, batch size, and score-file digest; analysis rejoins score identities to locked manifests and revalidates adapters, calibration, thresholds, and predictions before reading the matrix. Training, evaluation, and analysis fail closed on missing or mismatched inputs. A separate recursively redacted public-manifest directory exposes identifiers, revisions, hashes, family links, license evidence, selection provenance, and counts without raw or normalized prompt text. The analysis emits deterministic \texttt{results.json}, runtime/source attestation in \texttt{analysis\_metadata.json}, descriptive \texttt{claim\_checks.json}, \texttt{seed\_values.csv}, \texttt{per\_benchmark.csv}, \texttt{sensitivity.json}, generated tables, and the specialization-plane figure. The main-text table and figure copies are verified byte-for-byte during the paper build.
+The release separates two artifact contracts. The current v2 lock is self-hashed and binds the clean source state, configuration, every raw manifest, the 24-assertion audit, the text-free public projection, prompt rendering, fixed protocol, and expected score schema/code version. Score metadata binds that lock to adapters, manifests, cache-producer runtime, batch size, and the score-file digest; analysis rejoins score identities to locked manifests and revalidates adapters, calibration, thresholds, and predictions before reading the matrix. Training, evaluation, and analysis fail closed on missing or mismatched inputs. A recursively redacted public-manifest directory exposes identifiers, revisions, hashes, family links, license evidence, selection provenance, and counts without raw or normalized prompt text. The analysis emits deterministic \texttt{results.json}, runtime/source attestation in \texttt{analysis\_metadata.json}, descriptive \texttt{claim\_checks.json}, \texttt{seed\_values.csv}, \texttt{per\_benchmark.csv}, \texttt{sensitivity.json}, generated tables, and the specialization-plane figure. The main-text table and figure copies are verified byte-for-byte during the paper build. The historical v1 lock, scores, metadata, and outputs remain immutable archival evidence and are accepted only through the explicitly labeled legacy-compatibility path.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
-\small
-\caption{Observed represented-source and transfer macro-AP changes for every legacy SFT seed. This table is generated from the same validated score matrix as \Cref{tab:primary}.}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Observed represented-source and transfer macro-AP changes for every clean-v2 SFT seed. This table is generated from the same validated score matrix as \Cref{tab:primary}.}
 \label{tab:seed-values}
 \input{tab_seed_values_gen}
-\end{table*}
+\end{table}
 \FloatBarrier
 
 \section{Optional External Validation: ExpGuard}
@@ -381,7 +378,9 @@ The release separates two artifact contracts. The historical \texttt{LOCK.json},
 
 The expert-annotated specialized-domain moderation benchmark ExpGuard \cite{expguard2026} provides a differently sourced prompt-moderation set (finance, healthcare, law) and is a natural replication target. Re-running the paired base-versus-SFT comparison on ExpGuard with a prospectively locked protocol would test whether the observed represented/transfer pattern recurs on an external expert-labeled source. We report no ExpGuard result here.
 
-\bibliographystyle{ACM-Reference-Format}
+{\scriptsize
+\bibliographystyle{unsrt}
 \bibliography{refs}
+}
 
 \end{document}

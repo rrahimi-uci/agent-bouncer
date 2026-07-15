@@ -233,7 +233,7 @@ def score_bundle(lock, rows, model_key, condition, seed, adapter_dir_path,
     torch_dtype = C.torch_dtype_from_name(torch, locked_dtype)
     model_kwargs = {
         "revision": m["model_revision"],
-        "torch_dtype": torch_dtype,
+        "dtype": torch_dtype,
         "trust_remote_code": bool(m.get("trust_remote_code", True)),
     }
     if m.get("attn_implementation"):
@@ -431,15 +431,25 @@ def _cache_rows_match(cached_df, rows, expected) -> tuple[bool, list[str]]:
     issues = []
     if cached_df is None:
         return False, ["parquet_missing_or_hash_mismatch"]
-    if list(cached_df.columns) != SCORE_COLUMNS:
+    columns_ok = list(cached_df.columns) == SCORE_COLUMNS
+    if not columns_ok:
         issues.append("columns")
     if len(cached_df) != expected.get("n_rows"):
         issues.append("n_rows")
-    if len(cached_df) == len(rows):
-        if cached_df["sample_id"].astype(str).tolist() != [str(r["sample_id"]) for r in rows]:
-            issues.append("sample_id_order")
-        if cached_df["content_sha256"].astype(str).tolist() != [str(r["content_sha256"]) for r in rows]:
-            issues.append("content_order")
+    if columns_ok and len(cached_df) == len(rows):
+        identity_fields = (
+            ("sample_id", str), ("content_sha256", str), ("source", str),
+            ("split", str), ("gold", int), ("family_id", str),
+        )
+        for field, normalize in identity_fields:
+            try:
+                observed = [normalize(value) for value in cached_df[field].tolist()]
+                wanted = [normalize(row[field]) for row in rows]
+            except (KeyError, TypeError, ValueError):
+                issues.append(f"{field}_identity")
+                continue
+            if observed != wanted:
+                issues.append(f"{field}_identity")
     return not issues, issues
 
 
@@ -596,6 +606,13 @@ def main(argv=None) -> int:
               "requires --nonfinal and an output outside all canonical artifact roots",
               file=sys.stderr)
         return 2
+    if strict_lock and not args.nonfinal:
+        software_issues = C.protocol_software_issues(
+            C.software_versions(), lock.get("software_versions"))
+        if software_issues:
+            print(f"[eval] runtime software differs from LOCK.json: {software_issues}",
+                  file=sys.stderr)
+            return 2
     if strict_lock and not args.nonfinal:
         requested = {
             "manifests": args.manifests_dir,

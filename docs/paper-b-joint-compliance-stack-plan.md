@@ -1,6 +1,10 @@
 # ARCHIVED/HISTORICAL — Paper B: Two Guards, One Risk Budget
 
-> **Superseded implementation design (2026-07-13):** Use [`paper-b-development-checkpoint-plan.md`](paper-b-development-checkpoint-plan.md) `v2-adversarial-review`. The entire body below is archived rationale. Its “joint calibration,” universal mortgage `BLOCK`, old E3 allocation-grid baseline, six-lock chain, and test-access commands must not be implemented or cited as the current protocol.
+> **Superseded direction:** The entire body below is archived mortgage rationale. The later
+> mortgage checkpoint plan is also archived; the current near-term direction is
+> [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md). The “joint
+> calibration,” universal mortgage `BLOCK`, old E3 allocation-grid baseline, six-lock chain,
+> and test-access commands below must not be implemented or cited as the current protocol.
 
 ## Document purpose
 

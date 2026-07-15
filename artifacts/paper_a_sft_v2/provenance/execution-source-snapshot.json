@@ -1,0 +1,13 @@
+{
+  "archive": "paper-a-v2-execution-source-b5f491f.tar.zst",
+  "archive_kind": "git_archive_zstd_tracked_tree",
+  "archive_sha256": "f547179c921f37830d330548289d8c1e2e9e4e270fb5c74a5ba8830010b44fe0",
+  "archive_size_bytes": 2198723,
+  "execution_sources_aggregate_sha256": "ff6c08cd096ee35c6bbcb67ab3b6d26e13a7bcdd3ee021a2d80971e99ee26255",
+  "full_git_history_included": false,
+  "git_commit": "b5f491fc137e01fa6c35998864e32d2096f50a14",
+  "git_commit_signed": false,
+  "git_tree": "e4121de56e8c8e98c7f54507f72491a21a4021ce",
+  "run_id": "paper-a-v2-20260714-141552",
+  "tracked_file_count": 157
+}

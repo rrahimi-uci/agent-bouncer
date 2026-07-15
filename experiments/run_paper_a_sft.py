@@ -256,7 +256,7 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
         torch_dtype = C.torch_dtype_from_name(torch, dtype_name)
         model_kwargs = {
             "revision": models["model_revision"],
-            "torch_dtype": torch_dtype,
+            "dtype": torch_dtype,
             "trust_remote_code": bool(models.get("trust_remote_code", True)),
         }
         if models.get("attn_implementation"):
@@ -327,6 +327,13 @@ def cmd_train(args) -> int:
         print("[train] historical v1 runs are immutable; legacy training requires --nonfinal "
               "and an output outside all canonical artifact roots", file=sys.stderr)
         return 2
+    if strict_lock and not args.nonfinal:
+        software_issues = C.protocol_software_issues(
+            C.software_versions(), lock.get("software_versions"))
+        if software_issues:
+            print(f"[train] runtime software differs from LOCK.json: {software_issues}",
+                  file=sys.stderr)
+            return 2
     if strict_lock and not args.nonfinal and args.manifest:
         expected_train = os.path.join(C.artifact_paths(lock)["manifests"], "train.jsonl")
         if pathlib.Path(C.abspath(args.manifest)).resolve() != pathlib.Path(
@@ -482,7 +489,7 @@ def _smoke_validate_and_score(lock, model_key, out_dir) -> dict:
     dev = _device()
     kwargs = {
         "revision": m["model_revision"],
-        "torch_dtype": C.torch_dtype_from_name(torch, str(m.get("dtype", "bfloat16"))),
+        "dtype": C.torch_dtype_from_name(torch, str(m.get("dtype", "bfloat16"))),
         "trust_remote_code": bool(m.get("trust_remote_code", True)),
     }
     if m.get("attn_implementation"):

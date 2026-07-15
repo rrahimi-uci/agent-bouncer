@@ -1,0 +1,114 @@
+{
+  "baselines": [
+    {
+      "id": "base",
+      "implementation_status": "ready",
+      "role": "single-pass unadapted checkpoint anchor"
+    },
+    {
+      "id": "sft",
+      "implementation_status": "ready",
+      "role": "single-pass specialized adapter reference"
+    },
+    {
+      "id": "base_sft_output",
+      "implementation_status": "retrospective_only",
+      "role": "fixed 50:50 average of separately calibrated unsafe probabilities"
+    },
+    {
+      "id": "sft_sft_output",
+      "implementation_status": "not_implemented",
+      "role": "same-inference-cost independently seeded adapter ensemble"
+    },
+    {
+      "id": "wise_ft",
+      "implementation_status": "not_implemented",
+      "role": "weight-space base and adapter interpolation control"
+    },
+    {
+      "id": "kl_or_replay",
+      "implementation_status": "not_implemented",
+      "role": "matched-compute preservation-tuning control"
+    }
+  ],
+  "claim_scope": {
+    "forbidden_claims": [
+      "pareto_dominance",
+      "universal_remedy",
+      "causal_mechanism",
+      "deployment_readiness",
+      "population_level_model_law"
+    ],
+    "primary_claim": "TO_BE_LOCKED_AFTER_MARGIN_AND_COHORT_SELECTION"
+  },
+  "competence_hypothesis": {
+    "cohorts_disjoint": true,
+    "development_measure_cohort": null,
+    "minimum_checkpoint_panel": null,
+    "outcome": "composition_minus_sft_transfer_macro_ap",
+    "predictor": "base_macro_ap_on_development_competence_cohort",
+    "prospective_outcome_cohort": null
+  },
+  "contract_version": 1,
+  "created_utc": "2026-07-14T00:00:00Z",
+  "estimands": {
+    "noninferiority_margin": null,
+    "noninferiority_margin_rationale": null,
+    "primary": "transfer_macro_ap_composition_minus_sft",
+    "represented_retention": "represented_macro_ap_composition_minus_sft"
+  },
+  "execution": {
+    "completed_utc": null,
+    "lock_id": null,
+    "lock_utc": null,
+    "run_id": null,
+    "started_utc": null
+  },
+  "inputs": {
+    "development_scores_sha256": "b941ddbaea7057ab1f224c510687ec5748916f5eca6a78e1d1f429e0ede5a1c3",
+    "paper_a_lock_sha256": "cabc8dee9b158773ce0be86f799ec3833c33c18787a2aa74d05ed1a261682c25",
+    "prospective_cohort": {
+      "cohort_id": null,
+      "content_sha256": null,
+      "inspected_before_lock": null,
+      "label_policy_sha256": null,
+      "selected_before_lock": false
+    }
+  },
+  "operator": {
+    "base_weight": 0.5,
+    "calibration_split": "locked_development_calibration",
+    "primary": "calibrated_avg",
+    "sft_weight": 0.5,
+    "uses_reported_test_for_selection": false
+  },
+  "software_lock": {
+    "analysis_config_sha256": null,
+    "container_digest": null,
+    "environment_sha256": null,
+    "source_tree_sha256": null
+  },
+  "statistics": {
+    "bootstrap_reps": null,
+    "bootstrap_unit": "family_x_seed_hierarchical_paired",
+    "multiplicity_policy": null,
+    "operating_point_target_fpr": 0.05,
+    "panel_inference": "fixed_panel_conditional",
+    "primary_metric": "benchmark_macro_average_precision",
+    "rng_seed": null,
+    "seed_pair_aggregation": "checkpoint_level_shared_adapter_aware"
+  },
+  "status": "draft_not_executed",
+  "study_id": "paper_b_compose_dont_tune",
+  "systems": {
+    "hardware_spec_sha256": null,
+    "measurement_protocol": null,
+    "metrics": [
+      "latency_ms",
+      "throughput_examples_per_second",
+      "peak_accelerator_memory_bytes",
+      "training_accelerator_hours",
+      "inference_flops_or_proxy"
+    ]
+  }
+}

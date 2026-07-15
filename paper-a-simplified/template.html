@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title$</title>
+<style>
+@page { size: Letter; margin: 14mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:11.5px; line-height:1.55; color:#1b1f24; margin:0; }
+.band { background:#2563eb; color:#fff; padding:12px 16px; border-radius:6px; margin:0 0 14px; }
+.band .eyebrow { font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; opacity:.85; font-weight:600; }
+.band .who { font-size:10.5px; opacity:.9; margin-top:2px; }
+h1 { font-size:21px; line-height:1.15; letter-spacing:-.01em; margin:14px 0 8px; color:#0f172a; }
+h2 { font-size:15.5px; margin:18px 0 6px; color:#1e3a8a; border-bottom:1px solid #e2e8f0; padding-bottom:3px; break-after:avoid; }
+h3 { font-size:12.8px; margin:12px 0 4px; color:#1e40af; break-after:avoid; }
+p { margin:6px 0; }
+a { color:#2563eb; text-decoration:none; }
+em { color:#334155; }
+strong { color:#0f172a; }
+ul,ol { margin:6px 0; padding-left:20px; }
+li { margin:3px 0; break-inside:avoid; }
+blockquote { margin:8px 0; padding:7px 12px; background:#f1f5f9; border-left:3px solid #2563eb; border-radius:0 4px 4px 0; break-inside:avoid; }
+blockquote p { margin:4px 0; }
+code { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:10px; background:#eef2f7; padding:1px 4px; border-radius:3px; }
+pre { background:#0f172a; color:#e2e8f0; padding:10px 12px; border-radius:6px; overflow-x:hidden; break-inside:avoid; }
+pre code { background:none; color:inherit; font-size:8.7px; line-height:1.35; white-space:pre; padding:0; }
+table { border-collapse:collapse; width:100%; margin:8px 0; font-size:10.2px; break-inside:avoid; }
+th,td { border:1px solid #d5dae1; padding:4px 7px; text-align:left; vertical-align:top; }
+th { background:#eaf1ff; color:#0f172a; font-weight:600; }
+tr:nth-child(even) td { background:#fafbfd; }
+img { max-width:100%; height:auto; display:block; margin:8px auto; break-inside:avoid; }
+hr { border:none; border-top:1px solid #e2e8f0; margin:14px 0; }
+.pagebreak { break-before:page; }
+#glossary ~ h1 { font-size:19px; margin-bottom:6px; }
+#glossary ~ h3 { font-size:12px; margin:9px 0 3px; }
+#glossary ~ p, #glossary ~ ul { font-size:10.5px; line-height:1.42; margin-top:4px; margin-bottom:4px; }
+@media screen {
+  body { max-width:900px; margin:28px auto; padding:0 28px 60px; }
+}
+@media print {
+  /* Keep the specialization figure with its section lead instead of leaving a
+     mostly blank page when Chrome honors the SVG's large intrinsic height. */
+  img { max-height:82mm; width:auto; }
+}
+</style>
+</head>
+<body>
+<div class="band"><div class="eyebrow">Plain-language edition · reproduction companion</div><div class="who">Reza Rahimi · JazzX AI — aligned with the formal paper</div></div>
+$body$
+</body>
+</html>

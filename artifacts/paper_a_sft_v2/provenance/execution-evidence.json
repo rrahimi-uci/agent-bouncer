@@ -1,0 +1,58 @@
+{
+  "cloud_execution": {
+    "artifact_archive": {
+      "internal_sha256_entries_verified": 177,
+      "safe_archive_paths_verified": true,
+      "sha256": "83d08e297ce1031777847f4bfec99cf46f44a5110bbee415ece0d2bc2b51c479",
+      "size_bytes": 4430516320
+    },
+    "gcp_project": "jazzx-gcp-poc-1",
+    "pipeline_status": "success",
+    "repeat_analysis_byte_identical": true,
+    "run_id": "paper-a-v2-20260714-141552",
+    "service_restart_count": 0,
+    "source_snapshot_test_count": 99,
+    "source_snapshot_tests_passed": true,
+    "source_snapshot_self_test_passed": true
+  },
+  "execution_contract": {
+    "adapter_count": 20,
+    "bundle_count": 24,
+    "lock_sha256": "cabc8dee9b158773ce0be86f799ec3833c33c18787a2aa74d05ed1a261682c25",
+    "score_row_count": 79392,
+    "scores_sha256": "b941ddbaea7057ab1f224c510687ec5748916f5eca6a78e1d1f429e0ede5a1c3"
+  },
+  "exact_source_verification": {
+    "execution_sources_aggregate_sha256": "ff6c08cd096ee35c6bbcb67ab3b6d26e13a7bcdd3ee021a2d80971e99ee26255",
+    "git_commit": "b5f491fc137e01fa6c35998864e32d2096f50a14",
+    "git_tree": "e4121de56e8c8e98c7f54507f72491a21a4021ce",
+    "source_archive_sha256": "f547179c921f37830d330548289d8c1e2e9e4e270fb5c74a5ba8830010b44fe0",
+    "validate_runs_valid": 20,
+    "validate_runs_total": 20,
+    "verify_lock_passed": true
+  },
+  "live_gcp_cleanup": {
+    "boot_disk": "absent",
+    "bucket": "absent",
+    "ephemeral_service_account": "absent",
+    "reserved_address": "absent",
+    "soft_delete_policy_disabled_before_bucket_deletion": true,
+    "soft_deleted_generations_note": "Twenty-six generations created before soft delete was disabled remain provider-retained until their original retention windows expire; no live bucket or compute resource remains.",
+    "vm": "absent"
+  },
+  "local_release_verification": {
+    "diff_check_passed": true,
+    "public_package_forbidden_paths": 0,
+    "public_package_payload_checksums_verified": 28,
+    "public_package_symlinks": 0,
+    "pytest_passed": 163
+  },
+  "release_contract": {
+    "analyzer_verifier_sources_aggregate_sha256": "086be35bcdd55e179183845a43fb9ef955c470d364651eeb981c7600641c293f",
+    "metadata_sha256": "dd6e05844f45b5035c4a6abb697025880ed273b3eb01a05b437f156d2a05cf67",
+    "public_manifest_tree_aggregate_sha256": "0917d01967726b5d3d31d903856a6360b7c2e43e802d666708a09f7395995e0e",
+    "release_file_sha256": "dba140e74f6de5bd89a018b743b227d70038ffe6f8dd5a796872ca9fc44c02de",
+    "release_sha256": "12eedf1ad2b627e64f799ca5d6368248ff5c98d72d5e244bfede734f21e40c1e"
+  },
+  "verification_date": "2026-07-14"
+}

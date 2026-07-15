@@ -1,0 +1,134 @@
+{
+  "leave_one_base_out": {
+    "represented": {
+      "full": 0.3234372224344456,
+      "loo": {
+        "qwen25_15b": 0.31311998088008275,
+        "qwen3_4b": 0.3985427373971624,
+        "smollm2_17b": 0.2551766289350024,
+        "smollm3_3b": 0.326909542525535
+      },
+      "sign_stable": true
+    },
+    "transfer": {
+      "full": -0.05892924895638285,
+      "loo": {
+        "qwen25_15b": -0.06559092140415916,
+        "qwen3_4b": -0.028606119603096596,
+        "smollm2_17b": -0.0919004922657262,
+        "smollm3_3b": -0.049619462552549454
+      },
+      "sign_stable": true
+    }
+  },
+  "leave_one_benchmark_out": {
+    "represented": {
+      "full": 0.3234372224344456,
+      "loo": {
+        "jailbreak_classification": 0.2792096855620463,
+        "prompt_injections": 0.2999545015148296,
+        "toxicchat": 0.39114748022646106
+      },
+      "sign_stable": true
+    },
+    "transfer": {
+      "full": -0.05892924895638285,
+      "loo": {
+        "jailbreakbench": -0.05271886678482893,
+        "wildguardtest": -0.05625934693584109,
+        "wildjailbreak": -0.052175416160877924,
+        "xstest": -0.07456336594398341
+      },
+      "sign_stable": true
+    }
+  },
+  "per_base_delta": {
+    "represented": {
+      "qwen25_15b": 0.3543889470975343,
+      "qwen3_4b": 0.09812067754629528,
+      "smollm2_17b": 0.5282190029327753,
+      "smollm3_3b": 0.3130202621611776
+    },
+    "transfer": {
+      "qwen25_15b": -0.03894423161305394,
+      "qwen3_4b": -0.14989863701624162,
+      "smollm2_17b": 0.039984480971647196,
+      "smollm3_3b": -0.08685860816788304
+    }
+  },
+  "per_benchmark_delta": {
+    "represented": {
+      "jailbreak_classification": 0.4118922961792445,
+      "prompt_injections": 0.3704026642736775,
+      "toxicchat": 0.1880167068504148
+    },
+    "transfer": {
+      "jailbreakbench": -0.07756039547104462,
+      "wildguardtest": -0.06693895501800803,
+      "wildjailbreak": -0.07919074734289766,
+      "xstest": -0.012026897993580948
+    }
+  },
+  "range_across_bases": {
+    "represented": {
+      "max": 0.5282190029327753,
+      "min": 0.09812067754629528,
+      "range": 0.4300983253864801,
+      "std": 0.17679521613565083
+    },
+    "transfer": {
+      "max": 0.039984480971647196,
+      "min": -0.14989863701624162,
+      "range": 0.18988311798788882,
+      "std": 0.08008080410110488
+    }
+  },
+  "range_across_benchmarks": {
+    "represented": {
+      "max": 0.4118922961792445,
+      "min": 0.1880167068504148,
+      "range": 0.2238755893288297,
+      "std": 0.1190982133354586
+    },
+    "transfer": {
+      "max": -0.012026897993580948,
+      "min": -0.07919074734289766,
+      "range": 0.06716384934931671,
+      "std": 0.031736592204945464
+    }
+  },
+  "sign_table": {
+    "represented": {
+      "qwen25_15b:jailbreak_classification": 1,
+      "qwen25_15b:prompt_injections": 1,
+      "qwen25_15b:toxicchat": 1,
+      "qwen3_4b:jailbreak_classification": 1,
+      "qwen3_4b:prompt_injections": 1,
+      "qwen3_4b:toxicchat": 1,
+      "smollm2_17b:jailbreak_classification": 1,
+      "smollm2_17b:prompt_injections": 1,
+      "smollm2_17b:toxicchat": 1,
+      "smollm3_3b:jailbreak_classification": 1,
+      "smollm3_3b:prompt_injections": 1,
+      "smollm3_3b:toxicchat": 1
+    },
+    "transfer": {
+      "qwen25_15b:jailbreakbench": -1,
+      "qwen25_15b:wildguardtest": -1,
+      "qwen25_15b:wildjailbreak": -1,
+      "qwen25_15b:xstest": 1,
+      "qwen3_4b:jailbreakbench": -1,
+      "qwen3_4b:wildguardtest": -1,
+      "qwen3_4b:wildjailbreak": -1,
+      "qwen3_4b:xstest": -1,
+      "smollm2_17b:jailbreakbench": -1,
+      "smollm2_17b:wildguardtest": -1,
+      "smollm2_17b:wildjailbreak": 1,
+      "smollm2_17b:xstest": 1,
+      "smollm3_3b:jailbreakbench": -1,
+      "smollm3_3b:wildguardtest": -1,
+      "smollm3_3b:wildjailbreak": -1,
+      "smollm3_3b:xstest": -1
+    }
+  }
+}

@@ -50,6 +50,16 @@ import paper_a_common as C  # noqa: E402
 
 ANALYSIS_CODE_VERSION = "paper_a_sft_analysis_v2"
 AP_SPLITS = {"represented": "id_test", "transfer": "transfer_test"}
+CURRENT_ANALYSIS_SOURCE_FILES = (
+    "experiments/analyze_paper_a_sft.py",
+    "experiments/paper_a_common.py",
+    "guard_research/__init__.py",
+    "guard_research/metrics.py",
+    "guard_research/thresholds.py",
+)
+RELEASE_ANALYSIS_SOFTWARE_KEYS = (
+    "python", "numpy", "pandas", "pyarrow", "sklearn", "scipy", "matplotlib",
+)
 
 # This is deliberately duplicated from the scorer rather than imported from it: analysis is a
 # final, independent integrity boundary and must reject a score table whose schema merely happens
@@ -105,6 +115,29 @@ def load_locked_scoring_manifest_rows(lock):
         path = manifest_dir / filename
         for row in C.read_jsonl(path):
             normalized = dict(row)
+            normalized["split"] = expected_split
+            normalized["gold"] = C.row_gold(row)
+            rows.append(normalized)
+    return rows
+
+
+def load_public_scoring_manifest_rows(lock):
+    """Load score identities from the lock-verified text-free public release."""
+    public_dir = C.resolved_path(C.artifact_paths(lock)["public_manifests"])
+    rows = []
+    required = {"sample_id", "content_sha256", "source", "split", "gold", "family_id"}
+    for expected_split, filename in SCORING_SPLIT_FILES.items():
+        path = public_dir / filename
+        manifest_split = pathlib.Path(filename).stem
+        for row in C.read_jsonl(path):
+            _require(required.issubset(row),
+                     f"public manifest row lacks score identity fields: {path}")
+            _require(row.get("split") == manifest_split,
+                     f"public manifest row has wrong split in {path}")
+            normalized = dict(row)
+            # Stress manifests retain their file-role names in the public projection,
+            # while score rows use the canonical evaluation split names. Raw-manifest
+            # analysis performs the same normalization before its identity join.
             normalized["split"] = expected_split
             normalized["gold"] = C.row_gold(row)
             rows.append(normalized)
@@ -181,8 +214,55 @@ def validate_analysis_paths(lock, out_dir, scores_path, *, nonfinal=False):
             "scores_path": str(C.resolved_path(scores_path))}
 
 
+def _python_major_minor(version):
+    """Return a strict ``(major, minor)`` pair for a dotted Python version."""
+    parts = str(version).split(".")
+    if len(parts) < 2 or not all(part.isdigit() for part in parts[:2]):
+        return None
+    return tuple(int(part) for part in parts[:2])
+
+
+def validate_analysis_runtime(lock, *, nonfinal=False, release_cache=False):
+    """Require the locked scientific runtime for canonical v2 analysis.
+
+    A score-only release may be reproduced on a later patch of the same Python
+    major/minor line.  Its numerical libraries remain exact-version locked and
+    the complete current analysis runtime is attested in ``analysis_metadata``.
+    Full raw-artifact analysis retains the stricter patch-exact contract.
+    """
+    strict = int(lock.get("lock_contract_version", 1)) >= C.LOCK_CONTRACT_VERSION
+    if strict and not nonfinal:
+        actual = C.software_versions()
+        expected = lock.get("software_versions") or {}
+        if release_cache:
+            issues = []
+            for key in RELEASE_ANALYSIS_SOFTWARE_KEYS:
+                if expected.get(key) is None:
+                    issues.append(f"locked_{key}_missing")
+                elif actual.get(key) != expected.get(key):
+                    issues.append(f"{key}_mismatch")
+        else:
+            issues = C.protocol_software_issues(actual, expected)
+        if release_cache and "python_mismatch" in issues:
+            if (_python_major_minor(actual.get("python"))
+                    == _python_major_minor(expected.get("python"))
+                    and _python_major_minor(actual.get("python")) is not None):
+                issues.remove("python_mismatch")
+        _require(not issues, f"analysis runtime software differs from LOCK.json: {issues}")
+
+
+def validate_release_cache_request(lock, *, release_cache=False, nonfinal=False):
+    """Keep the reduced-artifact path explicit, strict-v2-only, and canonical."""
+    if not release_cache:
+        return
+    strict = int(lock.get("lock_contract_version", 1)) >= C.LOCK_CONTRACT_VERSION
+    _require(strict and lock.get("finalization_status") == "final",
+             "--release-cache requires a strict final v2 lock")
+    _require(not nonfinal, "--release-cache cannot be combined with --nonfinal")
+
+
 def validate_score_artifacts(df, lock, metadata, *, allow_synthetic=False,
-                             manifest_rows=None):
+                             manifest_rows=None, release_cache=False):
     """Fail closed unless *df* is the exact matrix bound by LOCK and metadata.json.
 
     Validation intentionally happens before benchmark discovery.  Otherwise a missing model,
@@ -192,6 +272,8 @@ def validate_score_artifacts(df, lock, metadata, *, allow_synthetic=False,
     import pandas as pd
 
     strict = int(lock.get("lock_contract_version", 1)) >= C.LOCK_CONTRACT_VERSION
+    _require(not release_cache or strict,
+             "release-cache score validation requires a strict v2 lock")
     _require(isinstance(metadata, dict), "sibling scores/metadata.json is required")
     _require(allow_synthetic or not metadata.get("synthetic", False),
              "synthetic score metadata is not admissible for final analysis")
@@ -467,21 +549,23 @@ def validate_score_artifacts(df, lock, metadata, *, allow_synthetic=False,
                      f"run metadata binding for {key} is missing")
             _require(C.path_is_within(run_meta_path, C.artifact_paths(lock)["runs"]),
                      f"run metadata for {key} resolves outside the locked runs root")
-            resolved_run_meta = C.resolved_path(run_meta_path)
-            _require(resolved_run_meta.is_file()
-                     and C.sha256_file(resolved_run_meta) == run_meta_sha,
-                     f"run metadata hash for {key} does not verify")
-            run_meta = C.read_json(resolved_run_meta)
-            _require(run_meta.get("model_key") == mk and int(run_meta.get("seed", -1)) == seed
-                     and run_meta.get("adapter_sha256") == adapter_hash
-                     and run_meta.get("lock_sha256") == lock.get("lock_sha256"),
-                     f"run metadata identity for {key} differs from score metadata")
-            adapter_dir = resolved_run_meta.parent / "adapter"
-            _require(C.adapter_is_present(str(adapter_dir))
-                     and C.sha256_dir(adapter_dir) == adapter_hash,
-                     f"adapter bytes for {key} differ from the score/run binding")
-            _require(not C.adapter_config_issues(adapter_dir, lock.get("recipe") or {}),
-                     f"serialized adapter config for {key} differs from LOCK.json")
+            if not release_cache:
+                resolved_run_meta = C.resolved_path(run_meta_path)
+                _require(resolved_run_meta.is_file()
+                         and C.sha256_file(resolved_run_meta) == run_meta_sha,
+                         f"run metadata hash for {key} does not verify")
+                run_meta = C.read_json(resolved_run_meta)
+                _require(run_meta.get("model_key") == mk
+                         and int(run_meta.get("seed", -1)) == seed
+                         and run_meta.get("adapter_sha256") == adapter_hash
+                         and run_meta.get("lock_sha256") == lock.get("lock_sha256"),
+                         f"run metadata identity for {key} differs from score metadata")
+                adapter_dir = resolved_run_meta.parent / "adapter"
+                _require(C.adapter_is_present(str(adapter_dir))
+                         and C.sha256_dir(adapter_dir) == adapter_hash,
+                         f"adapter bytes for {key} differ from the score/run binding")
+                _require(not C.adapter_config_issues(adapter_dir, lock.get("recipe") or {}),
+                         f"serialized adapter config for {key} differs from LOCK.json")
             observed_adapter_hashes.append(adapter_hash)
         if strict:
             _require(bundle_record.get("batch_size") == metadata.get("batch_size")
@@ -1080,6 +1164,30 @@ def write_results_macros(path, point, boot, opr, stress):
         "TransferCIUpper": signed(tr_boot["ci95_two_sided"][1]),
         "TransferUCB": signed(tr_boot["ucb95_one_sided"]),
     }
+    quadrant_counts = {
+        "SpecializationSeedCount": 0,
+        "UniformGainSeedCount": 0,
+        "UniformLossSeedCount": 0,
+        "TransferFavoredSeedCount": 0,
+        "ZeroAxisSeedCount": 0,
+    }
+    represented = point["per_checkpoint"]["represented"]
+    transfer = point["per_checkpoint"]["transfer"]
+    for model_key, represented_cell in represented.items():
+        for seed, rep_delta in represented_cell["seed_deltas"].items():
+            transfer_delta = transfer[model_key]["seed_deltas"][seed]
+            if rep_delta > 0 and transfer_delta < 0:
+                quadrant_counts["SpecializationSeedCount"] += 1
+            elif rep_delta > 0 and transfer_delta > 0:
+                quadrant_counts["UniformGainSeedCount"] += 1
+            elif rep_delta < 0 and transfer_delta < 0:
+                quadrant_counts["UniformLossSeedCount"] += 1
+            elif rep_delta < 0 and transfer_delta > 0:
+                quadrant_counts["TransferFavoredSeedCount"] += 1
+            else:
+                quadrant_counts["ZeroAxisSeedCount"] += 1
+    values["TotalSeedCount"] = str(sum(quadrant_counts.values()))
+    values.update({name: str(count) for name, count in quadrant_counts.items()})
     regime_prefix = {"represented": "Rep", "transfer": "Transfer"}
     for regime, prefix in regime_prefix.items():
         row = opr[regime]
@@ -1184,10 +1292,31 @@ def resolve_resampling_settings(lock, requested_reps=None, requested_seed=None):
 # --------------------------------------------------------------------------------------
 def run_analysis(df, lock, out_dir, ap_fn, auroc_fn, reps=None, rng_seed=None,
                  *, metadata=None, allow_synthetic=False, score_verification=None,
-                 manifest_rows=None):
+                 manifest_rows=None, release_cache=False, release_verification=None):
+    if release_cache:
+        release_sources = (release_verification or {}).get("execution_sources") or {}
+        release_contract = (release_verification or {}).get("release_contract") or {}
+        _require((release_verification or {}).get("release_cache_only") is True
+                 and ((release_verification or {}).get("public_release") or {}).get("sha256"),
+                 "release-cache analysis lacks verified public-release evidence")
+        _require(release_contract.get("release_sha256")
+                 and release_contract.get("release_file_sha256")
+                 and release_contract.get("anchor_path"),
+                 "release-cache analysis lacks the tracked RELEASE.json trust root")
+        _require(release_sources.get("aggregate_sha256")
+                 == (lock.get("execution_sources") or {}).get("aggregate_sha256")
+                 and release_sources.get(
+                     "original_paper_a_execution_source_verification")
+                 == "separate_immutable_source_bundle",
+                 "release-cache analysis lacks the locked execution-source binding")
+        _require((score_verification or {}).get("bound") is True
+                 and not (score_verification or {}).get("legacy", True)
+                 and (score_verification or {}).get("scores_sha256")
+                 and (score_verification or {}).get("metadata_sha256"),
+                 "release-cache analysis lacks bound score/metadata hashes")
     validation = validate_score_artifacts(
         df, lock, metadata, allow_synthetic=allow_synthetic,
-        manifest_rows=manifest_rows)
+        manifest_rows=manifest_rows, release_cache=release_cache)
     regimes = lock.get("regime_benchmarks", C.REGIME_BENCHMARKS)
     model_keys = list(C.MODEL_KEYS)
     seeds = C.lock_seeds(lock)
@@ -1242,7 +1371,9 @@ def run_analysis(df, lock, out_dir, ap_fn, auroc_fn, reps=None, rng_seed=None,
     )
     analysis_runtime = C.runtime_environment("cpu")
     analysis_sources = C.execution_source_hashes()
-    C.write_json(os.path.join(out_dir, "analysis_metadata.json"), {
+    current_analysis_sources = C.execution_source_hashes(
+        required_files=CURRENT_ANALYSIS_SOURCE_FILES)
+    analysis_metadata = {
         "analysis_artifact_contract_version": 2,
         "analysis_code_version": ANALYSIS_CODE_VERSION,
         "lock_sha256": lock.get("lock_sha256"),
@@ -1255,7 +1386,33 @@ def run_analysis(df, lock, out_dir, ap_fn, auroc_fn, reps=None, rng_seed=None,
         "analysis_runtime_environment": analysis_runtime,
         "analysis_runtime_sha256": C.canonical_obj_sha256(analysis_runtime),
         "outputs": {rel: C.sha256_file(os.path.join(out_dir, rel)) for rel in output_files},
-    })
+    }
+    if release_cache:
+        public_release = (release_verification or {}).get("public_release") or {}
+        release_sources = (release_verification or {}).get("execution_sources") or {}
+        release_contract = (release_verification or {}).get("release_contract") or {}
+        score_hashes_verified = bool(
+            (score_verification or {}).get("bound")
+            and not (score_verification or {}).get("legacy", True)
+            and (score_verification or {}).get("scores_sha256")
+            and (score_verification or {}).get("metadata_sha256"))
+        analysis_metadata["release_cache_verification"] = {
+            "mode": "strict_v2_score_only_release_cache",
+            "release_contract": release_contract,
+            "public_manifest_sha256": public_release.get("sha256"),
+            "public_splits": public_release.get("splits"),
+            "score_and_metadata_hashes_reverified": score_hashes_verified,
+            "current_analysis_source_hashes": current_analysis_sources,
+            "original_paper_a_execution_source": {
+                "aggregate_sha256": release_sources.get("aggregate_sha256"),
+                "verification": release_sources.get(
+                    "original_paper_a_execution_source_verification"),
+                "current_checkout_files_reverified": False,
+            },
+            "raw_manifest_files_locally_reverified": False,
+            "run_metadata_and_adapter_bytes_locally_reverified": False,
+        }
+    C.write_json(os.path.join(out_dir, "analysis_metadata.json"), analysis_metadata)
     return results, checks, sens, point, boot
 
 
@@ -1272,6 +1429,10 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--nonfinal", action="store_true",
         help="write a diagnostic analysis outside every canonical artifact namespace")
+    ap.add_argument(
+        "--release-cache", action="store_true",
+        help=("strict v2 score-only release mode: verify the bound text-free public "
+              "manifests and combined scores without local raw prompts/adapters"))
     ap.add_argument("--self-test", action="store_true",
                     help="synthetic end-to-end check of bootstrap + gates + emitters")
     args = ap.parse_args(argv)
@@ -1285,21 +1446,31 @@ def main(argv=None) -> int:
     import inspect
     lock_preview = C.read_json(args.lock)
     legacy_lock = int(lock_preview.get("lock_contract_version", 1)) < 2
+    try:
+        validate_release_cache_request(
+            lock_preview, release_cache=args.release_cache, nonfinal=args.nonfinal)
+    except ScoreValidationError as exc:
+        ap.error(str(exc))
     load_lock_params = inspect.signature(C.load_lock).parameters
     load_lock_kwargs = {}
     if "allow_legacy" in load_lock_params:
         load_lock_kwargs["allow_legacy"] = args.allow_legacy_lock
     if "verify_files" in load_lock_params:
-        # Legacy cached analysis remains usable without ignored raw manifests. Strict locks bind
-        # public manifests/source files and must verify every on-disk prerequisite.
-        load_lock_kwargs["verify_files"] = not legacy_lock
+        # Default strict analysis verifies every on-disk prerequisite. Release-cache analysis
+        # verifies config/public evidence here and leaves original source-byte verification to
+        # the separately distributed immutable source bundle.
+        load_lock_kwargs["verify_files"] = not legacy_lock and not args.release_cache
     # Transitional compatibility while paper_a_common's verified-lock API lands.
     lock = C.load_lock(args.lock, **load_lock_kwargs)
     strict_lock = int(lock.get("lock_contract_version", 1)) >= C.LOCK_CONTRACT_VERSION
+    release_verification = (
+        C.verify_release_cache_lock(lock) if args.release_cache else None)
     apaths = C.artifact_paths(lock)
     out_dir = str(C.resolved_path(args.out))
     scores_path = str(C.resolved_path(args.scores))
     validate_analysis_paths(lock, out_dir, scores_path, nonfinal=args.nonfinal)
+    validate_analysis_runtime(
+        lock, nonfinal=args.nonfinal, release_cache=args.release_cache)
     metadata_path = os.path.join(os.path.dirname(scores_path), "metadata.json")
     if not os.path.exists(metadata_path):
         raise FileNotFoundError(
@@ -1315,11 +1486,14 @@ def main(argv=None) -> int:
         metadata = C.read_json(metadata_path)
     df = pd.read_parquet(scores_path)
     ap_fn, auroc_fn = C.require_metrics()
-    manifest_rows = load_locked_scoring_manifest_rows(lock) if strict_lock else None
+    manifest_rows = (
+        load_public_scoring_manifest_rows(lock) if args.release_cache
+        else load_locked_scoring_manifest_rows(lock) if strict_lock else None)
     results, checks, _, _, boot = run_analysis(
         df, lock, out_dir, ap_fn, auroc_fn,
         reps=args.bootstrap_reps, rng_seed=args.bootstrap_seed, metadata=metadata,
-        score_verification=score_verification, manifest_rows=manifest_rows)
+        score_verification=score_verification, manifest_rows=manifest_rows,
+        release_cache=args.release_cache, release_verification=release_verification)
     print(f"[analyze] wrote results/seed_values/per_benchmark/sensitivity/claim_checks "
           f"+ tables/macros + figure to {out_dir}")
     point_results = results["point_estimates"]["aggregate"]

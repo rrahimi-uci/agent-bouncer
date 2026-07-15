@@ -14,7 +14,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{parskip}
 \usepackage{tocloft}
-\setlength{\cftbeforesecskip}{1pt}
+\setlength{\cftbeforesecskip}{0pt}
 \usepackage[nameinlink]{cleveref}
 
 \graphicspath{{figures/}}
@@ -37,7 +37,7 @@
 
 \title{\textbf{The Benchmark Chooses the Winner}\\[2pt]
 \large An Annotated, Plain-Language Edition\\[2pt]
-\normalsize\itshape Measuring what fine-tuning does to small safety guards --- and a cheap fix}
+\normalsize\itshape Measuring what fine-tuning does to small safety guards}
 \author{Reza Rahimi \\ \small JazzX AI, Los Altos, CA \\ \small\texttt{reza.rahimi@jazzx.ai}}
 \date{}
 
@@ -51,28 +51,34 @@ Teams often take a small chat model, do a quick fine-tune to turn it into a
 on a public benchmark. This edition re-tells a study that asks a sharper question:
 \emph{what did the fine-tune change compared to the exact same model before fine-tuning,
 and does that change hold up on datasets the model never trained on?} On four small
-instruction models (1.5--4B parameters), each fine-tuned five times with LoRA, we find a
-clear split. On test data from the \textbf{same datasets used in training} (``represented''
-sources), fine-tuning is a large, reliable win: the main score rises by about
-\textbf{$+0.33$} (to $\approx0.98$ for every model). On \textbf{four brand-new datasets}
-(``transfer''), the same fine-tuning is a small average loss (about \textbf{$-0.05$}), and
-at a deployed threshold it catches about \emph{one in five fewer} attacks on a hard
-held-out harm set (HarmBench recall $78.4\%\!\to\!57.5\%$). Crucially, the average hides a
-pattern: fine-tuning \emph{helps weak base models and hurts strong ones} on new data. The
+instruction models (1.5--4B parameters), each fine-tuned five times with LoRA, we observe a
+split. On test data from the \textbf{same datasets used in training} (``represented''
+sources), the observed fine-tuning gain is large: the main score rises by about
+\textbf{$+0.32$} (to $\approx0.98$ for every model). On \textbf{four dataset-held-out
+transfer benchmarks} not used in training, the observed average change is a small loss
+(about \textbf{$-0.06$}), and at a calibration-selected diagnostic threshold it catches
+18 percentage points fewer harmful examples on a hard
+held-out harm set (HarmBench recall $78.0\%\!\to\!60.0\%$). Crucially, the average hides a
+checkpoint split: SmolLM2 improves, Qwen2.5's interval crosses zero, and SmolLM3/Qwen3 decline.
+With four same-row checkpoint contrasts, this does not establish base strength as a predictor. The
 lesson --- and the title --- is that \textbf{whichever benchmark you choose to report decides
-whether fine-tuning ``looks like'' a win}. We then show an early, cheap \emph{remedy}: instead
-of tuning harder, keep the untuned base in the decision --- averaging the base and the tuned
-guard's scores (a two-model ``ensemble'') keeps almost all the in-domain gain \emph{and}
-recovers much of the lost generalization, most where fine-tuning hurt most. Every concept
+whether fine-tuning ``looks like'' a win}. A clearly separated section then previews a
+\emph{preliminary clean-v2 retrospective Paper B analysis}: averaging the base and tuned guard's temperature-scaled
+scores (a two-model ``ensemble'') recovers some transfer ranking in this fixed panel. This is
+an exploratory follow-up, not a Paper A finding or an established remedy. Every concept
 needed to read this (guard scoring, LoRA, average precision, the bootstrap, calibration,
-ensembling) is taught inline. The numbers are a retrospective ``legacy'' run and are reported
-as estimates with uncertainty ranges, not as proven claims; a clean re-run would be needed to
-confirm them. This is a plain-language companion to the formal paper, which remains the source
+ensembling) is taught inline. The Paper A numbers are retrospective fixed-panel estimates with
+conditional resampling intervals, not prospective population claims. Re-running locked code
+cannot make already-inspected transfer sets prospective; that would require a new sealed
+cohort. This is a plain-language companion to the formal paper, which remains the source
 of truth wherever this edition simplifies.
 \end{abstract}
 
 \setcounter{tocdepth}{1}
+\begingroup
+\small
 \tableofcontents
+\endgroup
 
 \clearpage
 % ============================================================
@@ -103,10 +109,11 @@ number (a \textbf{logit}). The score is the gap between them,
 s(x) = z_{\text{unsafe}} - z_{\text{safe}},
 \]
 positive meaning ``leans unsafe.'' A \textbf{softmax} over just those two turns the pair into
-a probability that adds up to 1. \emph{Mini-example:} if $z_{\text{unsafe}}=2.0$ and
+bounded shares that add up to 1; the unsafe share is a score, not automatically a calibrated
+probability. \emph{Mini-example:} if $z_{\text{unsafe}}=2.0$ and
 $z_{\text{safe}}=1.0$, then $s=1.0$ and
-$P(\text{unsafe}) = e^{2.0}/(e^{2.0}+e^{1.0}) \approx 0.73$. Ranking prompts by this score is
-all the guard has to do.
+$e^{2.0}/(e^{2.0}+e^{1.0}) \approx 0.73$. This is an unsafe score of 0.73, not necessarily a
+literal 73\% chance. Ranking prompts by this score is all AP needs.
 \end{background}
 
 \paragraph{The question.} For a fixed panel of four checkpoints and one frozen LoRA recipe,
@@ -125,7 +132,7 @@ table, and generated tables/figures.
 small models (1.5--4B); one LoRA recipe; three represented datasets; four transfer datasets;
 two single-class stress sets; four fixed checkpoints. It is \emph{not} a leaderboard, a
 fine-tuning-objective comparison, an ensembling or fairness study, or a domain-compliance
-case study.
+case study. The later composition section is explicitly a separate preliminary Paper B preview.
 
 % ============================================================
 \section{Background you'll need}
@@ -171,7 +178,7 @@ the four models, and for fine-tuned guards across the five seeds too.
 
 \subsection{Represented sources vs.\ held-out transfer}
 \label{subsec:regimes}
-\begin{background}{the seen-vs-unseen distinction (the crux)}
+\begin{background}{the represented-vs-transfer distinction (the crux)}
 \small
 \textbf{Represented} sources are fresh, held-out rows from the \emph{same} datasets used in
 training (same style and labeling habits, different examples). Like taking this year's exam
@@ -183,39 +190,43 @@ paper is about. \emph{(Honest caveat: the transfer sets were looked at during de
 they are ``dataset-held-out,'' not a sealed surprise.)}
 \end{background}
 
-\subsection{The bootstrap and confidence intervals; ``descriptive, not proven''}
+\subsection{Conditional fixed-panel bootstrap intervals}
 \label{subsec:boot}
 \begin{background}{bootstrap confidence intervals}
 \small
-Each headline number is one estimate from the few models and seeds we ran; a different draw
-could land higher or lower. To see how much it would \emph{wobble}, we \textbf{resample our own
+Each headline number is one estimate from the fixed models, datasets, and seeds we ran. To
+describe how it changes under a specified resampling scheme, we \textbf{resample our own
 results} (with replacement) 10{,}000 times and recompute the average each time (a
 \textbf{paired hierarchical bootstrap}: \emph{paired} = base vs.\ fine-tuned, to measure the
 \emph{change}; \emph{hierarchical} = resample at two levels, which seeds count and --- because
 the eval sets contain many near-duplicate prompts --- how much each group of duplicates
 counts; the four models are held fixed). The middle 95\% of those recomputed averages is the
-\textbf{two-sided 95\% confidence interval (CI)} --- a plausible range for the true change. A
-one-sided \textbf{LCB} says ``at least this much''; a \textbf{UCB} says ``no more than this.''
-\textbf{Why no ``statistically significant''?} These scores are a \emph{legacy} artifact
-computed before the analysis was locked; declaring significance on already-peeked data is
-misleading. So the study stays \textbf{descriptive}: it reports ranges, makes no pass/fail
-verdict, and treats directions as \emph{suggestive} pending a clean, pre-registered re-run.
+\textbf{two-sided 95\% percentile-bootstrap interval}; one-sided LCB/UCB values are the
+corresponding lower/upper bootstrap quantiles. These are conditional fixed-panel summaries:
+the four checkpoints, benchmark collection, labels, and analysis choices remain fixed. They
+are not 95\% probability statements about a population effect or guarantees for future models
+and data. The study is therefore \textbf{descriptive}: it reports resampling precision but no
+significance test or pass/fail verdict. A locked rerun can strengthen execution provenance;
+prospective evidence requires a new sealed cohort and a prospectively locked analysis.
 \end{background}
 
 \subsection{Calibration and the operating point}
 \label{subsec:calib}
 \begin{background}{calibration, thresholds, TPR and FPR}
 \small
-AP is threshold-free, but to \emph{deploy} a guard you must draw a line. First,
-\textbf{calibration (temperature scaling)}: divide the score by one tuned number so the stated
-probabilities match reality (this does not reorder prompts). Second, a \textbf{threshold}:
-here a \emph{conservative cap} chosen so at most ${\sim}5\%$ of genuinely safe prompts are
-flagged (the target false-positive rate); because it is conservative, the realized rate can
-land well below 5\%. Then you \emph{measure} on test data: \textbf{TPR} (recall) $=$ share of
+AP is threshold-free, but a yes/no diagnostic needs a cutoff. First,
+\textbf{calibration (temperature scaling)} divides the logit score by one number fitted on the
+held-back calibration set. This does not reorder prompts and may improve frequency alignment
+on that distribution; it does not guarantee calibrated probabilities on transfer data. Second,
+the \textbf{threshold} maximizes calibration recall among cutoffs whose one-sided 95\%
+row-level Clopper--Pearson upper bound on pooled calibration-negative FPR is at most 5\%. This is a
+calibration-sample diagnostic constraint, not a production or distribution-shift guarantee.
+Then the frozen cutoff is \emph{measured} on test data: \textbf{TPR} (recall) $=$ share of
 unsafe prompts caught (higher better); \textbf{FPR} $=$ share of safe prompts wrongly flagged
-(lower better). \emph{Mini-example (100 prompts, 80 safe / 20 unsafe):} a cutoff that flags
-$\sim$5\% of safe prompts $=$ 4 of 80 (FPR $=5\%$); at that cutoff it catches 15 of 20 unsafe
-(TPR $=75\%$).
+(lower better). \emph{Illustrative mini-example (not the study's threshold calculation):}
+4 false alarms among 80 safe prompts gives an empirical FPR of 5\%; catching 15 of 20 unsafe
+prompts gives recall of 75\%. The study additionally requires the one-sided FPR upper bound,
+not just the empirical rate, to meet the calibration criterion.
 \end{background}
 
 % ============================================================
@@ -227,9 +238,10 @@ $\sim$5\% of safe prompts $=$ 4 of 80 (FPR $=5\%$); at that cutoff it catches 15
 Four instruction models are each adapted with five training seeds (42--46), giving 20
 fine-tuned guards; the four untuned bases are scored once and reused ($4+20=24$ ``bundles''
 in total, and $79{,}392$ scored rows). Every cell uses the identical recipe in
-Table~\ref{tab:panel}. Five seeds are used because a single fine-tune is slightly random;
-running five shows how much the result wobbles from initialization and ordering alone (the
-training rows and their order are fixed).
+Table~\ref{tab:panel}. The training seed controls adapter initialization and dropout, while a
+separate fixed data-order seed keeps row order identical across runs. Five seeds describe
+run-to-run optimization variation under this one recipe; they do not measure variation across
+new checkpoints, datasets, or recipes.
 
 \begin{table}[t]
 \centering\small
@@ -261,11 +273,10 @@ ToxicChat \code{toxicity=1}$\to$unsafe; Prompt-Injections \code{label=1}$\to$uns
 Jailbreak-Classification \code{type} starting ``jailbreak''$\to$unsafe). These are
 \emph{different} native policies, not one universal definition of ``unsafe.''
 
-To keep the transfer test honest, the builder removes exact and near-duplicate overlaps
-between training rows and any evaluation row (grouping paraphrases into ``families'' via
-MinHash and refusing to let a family straddle the train/eval boundary). This is why a
-``transfer'' gain or loss cannot be explained away as the model having memorized a training
-row that reappears in the test set.
+To reduce train/evaluation contamination, the builder removes exact matches and MinHash
+near-duplicate families at the prespecified threshold, refusing to let a detected family
+straddle the train/evaluation boundary. This is an auditable heuristic screen, not proof that
+no semantic overlap remains.
 
 \begin{table}[t]
 \centering\small
@@ -315,23 +326,23 @@ hierarchical bootstrap of Section~\ref{subsec:boot}; the analysis mode is
 \section{Results}
 % ============================================================
 
-\subsection{Represented sources: a big, reliable win}
+\subsection{Represented sources: a large observed gain}
 On the datasets the models trained on, every fine-tuned guard reaches ${\approx}0.98$
 macro-AP regardless of where its base started (Table~\ref{tab:primary}, left). The panel
-aggregate change is $\bar\Delta_{\text{represented}} = \mathbf{+0.3327}$ (95\% CI
-$[+0.2718, +0.3793]$). Notice that the \emph{weakest} base gains the most (SmolLM2:
-$0.447\!\to\!0.981$, $+0.534$) and the \emph{strongest} gains the least (Qwen3-4B:
-$0.878\!\to\!0.983$, $+0.104$) --- largely a ceiling effect: everyone ends near 0.98, so
-whoever started lowest had the most room to climb. Per-dataset gains: ToxicChat $+0.19$,
-Prompt-Injections $+0.38$, Jailbreak-Classification $+0.44$ (Table~\ref{tab:perbench}).
+aggregate change is $\bar\Delta_{\text{represented}} = \mathbf{+0.3234}$ (95\% CI
+$[+0.2647, +0.3690]$). Notice that the \emph{weakest} base gains the most (SmolLM2:
+$0.4524\!\to\!0.9806$, $+0.5282$) and the \emph{strongest} gains the least (Qwen3-4B:
+$0.8855\!\to\!0.9837$, $+0.0981$) --- largely a ceiling effect: everyone ends near 0.98, so
+whoever started lowest had the most room to climb. Per-dataset gains: ToxicChat $+0.1880$,
+Prompt-Injections $+0.3704$, Jailbreak-Classification $+0.4119$ (Table~\ref{tab:perbench}).
 
 \subsection{Transfer: a small average loss that hides a split}
 On the four never-trained-on datasets, the same fine-tuning is a small average loss:
-$\bar\Delta_{\text{transfer}} = \mathbf{-0.0503}$ (95\% CI $[-0.0760, -0.0250]$). But the
-per-checkpoint column of Table~\ref{tab:primary} shows the average is misleading: one model
-\emph{improves}, one is uncertain, and two clearly drop. The losses concentrate on the
-jailbreak-style sets (WildJailbreak $-0.079$, JailbreakBench $-0.073$), while the
-over-refusal set barely moves (XSTest $-0.010$); see Table~\ref{tab:perbench}.
+$\bar\Delta_{\text{transfer}} = \mathbf{-0.0589}$ (95\% CI $[-0.0837, -0.0321]$). But the
+per-checkpoint column of Table~\ref{tab:primary} shows heterogeneous descriptive estimates:
+one is positive, one interval crosses zero, and two are negative. The losses concentrate on the
+jailbreak-style sets (WildJailbreak $-0.0792$, JailbreakBench $-0.0776$), while the
+over-refusal set barely moves (XSTest $-0.0120$); see Table~\ref{tab:perbench}.
 
 \begin{table}[t]
 \centering\small
@@ -339,19 +350,19 @@ over-refusal set barely moves (XSTest $-0.010$); see Table~\ref{tab:perbench}.
 change $\Delta$ and its two-sided 95\% bootstrap interval. Positive $\Delta$ $=$ fine-tuning
 helped. The last row is the panel aggregate.}
 \label{tab:primary}
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{l rr r@{\ }l rr r@{\ }l}
 \toprule
 & \multicolumn{3}{c}{Represented} && \multicolumn{3}{c}{Transfer} &\\
 \cmidrule(lr){2-4}\cmidrule(lr){6-8}
 Checkpoint & base & SFT & $\Delta$ & [95\% CI] & base & SFT & $\Delta$ & [95\% CI]\\
 \midrule
-Qwen2.5-1.5B & 0.622 & 0.988 & $+0.366$ & [0.283, 0.426] & 0.822 & 0.791 & $-0.030$ & [$-0.078$, $+0.018$]\\
-SmolLM2-1.7B & 0.447 & 0.981 & $+0.534$ & [0.461, 0.580] & 0.787 & 0.838 & $+0.051$ & [0.018, 0.082]\\
-SmolLM3-3B  & 0.655 & 0.982 & $+0.327$ & [0.253, 0.385] & 0.914 & 0.794 & $-0.120$ & [$-0.156$, $-0.083$]\\
-Qwen3-4B   & 0.878 & 0.983 & $+0.104$ & [0.060, 0.154] & 0.945 & 0.843 & $-0.102$ & [$-0.129$, $-0.075$]\\
+Qwen2.5-1.5B & 0.6334 & 0.9878 & $+0.3544$ & [0.2731, 0.4150] & 0.8187 & 0.7798 & $-0.0389$ & [$-0.0829$, $+0.0062$]\\
+SmolLM2-1.7B & 0.4524 & 0.9806 & $+0.5282$ & [0.4555, 0.5748] & 0.7904 & 0.8304 & $+0.0400$ & [0.0003, 0.0776]\\
+SmolLM3-3B  & 0.6621 & 0.9751 & $+0.3130$ & [0.2419, 0.3701] & 0.9102 & 0.8234 & $-0.0869$ & [$-0.1114$, $-0.0613$]\\
+Qwen3-4B   & 0.8855 & 0.9837 & $+0.0981$ & [0.0545, 0.1479] & 0.9438 & 0.7939 & $-0.1499$ & [$-0.1963$, $-0.1050$]\\
 \midrule
-\textbf{Panel aggregate} & -- & -- & $+0.333$ & [0.272, 0.379] & -- & -- & $-0.050$ & [$-0.076$, $-0.025$]\\
+\textbf{Panel aggregate} & -- & -- & $+0.3234$ & [0.2647, 0.3690] & -- & -- & $-0.0589$ & [$-0.0837$, $-0.0321$]\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -365,128 +376,131 @@ uniform; transfer losses concentrate on jailbreak-style sets.}
 \toprule
 Group & Dataset & $\Delta$ AP \\
 \midrule
-Represented & ToxicChat & $+0.187$ \\
-Represented & Prompt-Injections & $+0.375$ \\
-Represented & Jailbreak-Classification & $+0.436$ \\
+Represented & ToxicChat & $+0.1880$ \\
+Represented & Prompt-Injections & $+0.3704$ \\
+Represented & Jailbreak-Classification & $+0.4119$ \\
 \midrule
-Transfer & JailbreakBench & $-0.073$ \\
-Transfer & XSTest & $-0.010$ \\
-Transfer & WildGuardTest & $-0.039$ \\
-Transfer & WildJailbreak & $-0.079$ \\
+Transfer & JailbreakBench & $-0.0776$ \\
+Transfer & XSTest & $-0.0120$ \\
+Transfer & WildGuardTest & $-0.0669$ \\
+Transfer & WildJailbreak & $-0.0792$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{The key nuance: who fine-tuning helps vs.\ hurts}
+\subsection{The key nuance: checkpoint heterogeneity behind the average}
 Read the ``SFT'' columns of Table~\ref{tab:primary}: on transfer, fine-tuning squeezes every
-model into a narrow $\approx0.79$--$0.84$ band, even though the bases ranged from 0.79 to 0.94.
-Because that band acts like a fixed destination, fine-tuning has room to \emph{pull up} a weak
-base and little room to help a strong one --- so it \emph{drags strong bases down}.
+model into a narrow $\approx0.78$--$0.83$ band, even though the bases ranged from 0.79 to 0.94.
+The four point estimates therefore have different directions. But $\Delta=\mathrm{SFT}-\mathrm{base}$,
+so relating that change to base AP measured on the same rows is mathematically coupled. Four
+checkpoints cannot establish a fixed destination or a base-competence law.
 
-\begin{takeaway}{Why the $-0.05$ average is misleading}
+\begin{takeaway}{Why the $-0.06$ average is misleading}
 \small
-Imagine fine-tuning always lands new-data skill at ${\sim}0.80$. A weak model at 0.70 gains
-$+0.10$; a strong one at 0.95 loses $-0.15$. Average them: $(+0.10-0.15)/2 = -0.025$ --- a
-tiny dip that \emph{erases both the real help and the real harm}. In the data, the weakest base
-(SmolLM2) is the only transfer gainer ($+0.051$); the strongest (SmolLM3 $-0.120$, Qwen3-4B
-$-0.102$) lose the most. \emph{(These per-model directions are descriptive point estimates from
-a legacy run --- suggestive, not proven.)}
+As a toy example, imagine two changes of $+0.10$ and $-0.15$. Their average is only $-0.025$,
+which hides both opposing effects. In the observed data, SmolLM2 gains ($+0.0400$), Qwen2.5's
+interval crosses zero, and SmolLM3 ($-0.0869$) and Qwen3-4B ($-0.1499$) lose. These are
+clean-v2 retrospective checkpoint estimates, not a validated predictor based on starting strength.
 \end{takeaway}
 
 \subsection{The specialization plane}
 Figure~\ref{fig:plane} puts both changes on one chart: each dot is one (checkpoint, seed);
-right means represented AP went up, up means transfer AP went up. \textbf{14 of the 20 dots}
+right means represented AP went up, up means transfer AP went up. \textbf{15 of the 20 dots}
 land in the lower-right ``specialization'' quadrant (better on familiar data, worse on new);
-the other 6 are in ``uniform gain'' (all five SmolLM2 seeds plus one Qwen2.5 seed), and none
-are in a loss quadrant. The dominant story is specialization, and the exceptions are exactly
-the weak base.
+the other 5 are in ``uniform gain'' (SmolLM2 seeds 42--45 plus Qwen2.5 seed 42), and none
+are in a loss quadrant. The dominant story is specialization.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.82\linewidth]{specialization_plane.pdf}
 \caption{The specialization plane. Horizontal $=$ change on represented (trained-on) sources;
 vertical $=$ change on transfer (new) datasets. Each dot is one (checkpoint, seed); the
-$\times$ is the panel mean. All 20 dots move right (represented up); 14 also move down
+$\times$ is the panel mean. All 20 dots move right (represented up); 15 also move down
 (transfer down).}
 \label{fig:plane}
 \end{figure}
 
-\subsection{At a deployed threshold (operating point)}
-AP is threshold-free; Table~\ref{tab:op} shows what happens once you pick a cutoff at a
-${\sim}5\%$ target false-positive rate (Section~\ref{subsec:calib}). On represented data the
-guard becomes far more useful --- recall jumps $13.4\%\!\to\!76.6\%$ at only ${\sim}1\%$ false
-alarms. On transfer data recall barely moves ($52.6\%\!\to\!55.4\%$) while false alarms get
-\emph{worse}: benchmark-macro FPR $8.3\%\!\to\!13.7\%$, pooled FPR $4.4\%\!\to\!14.6\%$
+\subsection{At a calibration-selected diagnostic threshold}
+AP is threshold-free; Table~\ref{tab:op} shows what happens at the calibration-selected
+operating point from Section~\ref{subsec:calib}. On represented data the
+guard becomes far more useful --- recall jumps $13.0\%\!\to\!76.9\%$ at only ${\sim}1\%$ false
+alarms. On transfer data recall rises ($51.7\%\!\to\!58.1\%$) while false alarms get
+\emph{worse}: benchmark-macro FPR $8.1\%\!\to\!15.5\%$, pooled FPR $4.3\%\!\to\!17.0\%$
 (\emph{pooled} $=$ every test row combined into one set, so larger datasets dominate;
-\emph{macro} $=$ each dataset weighted equally --- which is why the base's pooled $4.4\%$ and
-macro $8.3\%$ differ).
+\emph{macro} $=$ each dataset weighted equally --- which is why the base's pooled $4.3\%$ and
+macro $8.1\%$ differ).
 
-\begin{takeaway}{Why the transfer FPR (13.7\%) exceeds the 5\% cap}
+\begin{takeaway}{Why transfer FPR (15.5\%) can exceed the 5\% calibration criterion}
 \small
-The ${\sim}5\%$ cap is only guaranteed on the \emph{calibration} data. The cutoff is frozen
-there and never re-tuned, so on a new distribution it no longer holds and the realized false
-alarm rate sails past 5\% (the base is already at 8.3\%). Losing threshold control on new data
-is itself part of the finding.
+The 5\% criterion constrains a row-level one-sided bound computed from pooled \emph{calibration}
+negatives. It is not a guarantee for a shifted test distribution. The cutoff is frozen and
+never re-tuned, so realized transfer FPR can exceed 5\% (the base is already at 8.1\%).
 \end{takeaway}
 
 \subsection{Stress sets: false alarms and missed attacks}
 The two single-class diagnostics (Table~\ref{tab:op}, lower panel) sharpen the picture.
-Fine-tuning slightly \emph{reduces} over-blocking of benign prompts (OR-Bench FPR
-$12.7\%\!\to\!10.0\%$) --- a small plus. But on hard held-out harmful prompts it catches
-\emph{fewer}: HarmBench recall falls $78.4\%\!\to\!57.5\%$, a \textbf{20.9-point drop}. That is
-the sharpest downside in the study, and a safety-relevant one: the specialized guard misses
-about one in five more real attacks it would otherwise have caught.
+Fine-tuning leaves over-blocking of benign prompts essentially flat (OR-Bench FPR
+$11.8\%\!\to\!12.0\%$, a 0.2-point increase). But on hard held-out harmful prompts it catches
+\emph{fewer}: HarmBench recall falls $78.0\%\!\to\!60.0\%$, an observed
+\textbf{18.0-point drop}. That is the largest observed downside in the study and is
+safety-relevant: the specialized guard misses about 18 percentage points more harmful examples
+on this stress set. A one-class diagnostic does not estimate performance on mixed deployment
+traffic.
 
 \begin{table}[t]
 \centering\small
-\caption{Deployed-threshold behavior (calibration-targeted ${\sim}5\%$ FPR) and single-class
-stress diagnostics. TPR $=$ recall; FPR $=$ false-alarm rate; $N$ $=$ rows in the relevant class.}
+\caption{Calibration-selected threshold behavior (row-level one-sided 95\% calibration FPR upper bound
+at most 5\%) and single-class stress diagnostics. TPR $=$ recall; FPR $=$ false-alarm rate;
+$N$ $=$ rows in the relevant class. This calibration criterion is not a transfer guarantee.}
 \label{tab:op}
 \begin{tabular}{ll rr r r}
 \toprule
 Group & Measure & base & SFT & change & $N$ \\
 \midrule
-Represented & TPR (recall) & 13.4\% & 76.6\% & $+63.2$ & 312 \\
-Represented & FPR (macro)  & 1.7\%  & 1.0\%  & $-0.7$  & 364 \\
-Transfer    & TPR (recall) & 52.6\% & 55.4\% & $+2.8$  & 790 \\
-Transfer    & FPR (macro)  & 8.3\%  & 13.7\% & $+5.4$  & 790 \\
-Transfer    & FPR (pooled) & 4.4\%  & 14.6\% & $+10.2$ & 790 \\
+Represented & TPR (recall) & 13.0\% & 76.9\% & $+63.9$ & 313 \\
+Represented & FPR (macro)  & 1.7\%  & 1.1\%  & $-0.6$  & 364 \\
+Transfer    & TPR (recall) & 51.7\% & 58.1\% & $+6.4$  & 790 \\
+Transfer    & FPR (macro)  & 8.1\%  & 15.5\% & $+7.4$  & 790 \\
+Transfer    & FPR (pooled) & 4.3\%  & 17.0\% & $+12.7$ & 790 \\
 \midrule
-Stress: OR-Bench & benign FPR & 12.7\% & 10.0\% & $-2.7$ & 400 \\
-Stress: HarmBench & recall    & 78.4\% & 57.5\% & $-20.9$ & 200 \\
+Stress: OR-Bench & benign FPR & 11.8\% & 12.0\% & $+0.2$ & 400 \\
+Stress: HarmBench & recall    & 78.0\% & 60.0\% & $-18.0$ & 200 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 % ============================================================
-\section{A fix: compose, don't tune}
+\section{Separate Paper B analysis: compose, don't tune}
 \label{sec:fix}
 % ============================================================
-The results so far pose a problem: fine-tuning wins big on familiar data but gives up ground
-on new data and misses more hard attacks (\Cref{tab:op}). The obvious reaction is to fine-tune
-\emph{better}. Here is an early look at a cheaper fix (from a planned follow-up, ``Compose,
-Don't Tune''): instead of tuning harder, \textbf{keep the original untuned model in the decision}.
+This section is \textbf{not a Paper A result}. It previews a separate, clean-v2 retrospective Paper B
+analysis, ``Compose, Don't Tune,'' that reuses the underlying Paper A scored rows to explore a
+candidate mitigation. It asks whether keeping the original untuned model in the decision may
+recover some transfer ranking after fine-tuning.
 
 \begin{background}{combining two guards (an ``ensemble'')}
 \small
 Run \emph{two} guards on each prompt --- the untuned base and the fine-tuned adapter --- and
-average their unsafe-probabilities into one score. (Using more than one model and combining
+average their separately temperature-scaled unsafe scores. (Using more than one model and combining
 their outputs is called an \textbf{ensemble}.) Think of it as a \emph{second opinion}: the
-fine-tuned specialist is best on prompts like the ones it trained on; the untuned generalist
-holds up better on new kinds of prompts; averaging keeps much of both. It is cheap --- the two
-guards share the same backbone with the adapter switched on or off, so it is two quick passes
-and \textbf{no extra training}. \emph{Mini-example:} on a new prompt the base scores $0.30$
+two guards can preserve different ranking signal when their errors differ. The guards share the
+same backbone with the adapter switched on or off, so composition needs \textbf{no extra training},
+but it still doubles the forward-pass work per prompt unless the passes run in parallel.
+\emph{Mini-example:} on a new prompt the base scores $0.30$
 unsafe and the tuned guard scores $0.90$; the ensemble scores $(0.30+0.90)/2 = 0.60$.
 \end{background}
 
-Running this on the same data as before (\Cref{tab:compose}): the ensemble keeps almost all of
-the tuned guard's gain on familiar data ($0.98 \to 0.96$) \emph{and} does clearly better than
-the tuned guard on new data ($0.82 \to 0.89$), pulling generalization back up toward the untuned
-base --- without any extra fine-tuning.
+In this preliminary Paper B analysis (\Cref{tab:compose}), the ensemble keeps almost all of
+the tuned guard's observed gain on familiar data ($0.982 \to 0.962$), while its transfer point
+estimate is higher than the tuned guard's ($0.807 \to 0.883$), pulling the score toward the
+untuned base without extra fine-tuning. On transfer, composed minus SFT is $+0.075$ (95\% CI
+$[+0.058,+0.093]$) and composed minus base is $+0.017$ (95\% CI $[+0.005,+0.030]$).
+On represented data, composition is $-0.019$ below SFT (95\% CI $[-0.031,-0.010]$), so this
+is not a universal or Pareto improvement.
 
 \begin{table}[t]
 \centering\small
-\caption{Composing the base with the tuned guard. Benchmark-macro AP (0--1, higher better),
+\caption{Separate preliminary Paper B composition analysis. Benchmark-macro AP (0--1, higher better),
 averaged over the four checkpoints. The ensemble keeps the tuned guard's familiar-data gain and
 recovers most of its lost new-data score.}
 \label{tab:compose}
@@ -494,63 +508,62 @@ recovers most of its lost new-data score.}
 \toprule
 Guard & Familiar (represented) & New (transfer) \\
 \midrule
-Untuned base & 0.65 & 0.87 \\
-Tuned (SFT) & \textbf{0.98} & 0.82 \\
-Composed (base $+$ tuned, averaged) & 0.96 & \textbf{0.89} \\
+Untuned base & 0.658 & 0.866 \\
+Tuned (SFT) & \textbf{0.982} & 0.807 \\
+Composed (base $+$ tuned, averaged) & 0.962 & \textbf{0.883} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{takeaway}{What composing does --- and doesn't do}
+\begin{takeaway}{What the preliminary point estimates do --- and don't show}
 \small
-Composing \textbf{reliably beats the tuned guard} on new data --- for every model in the panel.
-It does \textbf{not} beat a \emph{strong untuned base}: for the strongest model (Qwen3-4B) the
-ensemble is a touch \emph{below} the base on new data (0.93 vs 0.94), and for SmolLM3 it only
-ties. So composing is best understood as \textbf{protecting against the damage fine-tuning did},
-not a free lunch that beats everything. Tellingly, it helps most exactly where fine-tuning hurt
-most --- the strong bases (\Cref{tab:composeperm}).
+The composed score is above the tuned guard on transfer data for every model in this fixed panel.
+It does \textbf{not} beat every untuned base: it is slightly below SmolLM3's base
+($0.907$ vs $0.910$) and below the strongest model, Qwen3-4B ($0.914$ vs $0.944$).
+So composing can \textbf{recover much of the damage fine-tuning did} without dominating every
+base or SFT result (\Cref{tab:composeperm}).
 \end{takeaway}
 
-Read \Cref{tab:composeperm} across each row: the tuned column is always at or below the untuned
-base on new data (that is the specialization cost from \Cref{tab:primary}); the composed column
-is always at or above the tuned one, and lands back near the base --- most dramatically for
-SmolLM3 (0.79 tuned, back to 0.91) and Qwen3-4B (0.84 tuned, back to 0.93).
+Read \Cref{tab:composeperm} across each row: the composed column is always above the tuned one.
+It exceeds the base for Qwen2.5 and SmolLM2 but remains just below the base for SmolLM3 and
+Qwen3-4B. The per-model effects are mixed. Because same-row base AP is also part of the
+composed-minus-base contrast, this table cannot by itself show that base strength predicts recovery.
 
 \begin{table}[t]
 \centering\small
-\caption{Per-model new-data (transfer) macro-AP. Fine-tuning lowers the base (specialization);
-composing recovers it. The gain from composing is largest for the strong bases fine-tuning hurt
-most.}
+\caption{Per-model new-data (transfer) macro-AP. Composition exceeds SFT for all four models,
+but its comparison with base is mixed; it is therefore not a universal or Pareto improvement.}
 \label{tab:composeperm}
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrr}
 \toprule
-Model (new-data strength of base) & Untuned base & Tuned & Composed \\
+Model (new-data strength of base) & Untuned base & Tuned & Composed & Comp. $-$ base \\
 \midrule
-SmolLM2-1.7B (weakest) & 0.79 & 0.84 & 0.86 \\
-Qwen2.5-1.5B & 0.82 & 0.79 & 0.86 \\
-SmolLM3-3B & 0.91 & 0.79 & 0.91 \\
-Qwen3-4B (strongest) & 0.94 & 0.84 & 0.93 \\
+SmolLM2-1.7B (weakest) & 0.790 & 0.830 & 0.857 & $+0.066$ \\
+Qwen2.5-1.5B & 0.819 & 0.780 & 0.855 & $+0.036$ \\
+SmolLM3-3B & 0.910 & 0.823 & 0.907 & $-0.003$ \\
+Qwen3-4B (strongest) & 0.944 & 0.794 & 0.914 & $-0.029$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{background}{is this real, or just a trick of averaging?}
 \small
-A fair worry: does averaging two scores help \emph{automatically}, no matter what? No --- it
-needs the tuned guard to actually carry signal. Two control checks pin this down. (1) Scramble
-the tuned guard's scores so they no longer track safe-vs-unsafe: the boost \emph{disappears} (it
-turns negative), so the tuned guard's information is doing the work, not the averaging itself.
-(2) Keep the tuned guard's overall skill but break its \emph{per-row} pairing with the base: the
-boost \emph{survives}. So the gain is a real combination of two informative rankings --- and it
-does not even require the two guards to be right on the exact same prompts.
+A fair worry is whether the result reflects a generic averaging effect. Two single-permutation
+diagnostics probe, but do not settle, that question. (1) Scrambling the tuned guard's scores so
+they no longer track safe-vs-unsafe makes the observed boost negative. (2) Shuffling tuned scores
+within each gold class preserves their marginal signal while breaking row-level pairing with the
+base; the boost survives. These diagnostics narrow explanations under those perturbations, but
+they do not distinguish retaining the base from generic two-pass ensembling, establish a
+mechanism, or provide prospective evidence. A same-inference-cost SFT+SFT control is still required.
 \end{background}
 
-\paragraph{What this fix does not solve (yet).} Three honest caveats. (1) These are the same
-\emph{legacy} scores as the rest of the paper, so treat the composition numbers as an early
-signal, not a confirmed result --- a clean re-run is needed. (2) Composing improves the
-\emph{ranking} of prompts, not the \emph{calibration}: at a fixed yes/no cutoff the false-alarm
-rate on new data is still too high, so you would still re-tune the threshold for new traffic.
-(3) It costs two passes per prompt instead of one (still cheap, but not free).
+\paragraph{Limits of this Paper B preview.} Reusing Paper A's clean-v2 retrospective scored rows makes
+this exploratory, not an independent replication or prospective test. Composing improves the
+observed \emph{ranking}, not necessarily \emph{calibration}; transfer false-alarm behavior needs
+separately held-out threshold evaluation. It also costs two passes per prompt. Independent,
+prospectively collected evaluation data, a same-inference-cost SFT+SFT control, and a competence
+measure taken on data separate from the recovery outcome are needed before treating composition
+as a general remedy or decision rule.
 
 % ============================================================
 \section{What this means in practice}
@@ -559,19 +572,20 @@ rate on new data is still too high, so you would still re-tune the threshold for
 \small
 \begin{itemize}
 \item \textbf{Fine-tune when your live traffic resembles your training sources.}
-In-distribution, the win is large and reliable (recall $13\%\!\to\!77\%$).
-\item \textbf{Expect erosion on novel attacks.} On new datasets, fine-tuning trades away
-generalization --- more false alarms and a real drop in catching hard, unseen harm.
+On these represented datasets, the observed gain is large (recall $13.0\%\!\to\!76.9\%$); validate
+the effect on your own traffic.
+\item \textbf{Check for erosion on dataset-held-out attacks.} On the transfer benchmarks,
+fine-tuning shows more false alarms and an observed drop on hard harmful examples.
 \item \textbf{Always test on datasets the model never trained on.} A single trained-on
 benchmark will crown fine-tuning the winner and hide the transfer cost. Report \emph{both}
 groups.
-\item \textbf{Mind the base's starting strength.} A weak base has the most to gain; a strong
-base may be better left \emph{untouched} for screening new/out-of-distribution traffic --- it
-can already be the better guard there. \emph{(A suggestive 4-model pattern, not a proven law.)}
-\item \textbf{Prefer composing over tuning harder.} If you do fine-tune, keep the untuned base
-in the decision --- average the two guards' scores (\Cref{sec:fix}). On this panel that keeps
-almost all the in-domain gain and recovers much of the lost generalization, for two cheap passes
-and no extra training.
+\item \textbf{Do not route by starting strength from this panel.} The four checkpoint effects are
+heterogeneous, but same-row base-versus-change comparisons are coupled. Test every base/adapted
+pair on target transfer data; validate any competence rule on an independent development measure
+and a prospectively locked outcome.
+\item \textbf{Treat composition as a Paper B hypothesis.} Keeping the untuned base in the
+decision recovers some transfer ranking in the preliminary fixed-panel analysis
+(\Cref{sec:fix}), but it needs independent prospective evaluation.
 \end{itemize}
 \end{takeaway}
 
@@ -579,48 +593,49 @@ and no extra training.
 \section{Limitations (what not to over-read)}
 % ============================================================
 \begin{itemize}
-\item \textbf{Legacy artifact.} The scores predate the locked pipeline, so results are
-\emph{estimation-only}; a clean, pre-registered re-run is needed before any number is
-``confirmatory.''
+\item \textbf{Retrospective fixed-panel evidence.} The analysis is \emph{estimation-only}.
+Re-running a locked pipeline can verify execution but cannot make previously inspected transfer
+sets prospective. Confirmatory claims require a new sealed cohort and a prospectively locked plan.
 \item \textbf{Balanced test pools overstate real-world precision.} Test sets are ${\sim}50/50$
 safe/unsafe; real traffic has far fewer unsafe prompts, so precision/AP look rosier here than
 in production.
 \item \textbf{Transfer sets were not truly sealed.} They were inspected during development, so
 ``transfer'' means dataset-held-out, not never-before-seen.
 \item \textbf{Only four models, two families (Qwen, SmolLM), 1.5--4B.} Conclusions are about
-\emph{this panel}; the base-competence pattern rests on four points.
+\emph{this panel}; the base-competence interpretation rests on four mathematically coupled,
+same-row points and remains a hypothesis.
 \item \textbf{Mixed native policies.} The four transfer datasets encode different definitions
 of ``unsafe'' (harm vs.\ refusal vs.\ jailbreak), so their macro-average blends distinct
 policies.
 \item \textbf{Prompt-only, English.} No response, tool-call, or multi-turn moderation.
-\item \textbf{The ``compose'' fix (\Cref{sec:fix}) is preliminary.} It runs on the same legacy
-scores, improves ranking but not calibration at a fixed cutoff, and costs two passes per prompt;
-a clean re-run is needed to confirm it.
+\item \textbf{The composition analysis (\Cref{sec:fix}) belongs to preliminary Paper B work.}
+It reuses clean-v2 retrospective Paper A scores, does not establish transfer calibration, and costs two
+passes per prompt. It requires an independent prospective evaluation.
 \end{itemize}
 
 % ============================================================
 \section{Conclusion}
 % ============================================================
-Fine-tuning \emph{specializes} a small safety guard: large, reliable gains on data resembling
-its training sources (represented macro-AP $+0.33$, everyone to ${\approx}0.98$), a small
-average loss on genuinely new datasets ($-0.05$), and a real drop in catching hard unseen harm
-(HarmBench recall $-20.9$ points). The average transfer number hides a split --- fine-tuning
-helps weak bases and hurts strong ones --- and 14 of 20 fine-tunes land in the
+In this fixed panel, fine-tuning \emph{specializes} a small safety guard: the analysis estimates
+large gains on data resembling its training sources (represented macro-AP $+0.32$, everyone to
+${\approx}0.98$), a small average loss on dataset-held-out transfer benchmarks ($-0.06$), and
+an observed HarmBench stress-set drop (recall $-18.0$ points). The average transfer number hides
+checkpoint heterogeneity --- one gain, one interval spanning zero, and two losses --- and 15 of 20 fine-tunes land in the
 ``better-on-familiar, worse-on-new'' quadrant. So the benchmark you choose to report decides
-whether fine-tuning looks like a win. Report \emph{both} groups with uncertainty ranges, and
-treat these specific numbers as \emph{suggestive pending a clean re-run}. And there is an early,
-cheap way out of the trade-off: rather than tuning harder, \emph{compose} the tuned guard with
-its untuned base (\Cref{sec:fix}) --- on this panel that keeps the in-domain gains while
-recovering much of the lost generalization.
+whether fine-tuning looks like a win. Report \emph{both} groups with conditional fixed-panel
+resampling intervals and treat these clean-v2 numbers as retrospective estimates, not prospective
+or confirmatory effects. A separate preliminary
+Paper B analysis (\Cref{sec:fix}) suggests composition as a mitigation candidate; it is not a
+Paper A conclusion and still needs an independent prospective test.
 
 % ============================================================
 \appendix
 \section{Per-seed changes}
 % ============================================================
 Table~\ref{tab:seeds} lists the paired change for every (checkpoint, seed), the raw material
-behind the panel aggregates and Figure~\ref{fig:plane}. The seed-to-seed spread is small on
-represented sources and larger on transfer --- another reason the study reports ranges, not
-single points.
+behind the panel aggregates and Figure~\ref{fig:plane}. This spread describes run-to-run
+optimization variation with fixed data order under one recipe; it does not measure uncertainty
+over new checkpoints, datasets, or recipes.
 
 \begin{table}[h]
 \centering\small
@@ -632,14 +647,14 @@ single points.
 \cmidrule(lr){2-6}
 Checkpoint (group) & 42 & 43 & 44 & 45 & 46 \\
 \midrule
-Qwen2.5-1.5B (rep.)  & $+0.366$ & $+0.368$ & $+0.365$ & $+0.362$ & $+0.367$ \\
-Qwen2.5-1.5B (tr.)   & $-0.079$ & $+0.037$ & $-0.046$ & $-0.037$ & $-0.026$ \\
-SmolLM2-1.7B (rep.)  & $+0.536$ & $+0.533$ & $+0.530$ & $+0.533$ & $+0.537$ \\
-SmolLM2-1.7B (tr.)   & $+0.073$ & $+0.075$ & $+0.034$ & $+0.038$ & $+0.036$ \\
-SmolLM3-3B (rep.)   & $+0.328$ & $+0.328$ & $+0.327$ & $+0.327$ & $+0.325$ \\
-SmolLM3-3B (tr.)    & $-0.141$ & $-0.075$ & $-0.133$ & $-0.146$ & $-0.106$ \\
-Qwen3-4B (rep.)    & $+0.104$ & $+0.108$ & $+0.105$ & $+0.102$ & $+0.102$ \\
-Qwen3-4B (tr.)     & $-0.114$ & $-0.086$ & $-0.125$ & $-0.087$ & $-0.100$ \\
+Qwen2.5-1.5B (rep.)  & $+0.3569$ & $+0.3535$ & $+0.3506$ & $+0.3558$ & $+0.3551$ \\
+Qwen2.5-1.5B (tr.)   & $+0.0082$ & $-0.0261$ & $-0.0545$ & $-0.0438$ & $-0.0786$ \\
+SmolLM2-1.7B (rep.)  & $+0.5304$ & $+0.5273$ & $+0.5253$ & $+0.5309$ & $+0.5272$ \\
+SmolLM2-1.7B (tr.)   & $+0.0805$ & $+0.0720$ & $+0.0250$ & $+0.0238$ & $-0.0013$ \\
+SmolLM3-3B (rep.)   & $+0.3045$ & $+0.3253$ & $+0.3051$ & $+0.3146$ & $+0.3156$ \\
+SmolLM3-3B (tr.)    & $-0.0812$ & $-0.0925$ & $-0.0629$ & $-0.0923$ & $-0.1055$ \\
+Qwen3-4B (rep.)    & $+0.0953$ & $+0.0936$ & $+0.1038$ & $+0.0997$ & $+0.0981$ \\
+Qwen3-4B (tr.)     & $-0.1222$ & $-0.1536$ & $-0.0949$ & $-0.2291$ & $-0.1497$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -650,7 +665,7 @@ prompt text} --- so third-party benchmark text is not redistributed, yet every m
 recomputable. Metrics come from one shared, tie-aware module (no ad-hoc AP loop). Source
 datasets are pinned by revision; near-duplicate ``families'' are detected with a fixed MinHash
 so the split cannot change with the environment. Full identifiers, hashes, licenses, and
-seed-level outputs are in \code{artifacts/paper\_a\_sft/}.
+seed-level outputs are in \code{artifacts/paper\_a\_sft\_v2/}.
 
 \section*{Related work}
 This edition draws on: purpose-built prompt guards --- Llama Guard~\cite{inan2023llamaguard},
@@ -658,7 +673,7 @@ ShieldGemma~\cite{zeng2024shieldgemma}, Granite Guardian~\cite{padhi2024graniteg
 WildGuard~\cite{han2024wildguard}, and the parameter-efficient LoRA-Guard~\cite{elesedy2024loraguard};
 evidence that fine-tuning can erode guardrails and that guards lean on surface heuristics
 \cite{hsiung2025guardrails,li2026surfaceheuristics,bassani2025robustness}, which our
-specialization measurement quantifies per checkpoint. The composition remedy (\Cref{sec:fix})
+specialization measurement quantifies per checkpoint. The preliminary Paper B composition analysis (\Cref{sec:fix})
 relates to \emph{weight-space} robust fine-tuning and model soups~\cite{wortsman2022wiseft,wortsman2022modelsoups}
 and to calibrated ensembles under distribution shift~\cite{kumar2022calibrated}; we combine
 \emph{scores} (output-space), needing no shared weights. Other tuning objectives (DPO, GRPO) are

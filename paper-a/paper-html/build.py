@@ -35,6 +35,18 @@ FIGDIR = os.path.join(HERE, "figures")
 TMP = "/tmp/guard-ranking-fragility-paper-html"
 AUXDIR = "/tmp/guard-ranking-fragility-paper-aux"
 
+
+def generated_macro(name):
+    """Read one plain scalar from the analysis-generated macro file."""
+    path = os.path.join(PAPER, "results_macros_gen.tex")
+    if not os.path.isfile(path):
+        return None
+    match = re.search(
+        rf"\\newcommand\{{\\{re.escape(name)}\}}\{{([^}}]+)\}}",
+        open(path, encoding="utf-8").read(),
+    )
+    return match.group(1) if match else None
+
 def run(cmd, **kw):
     return subprocess.run(cmd, check=True, **kw)
 
@@ -62,7 +74,7 @@ if os.path.isdir(AUXDIR):
     shutil.rmtree(AUXDIR)
 os.makedirs(AUXDIR, exist_ok=True)
 run(["tectonic", "-X", "compile", os.path.join(PAPER, TEX), "--outdir", AUXDIR,
-     "--keep-intermediates", "--synctex=0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+     "--keep-intermediates"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 aux = ""
 for fn in os.listdir(AUXDIR):
     if fn.endswith(".aux"):
@@ -90,6 +102,16 @@ run(["pandoc", TEX, "--from=latex", "--to=html5", "--mathjax", "--standalone",
      "--citeproc", "--bibliography=" + os.path.join(PAPER, "refs.bib"),
      "-o", OUT], cwd=TMP)
 h = open(OUT).read()
+
+# Pandoc gives paragraph-level LaTeX headings synthetic numbers such as
+# ``1.0.0.1`` under --number-sections. Keep the semantic heading while removing
+# that implementation artifact; real sections and subsections remain numbered.
+h = re.sub(r'(<section\b[^>]*class="level5")\s+data-number="[^"]+"', r'\1', h)
+h = re.sub(
+    r'<h5\s+data-number="[^"]+">\s*<span\s+class="header-section-number">[^<]+</span>\s*',
+    '<h5>',
+    h,
+)
 
 # ---------------------------------------------------------------- 4. post-process
 # protect the TOC nav from cross-ref rewriting
@@ -158,7 +180,7 @@ def design_repl(m):
     figure = m.group(0)
     if '<img ' not in figure:
         figure = figure.replace('>',
-            '><img src="figures/study_design.svg" alt="Five-stage clean-rerun study design" loading="lazy"/>',
+            '><img src="figures/study_design.svg" alt="Five-stage clean-v2 study design" loading="lazy"/>',
             1)
     return figure
 h = re.sub(r'<figure id="fig:design".*?</figure>', design_repl, h, flags=re.S)
@@ -168,8 +190,15 @@ h = re.sub(r'(figures/[A-Za-z0-9_]+)\.pdf', r'\1.svg', h)
 def embed_repl(m):
     src = m.group('src')
     if src.endswith('specialization_plane.svg'):
-        alt = ('Scatter plot of twenty seed-level represented-source and transfer AP changes; '
-               'fourteen points are in the specialization quadrant and six in uniform gain.')
+        total = generated_macro("TotalSeedCount")
+        specialized = generated_macro("SpecializationSeedCount")
+        uniform = generated_macro("UniformGainSeedCount")
+        if all(value is not None for value in (total, specialized, uniform)):
+            alt = (f'Scatter plot of {total} seed-level represented-source and transfer AP '
+                   f'changes; {specialized} points are in the specialization quadrant and '
+                   f'{uniform} in uniform gain.')
+        else:
+            alt = 'Scatter plot of seed-level represented-source and transfer AP changes.'
     else:
         alt = 'Paper figure'
     return f'<img src="{src}" alt="{alt}" loading="lazy"/>'

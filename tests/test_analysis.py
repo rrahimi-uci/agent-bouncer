@@ -2,6 +2,8 @@
 
 import json
 import os
+import pathlib
+import shutil
 import sys
 import copy
 
@@ -22,6 +24,124 @@ def synthetic_artifacts():
     df = A._synthetic_scores_df(n_per=12, rng_seed=3)
     lock, metadata = A._synthetic_lock_and_metadata(df, reps=12)
     return df, lock, metadata
+
+
+def _strict_release_artifacts(tmp_path, synthetic_artifacts):
+    """Create one complete strict matrix with locally verifiable fake adapters."""
+    df, lock, metadata = synthetic_artifacts
+    df = df.copy(deep=True)
+    df.insert(len(df.columns) - 1, "truncation_strategy", "none")
+    lock = copy.deepcopy(lock)
+    metadata = copy.deepcopy(metadata)
+    root = tmp_path / "v2"
+    lock.update({
+        "lock_contract_version": A.C.LOCK_CONTRACT_VERSION,
+        "finalization_status": "final",
+        "analysis_code_version": A.ANALYSIS_CODE_VERSION,
+        "score_code_version": "paper_a_sft_scorer_v2",
+        "lock_sha256": "1" * 64,
+        "artifact_paths": A.C.artifact_paths_for_root(root),
+        "recipe": copy.deepcopy(A.C.DEFAULT_RECIPE),
+        "operating_point": copy.deepcopy(A.C.DEFAULT_OPERATING_POINT),
+        "execution_sources": {"aggregate_sha256": "2" * 64},
+        "software_versions": {
+            key: f"fixture-{key}" for key in A.C.PROTOCOL_SOFTWARE_KEYS},
+    })
+    for model in lock["models"].values():
+        model.update({
+            "dtype": "bfloat16", "attn_implementation": None,
+            "trust_remote_code": False,
+        })
+
+    runtime_details = {
+        "software_versions": dict(lock["software_versions"]),
+        "requested_device": "fixture",
+    }
+    runtime_sha = A.C.canonical_obj_sha256(runtime_details)
+    metadata.update({
+        "score_artifact_contract_version": 2,
+        "finalization_status": "final",
+        "lock_sha256": lock["lock_sha256"],
+        "score_code_version": lock["score_code_version"],
+        "execution_sources_sha256": lock["execution_sources"]["aggregate_sha256"],
+        "columns": A.SCORE_COLUMNS_V2,
+        "synthetic": False,
+        "target_fpr": A.C.DEFAULT_TARGET_FPR,
+        "producer_runtime": {"sha256": runtime_sha, "details": runtime_details},
+        "software_versions": dict(lock["software_versions"]),
+        "batch_size": 4,
+        "models": A.C.lock_model_panel(lock),
+        "dtype_by_model": {mk: "bfloat16" for mk in A.C.MODEL_KEYS},
+    })
+
+    adapter_inventory = {}
+    for mk in A.C.MODEL_KEYS:
+        base_key = f"{mk}:base"
+        metadata["bundles"][base_key].update({
+            "adapter_sha256": None, "run_meta_path": None, "run_meta_sha256": None,
+            "batch_size": 4, "producer_runtime_sha256": runtime_sha,
+        })
+        for seed in lock["seeds"]:
+            key = f"{mk}:sft:seed_{seed}"
+            run_dir = root / "runs" / mk / "sft" / f"seed_{seed}"
+            adapter = run_dir / "adapter"
+            adapter.mkdir(parents=True)
+            (adapter / "adapter_config.json").write_text(json.dumps({
+                "r": lock["recipe"]["lora"]["r"],
+                "lora_alpha": lock["recipe"]["lora"]["alpha"],
+                "lora_dropout": lock["recipe"]["lora"]["dropout"],
+                "target_modules": lock["recipe"]["lora"]["target_modules"],
+                "task_type": "CAUSAL_LM",
+            }), encoding="utf-8")
+            (adapter / "adapter_model.bin").write_text(
+                f"fixture weights {mk} {seed}", encoding="utf-8")
+            adapter_sha = A.C.sha256_dir(adapter)
+            mask = ((df.model_key == mk) & (df.condition == "sft") & (df.seed == seed))
+            df.loc[mask, "adapter_sha256"] = adapter_sha
+            run_meta_path = run_dir / "run_meta.json"
+            A.C.write_json(run_meta_path, {
+                "model_key": mk, "seed": seed, "adapter_sha256": adapter_sha,
+                "lock_sha256": lock["lock_sha256"],
+            })
+            run_meta_sha = A.C.sha256_file(run_meta_path)
+            metadata["bundles"][key].update({
+                "adapter_sha256": adapter_sha,
+                "run_meta_path": str(run_meta_path),
+                "run_meta_sha256": run_meta_sha,
+                "batch_size": 4,
+                "producer_runtime_sha256": runtime_sha,
+            })
+            adapter_inventory[key] = {
+                "adapter_sha256": adapter_sha,
+                "run_meta_path": str(run_meta_path),
+                "run_meta_sha256": run_meta_sha,
+            }
+
+    metadata["adapter_inventory"] = adapter_inventory
+    for mk in A.C.MODEL_KEYS:
+        for condition, seed in [("base", -1), *[("sft", s) for s in lock["seeds"]]]:
+            mask = ((df.model_key == mk) & (df.condition == condition) & (df.seed == seed))
+            cell = df.loc[mask]
+            calibration = cell[cell.split == "calibration"]
+            selected = A.C.normalize_threshold_result(A.C.require_select_threshold()(
+                calibration["probability_calibrated"].tolist(),
+                calibration["gold"].tolist(), A.C.DEFAULT_TARGET_FPR))
+            threshold_value = (None if selected["status"] in {
+                "NO_FEASIBLE_THRESHOLD", "PREDICT_NONE"} else selected["threshold"])
+            cutoff = float("inf") if threshold_value is None else float(threshold_value)
+            df.loc[mask, "prediction"] = (
+                df.loc[mask, "probability_calibrated"].to_numpy(float) >= cutoff).astype(int)
+            key = f"{mk}:base" if condition == "base" else f"{mk}:sft:seed_{seed}"
+            metadata["bundles"][key]["calibration"].update({
+                "status": "ok", "optim_success": True, "temperature": 1.0})
+            metadata["bundles"][key]["threshold"].update({
+                "status": selected["status"], "threshold_value": threshold_value})
+
+    reference = df[(df.model_key == A.C.MODEL_KEYS[0]) & (df.condition == "base")]
+    manifest_rows = reference[
+        ["sample_id", "content_sha256", "source", "split", "gold", "family_id"]
+    ].to_dict("records")
+    return df, lock, metadata, manifest_rows, root
 
 
 def test_exact_synthetic_score_matrix_validates(synthetic_artifacts):
@@ -115,6 +235,143 @@ def test_nonfinal_analysis_cannot_write_canonical_or_legacy_namespace(tmp_path):
     diagnostic = tmp_path / "diagnostic-analysis"
     result = A.validate_analysis_paths(lock, diagnostic, scores, nonfinal=True)
     assert result["out_dir"] == str(diagnostic.resolve())
+
+
+def test_canonical_analysis_preflights_locked_software(monkeypatch):
+    locked = {key: f"locked-{key}" for key in A.C.PROTOCOL_SOFTWARE_KEYS}
+    runtime = dict(locked)
+    runtime["numpy"] = "drifted"
+    lock = {
+        "lock_contract_version": A.C.LOCK_CONTRACT_VERSION,
+        "software_versions": locked,
+    }
+    monkeypatch.setattr(A.C, "software_versions", lambda: dict(runtime))
+    with pytest.raises(A.ScoreValidationError, match="runtime software differs"):
+        A.validate_analysis_runtime(lock)
+    A.validate_analysis_runtime(lock, nonfinal=True)
+
+
+def test_release_cache_allows_only_python_patch_drift(monkeypatch):
+    locked = {key: f"locked-{key}" for key in A.C.PROTOCOL_SOFTWARE_KEYS}
+    locked["python"] = "3.12.3"
+    runtime = dict(locked)
+    runtime["python"] = "3.12.10"
+    for key in set(A.C.PROTOCOL_SOFTWARE_KEYS) - set(A.RELEASE_ANALYSIS_SOFTWARE_KEYS):
+        runtime[key] = None
+    lock = {
+        "lock_contract_version": A.C.LOCK_CONTRACT_VERSION,
+        "software_versions": locked,
+    }
+
+    monkeypatch.setattr(A.C, "software_versions", lambda: dict(runtime))
+    A.validate_analysis_runtime(lock, release_cache=True)
+    with pytest.raises(A.ScoreValidationError, match="python_mismatch"):
+        A.validate_analysis_runtime(lock)
+
+    runtime["python"] = "3.13.0"
+    with pytest.raises(A.ScoreValidationError, match="python_mismatch"):
+        A.validate_analysis_runtime(lock, release_cache=True)
+
+    runtime["python"] = "3.12.10"
+    runtime["numpy"] = "drifted"
+    with pytest.raises(A.ScoreValidationError, match="numpy_mismatch"):
+        A.validate_analysis_runtime(lock, release_cache=True)
+
+
+def test_release_cache_is_strict_final_and_not_nonfinal():
+    with pytest.raises(A.ScoreValidationError, match="strict final v2"):
+        A.validate_release_cache_request(
+            {"lock_contract_version": 1}, release_cache=True)
+    strict = {
+        "lock_contract_version": A.C.LOCK_CONTRACT_VERSION,
+        "finalization_status": "final",
+    }
+    with pytest.raises(A.ScoreValidationError, match="cannot be combined"):
+        A.validate_release_cache_request(
+            strict, release_cache=True, nonfinal=True)
+    A.validate_release_cache_request(strict, release_cache=True)
+
+
+def test_release_cache_matches_full_analysis_without_local_adapters(
+        tmp_path, synthetic_artifacts):
+    df, lock, metadata, manifest_rows, root = _strict_release_artifacts(
+        tmp_path, synthetic_artifacts)
+    public_dir = root / "public_manifests"
+    public_dir.mkdir(parents=True)
+    for split, filename in A.SCORING_SPLIT_FILES.items():
+        rows = [row for row in manifest_rows if row["split"] == split]
+        public_rows = []
+        for row in rows:
+            public_row = dict(row)
+            public_row["split"] = pathlib.Path(filename).stem
+            public_rows.append(public_row)
+        (public_dir / filename).write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in public_rows),
+            encoding="utf-8")
+    public_rows = A.load_public_scoring_manifest_rows(lock)
+    expected_identity = {row["sample_id"]: row for row in manifest_rows}
+    observed_identity = {row["sample_id"]: row for row in public_rows}
+    assert observed_identity == expected_identity
+    ap_fn, auroc_fn = A.C.require_metrics()
+    score_binding = {
+        "scores_sha256": "3" * 64,
+        "metadata_sha256": "4" * 64,
+        "metadata_filename": "metadata.json",
+        "bound": True,
+        "legacy": False,
+    }
+    full_out = tmp_path / "full"
+    release_out = tmp_path / "release"
+    A.run_analysis(
+        df, lock, str(full_out), ap_fn, auroc_fn, metadata=metadata,
+        score_verification=score_binding, manifest_rows=manifest_rows)
+
+    shutil.rmtree(root / "runs")
+    with pytest.raises(A.ScoreValidationError, match="run metadata hash"):
+        A.validate_score_artifacts(
+            df, lock, metadata, manifest_rows=manifest_rows)
+
+    release_verification = {
+        "release_cache_only": True,
+        "release_contract": {
+            "release_sha256": "6" * 64,
+            "release_file_sha256": "7" * 64,
+            "anchor_path": "configs/paper_a_sft_v2_release_anchor.json",
+        },
+        "public_release": {"sha256": "5" * 64, "splits": {}},
+        "execution_sources": {
+            "aggregate_sha256": lock["execution_sources"]["aggregate_sha256"],
+            "local_files_verified": False,
+            "original_paper_a_execution_source_verification":
+                "separate_immutable_source_bundle",
+        },
+    }
+    A.run_analysis(
+        df, lock, str(release_out), ap_fn, auroc_fn, metadata=metadata,
+        score_verification=score_binding, manifest_rows=manifest_rows,
+        release_cache=True, release_verification=release_verification)
+
+    deterministic_outputs = (
+        "results.json", "sensitivity.json", "claim_checks.json", "seed_values.csv",
+        "per_benchmark.csv", "tables/table3_primary.tex",
+        "tables/table4_per_benchmark.tex", "tables/table5_seed_values.tex",
+        "tables/results_macros.tex", "figures/specialization_plane.pdf",
+    )
+    for rel in deterministic_outputs:
+        assert (full_out / rel).read_bytes() == (release_out / rel).read_bytes(), rel
+    attestation = A.C.read_json(release_out / "analysis_metadata.json")
+    release = attestation["release_cache_verification"]
+    assert release["score_and_metadata_hashes_reverified"] is True
+    assert release["release_contract"] == release_verification["release_contract"]
+    assert set(release["current_analysis_source_hashes"]["files"]) == set(
+        A.CURRENT_ANALYSIS_SOURCE_FILES)
+    assert release["original_paper_a_execution_source"] == {
+        "aggregate_sha256": lock["execution_sources"]["aggregate_sha256"],
+        "verification": "separate_immutable_source_bundle",
+        "current_checkout_files_reverified": False,
+    }
+    assert release["raw_manifest_files_locally_reverified"] is False
+    assert release["run_metadata_and_adapter_bytes_locally_reverified"] is False
 
 
 def test_incomplete_one_model_matrix_is_rejected(synthetic_artifacts):
@@ -377,8 +634,15 @@ def test_result_macros_use_observed_aggregate_and_complete_secondary_values(tmp_
         },
     }
     output = tmp_path / "results_macros.tex"
+    point = _point_for_table()
+    point["per_checkpoint"]["represented"]["model"]["seed_deltas"] = {
+        42: 0.10, 43: 0.20, 44: 0.30, 45: 0.40,
+    }
+    point["per_checkpoint"]["transfer"]["model"]["seed_deltas"] = {
+        42: -0.10, 43: -0.20, 44: 0.30, 45: 0.40,
+    }
     A.write_results_macros(
-        output, _point_for_table(), _boot_for_table(), opr, stress)
+        output, point, _boot_for_table(), opr, stress)
     text = output.read_text()
     assert "\\newcommand{\\RepDelta}{+0.3333}" in text
     assert "\\newcommand{\\TransferDelta}{-0.0503}" in text
@@ -389,6 +653,10 @@ def test_result_macros_use_observed_aggregate_and_complete_secondary_values(tmp_
     assert "\\newcommand{\\TransferBaseFPRPct}{2.0}" in text
     assert "\\newcommand{\\ORBenchBaseFPRPct}{12.0}" in text
     assert "\\newcommand{\\HarmBenchBaseRecallPct}{78.0}" in text
+    assert "\\newcommand{\\TotalSeedCount}{4}" in text
+    assert "\\newcommand{\\SpecializationSeedCount}{2}" in text
+    assert "\\newcommand{\\UniformGainSeedCount}{2}" in text
+    assert "\\newcommand{\\ZeroAxisSeedCount}{0}" in text
 
 
 def test_specialization_figure_is_byte_idempotent(tmp_path):

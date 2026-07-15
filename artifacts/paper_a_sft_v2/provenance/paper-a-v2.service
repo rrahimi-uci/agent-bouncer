@@ -1,0 +1,23 @@
+[Unit]
+Description=Paper A strict v2 clean GPU pipeline
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=900
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=reza_rahimi_jazzx_ai
+Group=reza_rahimi_jazzx_ai
+WorkingDirectory=/home/reza_rahimi_jazzx_ai/guard-ranking-fragility
+Environment=HOME=/home/reza_rahimi_jazzx_ai
+Environment=PATH=/home/reza_rahimi_jazzx_ai/guard-ranking-fragility/.venv/bin:/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=RUN_BUCKET=gs://jazzx-gcp-poc-1-paper-a-v2-20260714-141552
+Environment=RUN_ID=paper-a-v2-20260714-141552
+ExecStart=/home/reza_rahimi_jazzx_ai/paper-a-runner.sh
+Restart=on-failure
+RestartSec=60
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

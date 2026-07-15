@@ -1,13 +1,17 @@
-# Paper B — Feasibility Investigation
+# ARCHIVED/HISTORICAL — Mortgage Paper B Feasibility Investigation
 
-Investigator analysis of whether the Paper B plan is feasible and can actually
-end in a "solution." Written 2026-07-13 against the governing plan
+> **Historical role:** This investigation explains why the mortgage joint-stack axis was
+> dropped. The authoritative near-term Paper B direction is now
+> [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md).
+
+Investigator analysis of whether the former mortgage Paper B plan was feasible and could
+end in a "solution." Written 2026-07-13 against the then-governing plan
 [`paper-b-development-checkpoint-plan.md`](paper-b-development-checkpoint-plan.md)
 (`v2-adversarial-review`, baseline commit `df604d9`) and its archived rationale
 [`paper-b-joint-compliance-stack-plan.md`](paper-b-joint-compliance-stack-plan.md).
 
-This is a judgement document, not a plan amendment. Where it disagrees with the
-plan it says so; the plan's own checkpoint contract still governs execution.
+This is a historical judgement document, not a current plan amendment. Its checkpoint
+contract no longer governs composition work.
 
 ---
 

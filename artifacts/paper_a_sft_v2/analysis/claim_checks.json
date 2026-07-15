@@ -1,0 +1,40 @@
+{
+  "analysis_mode": "precision_focused",
+  "formal_rejection_claimed": false,
+  "interval_method": "paired hierarchical percentile bootstrap",
+  "precision_focused_language": true,
+  "represented_criterion": {
+    "ci95_two_sided": [
+      0.2646860998908,
+      0.3690096681627894
+    ],
+    "criterion": "LCB95(observed fixed-panel represented delta) > 0",
+    "descriptive_criterion_met": true,
+    "estimate": 0.3234372224344456,
+    "lcb95_one_sided": 0.2724722500653882,
+    "wording": "the estimated represented-source macro-AP change was +0.3234 (95% two-sided percentile interval [+0.2647, +0.3690])"
+  },
+  "rq4": {
+    "note": "operating-point TPR/FPR is a deployment diagnostic, not a confirmatory test",
+    "status": "descriptive_only"
+  },
+  "specialization_pattern": {
+    "criterion": "represented criterion AND transfer criterion",
+    "descriptive_criterion_met": true,
+    "wording": "estimation-only mode: report the joint (represented, transfer) estimate and intervals; no formal specialization rejection is claimed"
+  },
+  "transfer_criterion": {
+    "ci95_two_sided": [
+      -0.08373284325010907,
+      -0.03207886612993115
+    ],
+    "criterion": "UCB95(observed fixed-panel transfer delta) < 0 AND LOO sign-stable",
+    "descriptive_criterion_met": true,
+    "estimate": -0.05892924895638285,
+    "full_transfer_negative": true,
+    "loo_base_sign_stable": true,
+    "loo_benchmark_sign_stable": true,
+    "ucb95_one_sided": -0.036247398788497504,
+    "wording": "the estimated transfer macro-AP change was -0.0589 (95% two-sided percentile interval [-0.0837, -0.0321])"
+  }
+}

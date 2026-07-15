@@ -1,4 +1,9 @@
-# Paper B Development and Verification Checkpoint Plan
+# ARCHIVED/HISTORICAL — Mortgage Paper B Development and Verification Checkpoint Plan
+
+> **Superseded 2026-07-14:** The authoritative near-term direction is
+> [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md). This document remains
+> a historical protocol for the infeasible mortgage joint-stack direction and must not govern
+> composition work.
 
 - Companion rationale: [`paper-b-joint-compliance-stack-plan.md`](paper-b-joint-compliance-stack-plan.md). Its “joint calibration,” binary mortgage `BLOCK`, and old E3 definitions are superseded; do not implement them.
 - Working title: **Two Policy Screens, One Intervention Budget: A Fixed-System Study of General-Safety and Mortgage-Policy Request Screening**
@@ -19,7 +24,7 @@ This document turns the Paper B research specification into an ordered developme
 4. What condition permits progression?
 5. What scientific claim becomes permissible?
 
-Where this execution document corrects the companion plan—especially “joint calibration” terminology, policy paths, E3 definition, lock order, or test access—this document governs implementation. The companion remains the broader scientific rationale.
+Historically, where this execution document corrected the companion plan—especially “joint calibration” terminology, policy paths, E3 definition, lock order, or test access—it governed that mortgage design. Neither document governs the current composition direction.
 
 Paper B is complete only when checkpoints `P0` through `P14`, including the mandatory `P4a` construct gate, pass. Calendar progress, code volume, completed model runs, or a compiled PDF are not substitutes for these gates.
 

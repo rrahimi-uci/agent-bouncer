@@ -1,0 +1,25 @@
+# Mortgage red-teaming agentic generator — pinned-ish deps.
+# The pipeline runs fully OFFLINE (deterministic mock provider + bundled HMDA sample)
+# with only pandas + the repo's guard_research library. The LLM providers and the real
+# HMDA download are optional extras.
+
+# --- core (offline mode works with just these) ---
+pandas>=2.0
+numpy>=1.24
+pyyaml>=6.0
+
+# --- provenance / metrics come from the parent repo's guard_research package ---
+# Install the parent repo editable so `import guard_research` works:
+#   pip install -e ..            # from this folder, or
+#   pip install -e /path/to/guard-ranking-fragility
+# A light fallback is used automatically if guard_research is unavailable.
+
+# --- optional: real LLM providers (online mode) ---
+# openai>=1.40          # OPENAI_API_KEY
+# anthropic>=0.34       # ANTHROPIC_API_KEY
+
+# --- optional: real HMDA download convenience ---
+# requests>=2.31        # for pulling the HMDA snapshot over HTTP
+
+# --- dev ---
+pytest>=7.4

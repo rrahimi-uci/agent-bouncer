@@ -1,6 +1,7 @@
-# Composition analysis — Compose, Don't Tune (legacy scores, estimation-only)
+# Composition analysis — Compose, Don't Tune (legacy execution artifact)
 
 Scores: `d4179244163f1d99…`  ·  seeds [42, 43, 44, 45, 46]  ·  bootstrap reps 4000 (rng 20260712).
+Lock: `08c47c0459adbcdf…`  ·  analysis status: **legacy_retrospective_estimation**.
 
 ## Panel macro-AP by combiner (represented / transfer)
 
@@ -12,7 +13,7 @@ Scores: `d4179244163f1d99…`  ·  seeds [42, 43, 44, 45, 46]  ·  bootstrap rep
 | raw_avg | 0.946 | 0.873 |
 | logit_avg | 0.942 | 0.897 |
 | max_cal | 0.964 | 0.835 |
-| pit_avg | 0.897 | 0.890 |
+| pit_avg | 0.904 | 0.889 |
 | convex_blind | 0.984 | 0.847 |
 
 ## Per-model transfer macro-AP (base / SFT / composed calibrated_avg)
@@ -38,22 +39,31 @@ Scores: `d4179244163f1d99…`  ·  seeds [42, 43, 44, 45, 46]  ·  bootstrap rep
 - smollm3_3b: -0.005 [-0.014, +0.003]
 - qwen3_4b: -0.019 [-0.030, -0.009]
 
+### Per-benchmark transfer advantages [95% CI]
+
+| Benchmark | ensemble − SFT | ensemble − base |
+|---|---:|---:|
+| jailbreakbench | +0.074 [+0.027, +0.133] | +0.003 [-0.024, +0.033] |
+| xstest | +0.028 [+0.016, +0.043] | +0.017 [-0.006, +0.041] |
+| wildguardtest | +0.070 [+0.048, +0.095] | +0.031 [+0.011, +0.052] |
+| wildjailbreak | +0.119 [+0.087, +0.151] | +0.041 [+0.017, +0.065] |
+
 ## Matched-FPR operating point (target 5%) — realized rates
 
 | Guard | regime | macro TPR | macro FPR | pooled FPR |
 |---|---|---:|---:|---:|
 | base | represented | 0.134 | 0.017 | 0.022 |
 | base | transfer | 0.526 | 0.083 | 0.044 |
-| sft | represented | 0.796 | 0.011 | 0.021 |
-| sft | transfer | 0.667 | 0.151 | 0.162 |
-| calibrated_avg | represented | 0.704 | 0.016 | 0.032 |
-| calibrated_avg | transfer | 0.697 | 0.129 | 0.109 |
+| sft | represented | 0.766 | 0.010 | 0.020 |
+| sft | transfer | 0.554 | 0.137 | 0.146 |
+| calibrated_avg | represented | 0.618 | 0.018 | 0.030 |
+| calibrated_avg | transfer | 0.648 | 0.120 | 0.095 |
 
-## Shuffle-null controls (panel ens − base)
+## Single-permutation shuffle diagnostics (panel ens − base)
 
-| Regime | real | signal-null (SFT signal destroyed) | complementarity-null (per-row broken) |
+| Regime | real | label-alignment shuffle | within-class row-pairing shuffle |
 |---|---:|---:|---:|
-| represented | +0.323 | -0.083 | +0.338 |
-| transfer | +0.030 | -0.165 | +0.046 |
+| represented | +0.314 | -0.071 | +0.329 |
+| transfer | +0.024 | -0.155 | +0.038 |
 
-*Legacy artifact → estimation-only; a clean rerun is required for confirmatory use. WiSE-FT weight interpolation is out of scope (adapter weights absent).*
+*This is retrospective, precision-focused evidence, not a prospective confirmatory result. Clean v2 execution repairs provenance but does not erase prior exposure to part of the transfer cohort. WiSE-FT weight interpolation is out of scope for this output-space analyzer.*

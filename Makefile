@@ -16,13 +16,18 @@ ANALYSIS         = $(V2_ROOT)/analysis
 LEGACY_LOCK      = $(LEGACY_ROOT)/LOCK.json
 LEGACY_SCORES    = $(LEGACY_ROOT)/scores/scores.parquet
 LEGACY_ANALYSIS  = $(LEGACY_ROOT)/analysis
-PAPER_ANALYSIS   ?= $(LEGACY_ANALYSIS)
+COMPOSITION_ANALYSIS        ?= $(ANALYSIS)/composition
+COMPOSITION_FULL_ANALYSIS   ?= $(ANALYSIS)/composition-full
+LEGACY_COMPOSITION_ANALYSIS ?= $(LEGACY_ANALYSIS)/composition
+RELEASE_DIR      ?= dist/paper-a-sft-v2-release
+PAPER_ANALYSIS   ?= $(ANALYSIS)
 PAPER_DIR        = paper-a
 
 .DEFAULT_GOAL := help
 .PHONY: help install install-all manifests manifests-legacy audit lock relock \
-        verify-lock verify-legacy-lock train validate-runs eval analyze analyze-legacy repro \
-        repro-legacy paper-sync paper-verify composition selftest test paper paper-html \
+        verify-lock verify-legacy-lock train validate-runs eval analyze analyze-release \
+        analyze-legacy repro repro-release repro-legacy release-package paper-sync paper-verify \
+        composition composition-full composition-legacy selftest test paper paper-html \
         legacy-explorer clean
 
 help:  ## show this help
@@ -30,9 +35,9 @@ help:  ## show this help
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-17s\033[0m %s\n", $$1, $$2}'
 
 install:      ## install CPU analysis plus tests
-	$(PY) -m pip install -e ".[dev]"
+	$(PY) -m pip install -c requirements.txt -e ".[dev]"
 install-all:  ## install training/scoring plus CPU analysis and tests
-	$(PY) -m pip install -e ".[all]"
+	$(PY) -m pip install -c requirements.txt -e ".[all]"
 
 ## --- clean v2 pipeline ------------------------------------------------------
 manifests:  ## 1. pinned-HF, hash-ranked manifests + text-free public index
@@ -57,18 +62,25 @@ eval:       ## 5. score bases + validated adapters (GPU)
 	$(PY) experiments/eval_paper_a_sft.py --lock $(LOCK)
 analyze:    ## 6. strict complete-matrix analysis under the clean v2 contract
 	$(PY) experiments/analyze_paper_a_sft.py --lock $(LOCK) --scores $(SCORES) --out $(ANALYSIS)
+analyze-release:  ## verify and analyze a final v2 score-only release cache
+	$(PY) experiments/analyze_paper_a_sft.py --release-cache --lock $(LOCK) --scores $(SCORES) --out $(ANALYSIS)
+
+repro-release: analyze-release  ## regenerate v2 analysis and verify checked-in paper inputs
+	$(MAKE) paper-verify PAPER_ANALYSIS=$(ANALYSIS)
+	@echo "reproduced final v2 release-cache outputs in $(ANALYSIS); checked-in paper copies match"
+repro: repro-release  ## primary no-GPU reproduction from a final v2 release cache
 
 ## --- historical score compatibility (no GPU) -------------------------------
 analyze-legacy:  ## explicitly analyze the immutable v1 lock + committed scores
 	$(PY) experiments/analyze_paper_a_sft.py --allow-legacy-lock --lock $(LEGACY_LOCK) --scores $(LEGACY_SCORES) --out $(LEGACY_ANALYSIS)
-	$(MAKE) paper-sync PAPER_ANALYSIS=$(LEGACY_ANALYSIS)
-repro-legacy: analyze-legacy  ## regenerate and sync every legacy paper output
-	$(MAKE) paper-verify PAPER_ANALYSIS=$(LEGACY_ANALYSIS)
-	@echo "reproduced legacy tables/figure in $(LEGACY_ANALYSIS) and verified paper copies"
-repro: repro-legacy  ## compatibility alias; output remains explicitly labeled legacy
+repro-legacy: analyze-legacy  ## regenerate archival v1 analysis without touching v2 paper files
+	@echo "reproduced archival v1 outputs in $(LEGACY_ANALYSIS); publication paper files remain v2"
+
+release-package:  ## stage the public v2 release from an explicit no-raw-prompt allowlist
+	$(PY) experiments/package_paper_a_release.py --root $(V2_ROOT) --out $(RELEASE_DIR)
 
 ## --- generated paper inputs ------------------------------------------------
-paper-sync:  ## copy canonical generated TeX/figure outputs into paper-a
+paper-sync:  ## explicit maintainer action: copy canonical outputs into paper-a
 	cp $(PAPER_ANALYSIS)/tables/table3_primary.tex $(PAPER_DIR)/tab_primary_gen.tex
 	cp $(PAPER_ANALYSIS)/tables/table4_per_benchmark.tex $(PAPER_DIR)/tab_sensitivity_gen.tex
 	cp $(PAPER_ANALYSIS)/tables/table5_seed_values.tex $(PAPER_DIR)/tab_seed_values_gen.tex
@@ -82,8 +94,12 @@ paper-verify:  ## fail if a paper-consumed generated file is stale
 	cmp $(PAPER_ANALYSIS)/figures/specialization_plane.pdf $(PAPER_DIR)/figures/specialization_plane.pdf
 
 ## --- verification / documents ---------------------------------------------
-composition:  ## base+tuned composition ("compose, don't tune") analysis from committed scores
-	$(PY) experiments/analyze_composition.py --scores $(LEGACY_SCORES) --out $(LEGACY_ANALYSIS)/composition
+composition:  ## primary composition analysis from the final v2 release cache
+	$(PY) experiments/analyze_composition.py --release-cache --lock $(LOCK) --scores $(SCORES) --out $(COMPOSITION_ANALYSIS)
+composition-full:  ## composition analysis with raw v2 manifests, run metadata, and adapters
+	$(PY) experiments/analyze_composition.py --lock $(LOCK) --scores $(SCORES) --out $(COMPOSITION_FULL_ANALYSIS)
+composition-legacy:  ## explicit archived-v1 composition compatibility analysis
+	$(PY) experiments/analyze_composition.py --allow-legacy-lock --lock $(LEGACY_LOCK) --scores $(LEGACY_SCORES) --out $(LEGACY_COMPOSITION_ANALYSIS)
 selftest:   ## synthetic end-to-end analysis check
 	$(PY) experiments/analyze_paper_a_sft.py --self-test
 test:       ## run unit and release-integrity tests

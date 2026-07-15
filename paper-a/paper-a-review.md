@@ -2,19 +2,29 @@
 
 **Paper:** The Benchmark Chooses the Winner: Measuring Fine-Tuning Specialization Across Safety-Guard Benchmarks
 
-**Review date:** 2026-07-13
+**Review date:** 2026-07-13; final execution pass 2026-07-14
 
 **Scope:** manuscript, Paper A data construction, training/evaluation code, statistical analysis, locked artifacts, clean-checkout reproducibility, PDF build, and current related work.
 
 ## Decision
 
-**Implementation repaired; legacy-only scientific result. No-go for confirmatory submission until a clean v2 GPU rerun and a genuinely untouched evaluation cohort exist.**
+**Clean-v2 execution verified; defensible as a retrospective, precision-focused measurement. No-go for prospective or confirmatory framing until a genuinely untouched evaluation cohort is locked and evaluated.**
 
-The paper now reports the useful descriptive signal that the committed score table actually supports: all four adapted checkpoints improve on represented-source tests, while the fixed-panel transfer change is negative and heterogeneous. The score table is internally complete, its arithmetic checks out, and the manuscript labels the result retrospective, precision-focused, and estimation-only.
+The completed v2 execution trains all 20 adapters, scores the four bases plus those adapters in 24 complete bundles (79,392 rows), and analyzes the lock-bound corrected cohort. All four adapted checkpoints improve on represented-source tests. The fixed-panel observed change is +0.3234 macro-AP (95% two-sided percentile interval [+0.2647, +0.3690]); dataset-held-out transfer changes by -0.0589 ([-0.0837, -0.0321]) and remains negative in every leave-one-checkpoint-out and leave-one-transfer-benchmark-out sensitivity. Transfer is heterogeneous: SmolLM2 improves, Qwen2.5's interval spans zero, and SmolLM3/Qwen3 decline. Fifteen of twenty seed points occupy the specialization quadrant. HarmBench recall falls from 78.0% to 60.0%, and transfer macro-FPR at calibration-targeted thresholds rises from 8.1% to 15.5%.
 
-The repository implementation now repairs the fail-open lock, data-family, truncation, adapter, score, analysis, and paper-generation paths. It cannot retroactively repair the committed v1 models and scores: their locked Git revision is unrecoverable, two transfer cohorts came from a previously scored legacy subset, known benchmark pairs were not linked, calibration and ID leaked two families, and long-input preprocessing dropped the classifier instruction. Those limitations are now disclosed rather than hidden.
+The repository implementation and v2 rerun repair the fail-open lock, data-family, truncation, adapter, score, analysis, and paper-generation paths. The archived v1 artifact remains immutable historical evidence: its locked Git revision is unrecoverable, two transfer cohorts came from a previously scored seed-7 subset, known benchmark pairs were not linked, calibration and ID leaked two families, and long-input preprocessing dropped the classifier instruction. The v2 artifact replaces that chain for publication results rather than rewriting it.
 
-Accordingly, the corrected paper is a defensible report of a legacy artifact, not clean confirmatory evidence. Promoting the result requires retraining all 20 adapters, rescoring all 24 bundles under the v2 contract, and using a prospective uninspected cohort or benchmark for any confirmatory claim.
+Accordingly, the corrected paper is a defensible report of a clean execution analyzed retrospectively, not clean confirmatory evidence. Execution provenance is no longer the blocker. Prior development still exposed part of the transfer cohort and informed the protocol; promoting the result requires a separately locked, prospectively uninspected cohort or benchmark, not merely another replay of the same data.
+
+## Third-pass clean-v2 execution status (2026-07-14)
+
+The v2 GPU execution completed under lock SHA-256 `cabc8dee9b158773ce0be86f799ec3833c33c18787a2aa74d05ed1a261682c25`. Its complete 79,392-row score table has SHA-256 `b941ddbaea7057ab1f224c510687ec5748916f5eca6a78e1d1f429e0ede5a1c3`; all 24 bundles report valid calibration/threshold status, and strict release-cache replay rejoined every score identity to the text-free public manifests. The locked execution source is preserved as a tracked-tree snapshot with commit `b5f491fc137e01fa6c35998864e32d2096f50a14`, Git tree `e4121de56e8c8e98c7f54507f72491a21a4021ce`, and archive SHA-256 `f547179c921f37830d330548289d8c1e2e9e4e270fb5c74a5ba8830010b44fe0`.
+
+The real release-cache replay exposed one additional P1 implementation defect that synthetic fixtures had missed: public stress-manifest filenames use `orbench_safe_stress` / `harmbench_positive_stress`, while score rows use normalized splits `stress_orbench` / `stress_harmbench`. The strict loader originally compared the two namespaces literally and rejected a valid release. It now validates the filename stem and then maps it to the canonical score split; the regression fixture uses the real namespace pair. This repair does not alter any score or scientific estimate.
+
+The downstream composition prototype was also rerun on the v2 scores. Calibrated averaging trades represented-source AP (0.982 SFT to 0.962 composed) for transfer recovery (0.807 to 0.883); its paired-bootstrap transfer advantage is +0.075 over SFT ([+0.058, +0.093]) and +0.017 over base ([+0.005, +0.030]). It beats the base estimate for two checkpoints, is indistinguishable within the descriptive interval for one, and is worse for Qwen3. This is a retrospective Paper B hypothesis, not a Pareto, dominance, mechanism, or universal-remedy result.
+
+The final Paper B plan audit found two additional design blockers that do not alter those estimates: no same-inference-cost SFT+SFT ensemble currently distinguishes retaining the base from generic two-pass ensembling, and regressing `ensemble − base` on base AP from the same rows is mathematically coupled. The plan now requires the missing control and an independently measured development-cohort competence covariate evaluated against a disjoint prospective outcome.
 
 ## Second-pass repair status (2026-07-13)
 
@@ -34,11 +44,11 @@ The repository repair now addresses the defects that can be fixed without mintin
 - the manuscript and READMEs now use retrospective estimation language, surface the HarmBench decline and legacy provenance/truncation/family defects, and distinguish the clean v2 pipeline from explicit v1 reproduction;
 - the paper/HTML build paths are wired after the nested move, the old broad-study explorer is unlinked and labeled archived, and tracked third-party prompt samples were removed.
 
-These changes do **not** retroactively repair the committed model scores. The truncation fix changes training preprocessing and therefore requires retraining all 20 adapters and rescoring all 24 bundles. Corrected transfer selection changes 605 WildGuard/WildJailbreak rows; global calibration/ID assignment moves three rows. Moreover, the corrected transfer cohorts still retain 615 previously inspected rows, so a prospective confirmatory claim requires a genuinely uninspected cohort or benchmark. Until that rerun exists, the scientifically defensible deliverable is the explicitly labeled legacy, precision-focused estimate, and the publication decision remains major revision / no-go for confirmatory claims.
+At the end of this second pass, these changes did **not** retroactively repair the committed v1 scores: instruction-preserving truncation required retraining all 20 adapters and rescoring all 24 bundles. The third pass above has now completed that clean-v2 execution. Corrected transfer selection changes 605 WildGuard/WildJailbreak rows; global calibration/ID assignment moves three rows. The corrected transfer cohorts still retain 615 previously inspected rows, so a prospective confirmatory claim continues to require a genuinely uninspected cohort or benchmark. The v1 result remains archival; the v2 result is the publication estimate.
 
 ### Original audit finding map
 
-The map and detailed P0/P1/P2 sections below preserve the state found in the original legacy implementation. Their present-tense evidence describes that reviewed baseline, not the repaired worktree. Closure status and post-repair verification are recorded above and in the reproducibility section; the scientific limitations that require new training/scoring evidence remain open.
+The map and detailed P0/P1/P2 sections below preserve the state found in the original legacy implementation. Their present-tense evidence describes that reviewed baseline, not the repaired worktree or v2 execution. Closure status and post-repair verification are recorded above and in the reproducibility section; only limitations requiring a new prospective cohort or expanded design remain scientifically open.
 
 | ID | Severity | Finding | Consequence |
 |---|---|---|---|
@@ -470,7 +480,9 @@ Provide separate make verify-lock and make relock targets. A full-from-scratch t
 
 ### P1-15. Cached analysis is not connected to the manuscript
 
-- make repro writes only artifacts/paper_a_sft/analysis.
+- At the reviewed v1 baseline, `make repro` wrote only
+  `artifacts/paper_a_sft/analysis` (the repaired default now uses the explicit
+  v2 release-cache workflow; v1 remains `make repro-legacy`).
 - paper-a/Makefile consumes paper-local table and figure copies.
 - No target copies or verifies those files.
 - The paper-local primary table already differs from the canonical generated table because model labels were manually prettified.
@@ -586,27 +598,32 @@ Bibliography metadata was also repaired: ExpGuard now has authors and the cited 
 
 | Check | Outcome |
 |---|---|
-| Full workspace pytest without raw v2 manifests installed | 76 passed, 22 skipped; every skip is an explicitly gated raw-v2 integration check |
-| Corrected v2 manifest integration against the isolated build | 23 passed; together the two modes exercise all 98 current tests |
-| Artifact-contract regression suite | 34 passed, including external absolute-root, redirected-input, root/file-symlink, exact-audit-schema, fixed-protocol, software-version, metadata-digest, and development-override cases |
-| Corrected pinned manifest build and audit | 1,200 train / 451 calibration / 677 ID / 1,580 transfer / 400 OR-Bench / 200 HarmBench; all 24 hard assertions passed |
-| Analysis self-test and legacy-lock verification | passed |
-| Full legacy analysis, 10,000 family-bootstrap replicates | completed twice over 2,235 families |
-| Exact repeat comparison | all 11 generated files byte-identical; runtime/source attestation binds SHA-256 digests for all 10 scientific outputs |
-| Observed fixed-panel estimates | represented +0.3327, 95% two-sided interval [+0.2718, +0.3793]; transfer -0.0503, interval [-0.0760, -0.0250] |
-| Paper-consumed generated files | all four TeX inputs and the figure pass byte-for-byte `cmp` against the analysis directory |
-| Tectonic PDF build | exited 0; 9 pages; no undefined citations/references; every page visually inspected |
-| HTML build | 5 tables, 2 figures, 32 numbered labels, 10 cross-references, zero leftover brackets, and zero nested equations |
+| Clean-v2 cloud execution | run `paper-a-v2-20260714-141552` completed with zero service restarts: 20 adapters, 24 complete bundles, and 79,392 score rows |
+| Lock and score identity | lock SHA-256 `cabc8dee9b158773ce0be86f799ec3833c33c18787a2aa74d05ed1a261682c25`; score SHA-256 `b941ddbaea7057ab1f224c510687ec5748916f5eca6a78e1d1f429e0ede5a1c3` |
+| Corrected pinned manifests and audit | 1,200 train / 451 calibration / 677 ID / 1,580 transfer / 400 OR-Bench / 200 HarmBench; all 24 hard assertions passed |
+| Full cloud archive | 4,430,516,320 bytes; SHA-256 `83d08e297ce1031777847f4bfec99cf46f44a5110bbee415ece0d2bc2b51c479`; safe paths/nonregular entries checked and all 177 internal `SHA256SUMS` entries verified |
+| Exact execution-source replay | tracked snapshot commit `b5f491fc137e01fa6c35998864e32d2096f50a14` / tree `e4121de56e8c8e98c7f54507f72491a21a4021ce`; `make verify-lock` passed and `make validate-runs` accepted 20/20 adapters |
+| Repeat execution analysis | an immediate repeat of the cloud analysis was byte-identical; the execution snapshot also passed its 99-test suite and analysis self-test |
+| Hardened current test suite | all 163 collected tests passed, including release-anchor tampering, release-package allowlisting, root/file-symlink rejection, real stress-split names, strict label parsing, complete-matrix validation, and fail-closed lock/runtime paths |
+| Release trust contract | self-hashed `RELEASE.json` (`12eedf1ad2b627e64f799ca5d6368248ff5c98d72d5e244bfede734f21e40c1e`) is separately pinned by `configs/paper_a_sft_v2_release_anchor.json`; it binds the lock, score/metadata files, complete public-manifest tree, and analyzer/verifier source tree |
+| Public release package | `make release-package` staged a 5.3 MB explicit-allowlist package; every packaged `SHA256SUMS` entry verifies, no symlink is present, and raw manifests, prompts, runs, adapters, base caches, audit internals, and smoke artifacts are absent |
+| Final v2 reproduction | `make repro` completed the 10,000-replicate release-cache analysis and verified all four paper TeX inputs plus the figure byte-for-byte without overwriting checked-in copies |
+| Observed fixed-panel estimates | represented +0.3234, 95% two-sided interval [+0.2647, +0.3690]; transfer -0.0589, interval [-0.0837, -0.0321]; 15/20 seed points are in the specialization quadrant |
+| Composition follow-up | `make composition` completed on the v2 release cache; calibrated averaging changes represented AP by -0.019 versus SFT and transfer AP by +0.075 versus SFT / +0.017 versus base, all reported as retrospective estimates |
+| Paper builds | formal 11-point article PDF: 12 pages; annotated PDF: 14 pages; simplified PDF: 10 pages; no undefined references or local-file path leaks, and visual/structural checks found no clipping, overlap, missing target, or missing image |
+| Cloud cleanup | the ephemeral VM, boot disk, live bucket, service account, and reserved address are absent; 26 already-soft-deleted object generations remain provider-retained only until their original retention windows expire |
 
-The repaired analyzer is byte-idempotent in the tested environment. Two complete runs with the same frozen execution sources and inputs produced identical JSON, CSV, TeX, and PDF-figure bytes. `analysis_metadata.json` records the actual execution-source aggregate, runtime attestation, input digests, and hashes of the ten scientific outputs; volatile timestamps and PDF creation metadata are excluded from those deterministic artifacts.
+The durable machine-readable execution summary is `artifacts/paper_a_sft_v2/provenance/execution-evidence.json`. The repaired analyzer is byte-idempotent in the tested environment: the original cloud analysis and its immediate repeat used the same frozen execution sources and inputs and produced identical scientific outputs. `analysis_metadata.json` records the actual analyzer/verifier source aggregate, runtime attestation, input digests, and deterministic output hashes; volatile timestamps and PDF creation metadata are excluded from those artifacts. The separately tracked release anchor makes any attempt to rewrite both `RELEASE.json` and its bound artifacts fail unless the external anchor is also changed, exposing the trust-root change for version-control review or independent pinning. `paper-sync` is now an explicit maintainer action, while `make repro` regenerates the analysis and fails if checked-in paper inputs differ; reproduction can no longer erase the evidence of a stale paper copy before checking it.
 
-Tectonic still emits numerous benign font/underfull-box warnings, a 1.166-point overfull vertical box at the table/reference boundary, and its internal “rerun seems needed” warning after six passes. The PDF nevertheless has resolved references and citations, Table 5 precedes the bibliography, and visual inspection found no clipping, overlap, or unreadable content. Page 9 contains the natural continuation of the bibliography, so its remaining whitespace is ordinary end-of-paper space rather than a blank-page defect. The HTML build's structural checks also pass; browser automation was unavailable in this environment, so HTML verification was static rather than interactive.
+The formal manuscript now builds as a single-column 11-point article. Tectonic emits only its non-fatal internal `.bbl` consistency/rerun warning after six passes; the final log contains no overfull or underfull boxes, undefined references, or undefined citations. All 12 pages were visually inspected after float and bibliography compaction: Table 5 precedes the bibliography, no interior page has a blank or avoidably empty region, and no table, figure, heading, or reference is clipped or unreadable. The annotated edition's compressed contents page and all ten simplified-PDF pages were also checked after their final rebuild. Static DOM checks found 88 unique IDs and 34 valid fragment references in the formal HTML, with no missing image or target; headless-Chrome rendering confirmed the page layout. The in-app browser connector itself was unavailable, which is a tooling limitation rather than an unchecked document claim.
 
 ## Current worktree integration note
 
 The `paper-html` edition is integrated under `paper-a/paper-html`: repository/paper roots, generated-input copying, PDF links, Make targets, and the HTML build all use the nested paths. Pandoc's dropped TikZ body is replaced in HTML by an accessible checked-in SVG, display equations are normalized for MathJax, and the older broad-study explorer remains only as an explicitly archived, unlinked page. Its generated third-party prompt samples are local-only and gitignored, and the previously tracked raw sample assets were removed. This resolves the worktree wiring/scope issue but does not change any scientific-result limitation.
 
 ## Required repair sequence
+
+The five phases below preserve the original repair order as audit history. Their substantive implementation and clean-v2 execution are now closed for this retrospective release. A genuinely uninspected prospective cohort is a separate evidentiary upgrade: it is still required for confirmatory framing, but it is not a missing repair to the reported v2 retrospective estimate. The original hosted-CI bullet in Phase 5 remains useful automation; the current evidence instead consists of an exact-source replay, the full local suite, byte-difference checks, and clean document builds.
 
 ### Phase 1: stop claim-bearing release
 
@@ -650,12 +667,12 @@ The `paper-html` edition is integrated under `paper-a/paper-html`: repository/pa
 
 ## Acceptance criteria
 
-Paper A is ready for another scientific review only when all of the following are true:
+The retrospective Paper A release now satisfies the execution and reporting criteria that were open after the original review:
 
-- [ ] A newly executed v2 lock points to a clean commit containing every execution file. (Requires the clean rerun.)
+- [x] The executed v2 lock points to the preserved tracked source commit/tree and binds every scientific execution file; the exact source snapshot is checksum-attested in the repository.
 - [x] Every v2 final stage verifies the lock and fails on any mismatch.
-- [ ] Corrected text-free manifests are tracked with the clean lock. (The tracked public snapshot is intentionally labeled legacy and not clean-rerun-compatible.)
-- [ ] The scored transfer cohort matches the corrected deterministic construction. (Code and audit pass; new scores do not yet exist.)
+- [x] Corrected, text-free public manifests are tracked and bound by both the clean lock and release contract.
+- [x] The 79,392-row score artifact matches the corrected deterministic transfer construction and strict 24-bundle matrix.
 - [x] Prior exposure is disclosed; a new untouched cohort is still required for prospective confirmation.
 - [x] Upstream JailbreakBench and XSTest pairs produce nonzero, verified family edges in the corrected builder/audit.
 - [x] Train/eval and calibration/ID assignment are globally family-disjoint in the corrected builder/audit.
@@ -668,16 +685,22 @@ Paper A is ready for another scientific review only when all of the following ar
 - [x] Precision mode contains no formal rejection, p-value, Holm, or gate-pass claim.
 - [x] RQ4 reports base, SFT, deltas, pooled and macro values, and both stress directions; it is explicitly a point-estimate deployment diagnostic rather than an uncertainty-bearing confirmatory result.
 - [x] Claims are framed as benchmark-policy discrimination on constructed subsets.
-- [ ] The exact clean training/scoring environment is locked and reproduced. (The release now documents legacy versus current environments, but no new container/lock has been executed.)
-- [x] Fresh-clone tests exercise the tracked redacted release snapshot instead of skipping all artifact checks.
-- [x] `make repro-legacy` updates and verifies every paper-consumed table, figure, and narrative macro.
+- [x] The clean Python/dependency contract, observed GPU/platform runtime fingerprint, and exact runner/service definitions are recorded; the preserved execution source passes lock verification, validates 20/20 adapters, and reproduces the analysis byte-identically.
+- [x] The self-hashed release contract has a separate repository anchor and fails on contract, artifact, public-tree, or analyzer/verifier-source tampering.
+- [x] `make release-package` uses an explicit no-raw allowlist, rejects symlinks/forbidden directories, and emits a package whose full checksum inventory verifies.
+- [x] Fresh-clone/release-cache tests exercise the tracked public release instead of silently skipping artifact checks.
+- [x] `make repro` regenerates v2 analysis and verifies every paper-consumed table, figure, and narrative macro without first overwriting those copies; `make repro-legacy` is isolated to archival v1 outputs.
 - [x] The appendix contains the promised per-seed results and provenance/statistical details.
-- [x] Repeated legacy analysis is byte-idempotent, and the PDF/HTML builds resolve all references. (Tectonic still emits a non-fatal internal `.bbl` rerun warning.)
+- [x] Repeated v2 analysis is byte-idempotent, all 163 current tests pass, and the formal, annotated, simplified, and HTML builds pass their final reference/path/layout checks.
 
-## Suggested interim wording
+One criterion remains deliberately unsatisfied and is not claimed by the manuscript:
 
-If the author needs a truthful description of the current cached result before the rerun, use:
+- [ ] Lock and score a genuinely untouched prospective cohort or benchmark before using prospective, preregistered, confirmatory, or generalization-to-new-benchmarks language.
 
-> On the current fixed four-checkpoint panel and previously constructed benchmark subsets, the observed mean base-to-SFT change was +0.333 macro AP on represented-source tests and -0.050 on dataset-held-out tests. The descriptive two-sided percentile-bootstrap intervals were [+0.272, +0.379] and [-0.076, -0.025]. These are conditional, precision-focused estimates rather than prospective confirmatory rejections; transfer effects were heterogeneous by checkpoint and benchmark.
+## Suggested submission wording
 
-This is now the manuscript's operative wording. The family graph, calibration/ID split, transfer-row construction, and long-input prompt handling are corrected in code, but the committed v1 scores predate those fixes; only a clean rerun can replace the legacy estimates.
+The following wording matches the completed clean-v2 result and its evidentiary boundary:
+
+> On the fixed four-checkpoint panel and clean-v2 constructed benchmark subsets, the observed mean base-to-SFT change was +0.3234 macro AP on represented-source tests and -0.0589 on dataset-held-out transfer tests. The descriptive two-sided family-bootstrap intervals were [+0.2647, +0.3690] and [-0.0837, -0.0321]. These are retrospective, precision-focused estimates conditional on the named checkpoints and subsets, not prospective confirmatory rejections or evidence of a universal mechanism; transfer effects were heterogeneous by checkpoint and benchmark.
+
+This is now the manuscript's operative framing. The family graph, calibration/ID split, deterministic transfer construction, and instruction-preserving long-input path were all used by the completed v2 execution, so the v2 estimates replace the archival v1 numbers for publication. “Clean v2” denotes a verified execution and artifact chain; it does not erase the earlier human inspection of 615 retained transfer rows. Only a separately locked, genuinely uninspected evaluation cohort can upgrade the evidence to prospective confirmation.

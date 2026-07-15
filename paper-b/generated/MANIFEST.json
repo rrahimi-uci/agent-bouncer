@@ -1,0 +1,17 @@
+{
+  "evidence": {
+    "analysis_source_sha256": "8e2ca6f79d5115d3015114b0ab025a8636b70cc534c8e190aee68d619516244c",
+    "analysis_status": "clean_v2_retrospective_estimation",
+    "composition_sha256": "92c2cbc3ea71d5e6c72bf0e6f7eb0d3ef15f0e61f9fffaada885dade460e3ccc",
+    "lock_sha256": "cabc8dee9b158773ce0be86f799ec3833c33c18787a2aa74d05ed1a261682c25",
+    "prospective_confirmatory": false,
+    "scores_sha256": "b941ddbaea7057ab1f224c510687ec5748916f5eca6a78e1d1f429e0ede5a1c3"
+  },
+  "outputs": {
+    "pilot_macros.tex": "7a1be6cd6fce516d6a1c758394a393a8dcfda61849fb8913dbe956e127368be4",
+    "pilot_operating_point_table.tex": "7f8b8bc2f97a8387c5d2d20f21a3f9312ffbdb26ba8b027a863e5c5de1d20af8",
+    "pilot_per_model_table.tex": "e8bc86b31cbcee687c5bf7220e02197222882ecbf51501c10737d067cf59425c",
+    "pilot_summary_table.tex": "82e3a19b08bebd4b41c3da136d795239ebbdca0dea335aa25fb26753911a7264"
+  },
+  "paper_b_generated_contract_version": 1
+}

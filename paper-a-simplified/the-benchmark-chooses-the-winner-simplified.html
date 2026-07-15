@@ -1,58 +1,93 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>The Benchmark Chooses the Winner — plain-language edition</title><style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Benchmark Chooses the Winner — plain-language edition</title>
+<style>
 @page { size: Letter; margin: 14mm; }
-* { box-sizing: border-box; } html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:11.5px; line-height:1.55; color:#1b1f24; margin:0; }
-.band { background:#2563EB; color:#fff; padding:12px 16px; border-radius:6px; margin:0 0 14px; }
+.band { background:#2563eb; color:#fff; padding:12px 16px; border-radius:6px; margin:0 0 14px; }
 .band .eyebrow { font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; opacity:.85; font-weight:600; }
 .band .who { font-size:10.5px; opacity:.9; margin-top:2px; }
 h1 { font-size:21px; line-height:1.15; letter-spacing:-.01em; margin:14px 0 8px; color:#0f172a; }
 h2 { font-size:15.5px; margin:18px 0 6px; color:#1e3a8a; border-bottom:1px solid #e2e8f0; padding-bottom:3px; break-after:avoid; }
 h3 { font-size:12.8px; margin:12px 0 4px; color:#1e40af; break-after:avoid; }
-p { margin:6px 0; } a { color:#2563EB; text-decoration:none; } em { color:#334155; } strong { color:#0f172a; }
-ul,ol { margin:6px 0; padding-left:20px; } li { margin:3px 0; break-inside:avoid; }
-blockquote { margin:8px 0; padding:7px 12px; background:#f1f5f9; border-left:3px solid #2563EB; border-radius:0 4px 4px 0; break-inside:avoid; }
+p { margin:6px 0; }
+a { color:#2563eb; text-decoration:none; }
+em { color:#334155; }
+strong { color:#0f172a; }
+ul,ol { margin:6px 0; padding-left:20px; }
+li { margin:3px 0; break-inside:avoid; }
+blockquote { margin:8px 0; padding:7px 12px; background:#f1f5f9; border-left:3px solid #2563eb; border-radius:0 4px 4px 0; break-inside:avoid; }
 blockquote p { margin:4px 0; }
 code { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:10px; background:#eef2f7; padding:1px 4px; border-radius:3px; }
 pre { background:#0f172a; color:#e2e8f0; padding:10px 12px; border-radius:6px; overflow-x:hidden; break-inside:avoid; }
 pre code { background:none; color:inherit; font-size:8.7px; line-height:1.35; white-space:pre; padding:0; }
 table { border-collapse:collapse; width:100%; margin:8px 0; font-size:10.2px; break-inside:avoid; }
 th,td { border:1px solid #d5dae1; padding:4px 7px; text-align:left; vertical-align:top; }
-th { background:#eaf1ff; color:#0f172a; font-weight:600; } tr:nth-child(even) td { background:#fafbfd; }
+th { background:#eaf1ff; color:#0f172a; font-weight:600; }
+tr:nth-child(even) td { background:#fafbfd; }
 img { max-width:100%; height:auto; display:block; margin:8px auto; break-inside:avoid; }
-hr { border:none; border-top:1px solid #e2e8f0; margin:14px 0; } .pagebreak { break-before:page; }
-</style></head><body>
-<div class="band"><div class="eyebrow">Plain-language edition · reproduction companion</div><div class="who">Reza Rahimi · JazzX AI — same findings and numbers as the formal paper</div></div>
+hr { border:none; border-top:1px solid #e2e8f0; margin:14px 0; }
+.pagebreak { break-before:page; }
+#glossary ~ h1 { font-size:19px; margin-bottom:6px; }
+#glossary ~ h3 { font-size:12px; margin:9px 0 3px; }
+#glossary ~ p, #glossary ~ ul { font-size:10.5px; line-height:1.42; margin-top:4px; margin-bottom:4px; }
+@media screen {
+  body { max-width:900px; margin:28px auto; padding:0 28px 60px; }
+}
+@media print {
+  /* Keep the specialization figure with its section lead instead of leaving a
+     mostly blank page when Chrome honors the SVG's large intrinsic height. */
+  img { max-height:82mm; width:auto; }
+}
+</style>
+</head>
+<body>
+<div class="band"><div class="eyebrow">Plain-language edition · reproduction companion</div><div class="who">Reza Rahimi · JazzX AI — aligned with the formal paper</div></div>
 <h1 id="the-benchmark-chooses-the-winner--plain-language-edition">The
 Benchmark Chooses the Winner — plain-language edition</h1>
-<p><em>A simplified, self-contained retelling of the paper <a
+<p><em>A simplified, self-contained retelling of the Paper A study <a
 href="../paper-a/benchmark_chooses_the_winner.tex">"The Benchmark
 Chooses the Winner: Measuring Fine-Tuning Specialization Across
-Safety-Guard Benchmarks"</a> (Reza Rahimi, JazzX AI). Same findings and
-same numbers as the formal paper — just explained for a reader who has
-<strong>basic statistics</strong> and has <strong>run a LoRA fine-tune
-once</strong>, but who does not live inside evaluation-metric
-theory.</em></p>
+Safety-Guard Benchmarks"</a> (Reza Rahimi, JazzX AI), explained for a
+reader who has <strong>basic statistics</strong> and has <strong>run a
+LoRA fine-tune once</strong>, but who does not live inside
+evaluation-metric theory. The clearly marked composition section is a
+separate preliminary Paper B analysis, not a finding of the formal Paper
+A.</em></p>
 <blockquote>
 <p><strong>Who this is for.</strong> If you know what a mean and a
 percentage are, have fine-tuned a small model from a tutorial, and know
 "training set vs. eval set" — you have enough. Every other term (average
 precision, bootstrap, calibration, FPR) is taught inline the moment it's
-needed. There's a <a href="GLOSSARY.md">glossary</a> for quick
+needed. There's a <a href="#glossary">glossary</a> for quick
 reference.</p>
-<p><strong>The formal paper is the source of truth.</strong> Where this
-edition simplifies, it aims to stay technically correct; if you spot a
-conflict, the <a href="../paper-a/">LaTeX paper</a> and the committed
-results in <a
-href="../artifacts/paper_a_sft/analysis"><code>../artifacts/paper_a_sft/analysis/</code></a>
-win.</p>
+<p><strong>The formal Paper A is the source of truth for the Paper A
+analysis.</strong> Where this edition simplifies, it aims to stay
+technically correct; if you spot a conflict, the <a
+href="../paper-a/">LaTeX paper</a> and the clean-v2 results in <a
+href="../artifacts/paper_a_sft_v2/analysis"><code>../artifacts/paper_a_sft_v2/analysis/</code></a>
+win. The separate Paper B preview is governed by its own <a
+href="../docs/paper-b-compose-dont-tune-plan.md">analysis plan</a>.</p>
 <p><strong>Want the full paper-format edition?</strong> This page is the
 quick read. The complete, <strong>paper-formatted</strong> version —
-abstract, numbered sections, all six tables (incl. per-seed), the
+abstract, numbered sections, all eight tables (incl. per-seed), the
 figure, teaching call-out boxes, and references — is <a
 href="the-benchmark-chooses-the-winner-annotated.pdf"><code>the-benchmark-chooses-the-winner-annotated.pdf</code></a>
 (source: <a
 href="the-benchmark-chooses-the-winner-annotated.tex"><code>.tex</code></a>,
 builds with <code>tectonic</code>).</p>
+<p><strong>Build locally.</strong> From
+<code>paper-a-simplified/</code>, run <code>python build.py</code> to
+regenerate the quick-read HTML and print PDF from <code>README.md</code>
++ <code>GLOSSARY.md</code> using <code>template.html</code>
+(<code>python build.py --html-only</code> skips the print PDF). Run
+<code>tectonic the-benchmark-chooses-the-winner-annotated.tex</code> to
+build the annotated PDF.</p>
 </blockquote>
 <hr />
 <h2 id="1-the-finding-in-one-breath">1. The finding in one breath</h2>
@@ -66,13 +101,15 @@ trained on?</em></p>
 <p>The answer, measured on 4 small models each fine-tuned 5 times:</p>
 <ul>
 <li>On test data drawn from <strong>the same datasets used in
-training</strong>, fine-tuning is a <strong>big, reliable win</strong>
-(a jump of about <strong>+0.33</strong> on our main score, lifting every
-model to near-perfect).</li>
-<li>On <strong>brand-new datasets</strong> the model never trained on,
-fine-tuning is a <strong>small average loss</strong> (about
-<strong>−0.05</strong>), and it makes the guard <strong>miss ~1 in 5
-more real attacks</strong> on a hard held-out harm set.</li>
+training</strong>, the observed fine-tuning gain is large (about
+<strong>+0.32</strong> on our main score, with all 20 fine-tuned runs
+near-perfect).</li>
+<li>On <strong>dataset-held-out transfer benchmarks</strong> not used in
+training, the observed average change is a small loss (about
+<strong>−0.06</strong>), and the guard misses about 18 percentage points
+more harmful examples on a hard held-out stress set. These transfer
+benchmarks were inspected during development, so they are not a sealed,
+never-before-seen cohort.</li>
 </ul>
 <p>So fine-tuning didn't make a <em>broadly smarter</em> guard — it made
 a guard <strong>specialized to its training sources</strong>. The
@@ -93,40 +130,40 @@ win.</strong></p>
 <tr>
 <td>Score on <strong>trained-on</strong> datasets (represented
 macro-AP)</td>
-<td>varies (0.45–0.88)</td>
+<td>varies (0.45–0.89)</td>
 <td>~0.98 for all</td>
-<td><strong>+0.33</strong> (95% range +0.27 to +0.38)</td>
+<td><strong>+0.32</strong> (95% range +0.26 to +0.37)</td>
 </tr>
 <tr>
 <td>Score on <strong>new</strong> datasets (transfer macro-AP)</td>
 <td>varies (0.79–0.94)</td>
-<td>~0.79–0.84 for all</td>
-<td><strong>−0.05</strong> (95% range −0.08 to −0.03)</td>
+<td>~0.78–0.83</td>
+<td><strong>−0.06</strong> (95% range −0.08 to −0.03)</td>
 </tr>
 <tr>
 <td>Attacks caught on trained-on data (recall @ ~1% false alarms)</td>
-<td>13.4%</td>
-<td>76.6%</td>
-<td><strong>+63 points</strong></td>
+<td>13.0%</td>
+<td>76.9%</td>
+<td><strong>+63.9 points</strong></td>
 </tr>
 <tr>
-<td>False alarms on new data (FPR)</td>
-<td>8.3%</td>
-<td>13.7%</td>
-<td><strong>worse</strong></td>
+<td>False alarms on new data (benchmark-macro FPR)</td>
+<td>8.1%</td>
+<td>15.5%</td>
+<td><strong>+7.4 points (worse)</strong></td>
 </tr>
 <tr>
 <td>Attacks caught on a hard held-out harm set (HarmBench)</td>
-<td>78.4%</td>
-<td>57.5%</td>
-<td><strong>−20.9 points</strong></td>
+<td>78.0%</td>
+<td>60.0%</td>
+<td><strong>−18.0 points</strong></td>
 </tr>
 </tbody>
 </table>
 <p>(macro-AP is defined in <a
 href="#6-how-we-score-good--precision-recall-and-ap">§6</a>. "95% range"
-is a confidence interval, explained in <a
-href="#7-how-sure-are-we-of-each-number--the-bootstrap">§7</a>.)</p>
+is a conditional bootstrap interval, explained in <a
+href="#7-how-stable-is-each-estimate-under-resampling--the-bootstrap">§7</a>.)</p>
 <hr />
 <h2 id="2-why-this-matters">2. Why this matters</h2>
 <p>A <strong>prompt-safety guard</strong> is a filter that reads a
@@ -145,9 +182,9 @@ to hijack the system.</li>
 model. The tempting move is: <em>"we have our own logs — let's fine-tune
 a guard on them and it'll get better."</em> It will get better
 <strong>on data like your logs</strong>. The danger is that it quietly
-gets <strong>narrower</strong> — worse at the novel attacks that weren't
-in your logs — and a single benchmark won't reveal that. This paper
-measures exactly that trade-off, carefully.</p>
+gets <strong>narrower</strong>—worse on attacks that differ from those
+logs—and a single benchmark won't reveal that. This paper measures
+exactly that trade-off, carefully.</p>
 <hr />
 <h2 id="3-how-a-guard-turns-a-prompt-into-a-verdict">3. How a guard
 turns a prompt into a verdict</h2>
@@ -160,21 +197,23 @@ pass</strong> and look at only the two candidate next-words.</p>
 preference number called a <strong>logit</strong>. We take the gap
 between them — the unsafe logit minus the safe logit:</p>
 <pre><code>score  s(x) = z_unsafe − z_safe</code></pre>
-<p>Positive → the model leans <strong>unsafe</strong>; more positive →
-more confident. To turn that into a 0-to-1 probability we run the two
-logits through a <strong>softmax</strong> (which converts them into two
-probabilities that add up to 1).</p>
+<p>Positive → the model leans <strong>unsafe</strong>; more positive → a
+stronger unsafe preference. A <strong>softmax</strong> over the two
+logits turns them into bounded shares that add up to 1. The unsafe share
+is convenient for scoring, but it is <strong>not automatically a
+calibrated probability</strong>.</p>
 <blockquote>
 <p><strong>Mini-example.</strong> At the final token, suppose
 <code>z_unsafe = 2.0</code> and <code>z_safe = 1.0</code>.</p>
 <ul>
 <li>Score <code>s(x) = 2.0 − 1.0 = 1.0</code> (positive → leans
 unsafe).</li>
-<li>Probability of unsafe
+<li>Two-token unsafe share
 <code>= e^2.0 / (e^2.0 + e^1.0) = 7.39 / (7.39 + 2.72) ≈ 0.73</code>.</li>
 </ul>
-<p>So this prompt gets a <strong>0.73 unsafe probability</strong>.
-Ranking prompts by this score is all the guard has to do.</p>
+<p>So this prompt gets an <strong>unsafe score of 0.73</strong>. It
+should not be read as a literal 73% chance until calibration has been
+assessed. Ranking prompts by this score is all AP needs.</p>
 </blockquote>
 <p>Every guard in the study — the 4 originals and all 20 fine-tuned
 versions — is scored exactly this way, on English prompts, so results
@@ -216,9 +255,12 @@ learning rate 2e-4 (cosine), effective batch size 4.</p>
 <p><strong>The panel:</strong> 4 base models — <strong>Qwen2.5-1.5B,
 SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B</strong> — each fine-tuned with
 <strong>5 random seeds (42–46)</strong>. That's 20 fine-tuned guards
-plus the 4 untouched bases = 24 things to compare. (Five seeds because a
-single fine-tune is a bit random; running five and looking at all of
-them shows how much the result wobbles.)</p>
+plus the 4 untouched bases = 24 things to compare. The training seed
+controls adapter initialization and dropout; a separate fixed data-order
+seed keeps batch order identical across runs. Five training seeds
+describe run-to-run optimization variation under this one recipe; they
+do not measure variation across new model families, datasets, or tuning
+recipes.</p>
 <hr />
 <h2 id="5-three-ways-we-tested-them">5. Three ways we tested them</h2>
 <p><em>(evaluation design — the most important idea in the
@@ -285,56 +327,66 @@ uses scikit-learn's fair tie handling).</li>
 AP across the benchmarks in a bucket so a big dataset doesn't drown out
 a small one (<strong>each benchmark counts equally</strong> — "macro"),
 then average across the 4 models (the "panel"), and for fine-tuned
-guards across the 5 seeds too. So "macro-AP = +0.33" is an average of
+guards across the 5 seeds too. So "macro-AP = +0.32" is an average of
 averages.</li>
 </ul>
 <hr />
-<h2 id="7-how-sure-are-we-of-each-number--the-bootstrap">7. How sure are
-we of each number? — the bootstrap</h2>
+<h2
+id="7-how-stable-is-each-estimate-under-resampling--the-bootstrap">7.
+How stable is each estimate under resampling? — the bootstrap</h2>
 <p><em>(background — confidence intervals, and an honesty note)</em></p>
-<p>Each headline number is a single estimate from the handful of models
-and seeds we ran; a different draw could land a little higher or lower.
-To see <strong>how much it would wobble</strong>, we <strong>resample
-our own results</strong> thousands of times and recompute the average
-each time. This is a <strong>paired hierarchical bootstrap</strong>:
-10,000 resamples, <em>paired</em> (base vs. fine-tuned, so we measure
-the <em>change</em>), <em>hierarchical</em> (we jiggle at two levels —
-which seeds get counted, and, because these eval sets contain many
+<p>Each headline number is a single estimate from the fixed models,
+datasets, and seeds we ran. To describe <strong>how much it changes
+under the specified resampling scheme</strong>, we <strong>resample our
+own results</strong> thousands of times and recompute the average each
+time. This is a <strong>paired hierarchical bootstrap</strong>: 10,000
+resamples, <em>paired</em> (base vs. fine-tuned, so we measure the
+<em>change</em>), <em>hierarchical</em> (we jiggle at two levels — which
+seeds get counted, and, because these eval sets contain many
 near-duplicate prompts, how much each group of those duplicates counts,
-so a cluster of copies can't fake extra confidence). The 4 models
-themselves are held fixed, not resampled — the claim is about
-<em>these</em> models, not all models everywhere.</p>
+so a cluster of copies does not spuriously narrow the interval). The 4
+models themselves are held fixed, not resampled—the estimand is this
+panel, not all models everywhere.</p>
 <p>Collect the 10,000 recomputed averages and read off the spread:</p>
 <ul>
-<li>the middle 95% is the <strong>two-sided 95% confidence interval
-(CI)</strong> — a plausible range for the true average change;</li>
-<li>a <strong>one-sided bound</strong> answers one direction only: a
-lower bound (LCB) says "at least this much," an upper bound (UCB) says
-"no more than this much."</li>
+<li>the middle 95% is the <strong>two-sided 95% percentile-bootstrap
+interval</strong>;</li>
+<li>a <strong>one-sided bound</strong> is the corresponding lower or
+upper bootstrap quantile.</li>
 </ul>
+<p>These intervals are <strong>conditional fixed-panel resampling
+summaries</strong>: the four checkpoints, benchmark collection, labels,
+and analysis choices are held fixed. They describe seed/family
+resampling variability for this panel; they are not a 95% probability
+statement about the true effect, a guarantee for future data, or
+uncertainty over all possible guard models. Likewise, the one-sided
+quantiles are directional summaries, not universal “at least” or “no
+more than” guarantees.</p>
 <blockquote>
-<p><strong>Reading a CI.</strong> "Transfer change −0.05, 95% CI
-[−0.076, −0.025]" reads as: <em>our best guess is a small drop of about
-0.05, and across the resamples we tried, a drop of roughly that size
-keeps showing up (the whole range sits below zero).</em></p>
+<p><strong>Reading an interval.</strong> "Transfer change −0.0589, 95%
+interval [−0.0837, −0.0321]" means the central 95% of recomputed
+fixed-panel changes under this bootstrap fell in that range. It does not
+by itself establish a population-wide or prospective effect.</p>
 </blockquote>
 <p><strong>Why no p-value / no "statistically significant"
-claim?</strong> Because these scores are a <strong>legacy
-artifact</strong> — computed before the analysis plan was locked.
-Declaring significance on data you've already peeked at is misleading,
-so the paper stays <strong>descriptive</strong>: it shows intervals to
-convey precision, but makes <strong>no formal pass/fail
-verdict</strong>. Treat directions as <em>suggestive</em>, pending a
-clean, pre-registered rerun. (This is called <em>precision-focused</em>
+claim?</strong> This is a retrospective analysis, and parts of the
+evaluation collection were inspected during development. The paper
+therefore stays <strong>descriptive</strong>: it reports conditional
+intervals to convey resampling precision but makes <strong>no formal
+pass/fail verdict</strong>. Re-running the locked code can strengthen
+execution provenance; it cannot make already-inspected transfer sets
+prospective. Confirmatory evidence would require a new, sealed cohort
+and a prospectively locked analysis. (This is <em>precision-focused</em>
 mode.)</p>
 <hr />
 <h2 id="8-result-1--big-wins-on-familiar-data-represented">8. Result 1 —
 big wins on familiar data (represented)</h2>
-<p>On the datasets the models trained on, fine-tuning is a clear,
-consistent win. Every fine-tuned guard lands at <strong>~0.98
-macro-AP</strong>, no matter where its base started. The fixed-panel
-average change is <strong>+0.3327</strong> (95% CI <strong>[+0.2718,
-+0.3793]</strong>, one-sided lower bound <strong>+0.2805</strong>).</p>
+<p>On the datasets the models trained on, the observed gains are large
+and directionally consistent. Every fine-tuned guard lands at
+<strong>~0.98 macro-AP</strong>, no matter where its base started. The
+fixed-panel average change is <strong>+0.3234</strong> (95% CI
+<strong>[+0.2647, +0.3690]</strong>, one-sided lower bound
+<strong>+0.2725</strong>).</p>
 <table>
 <thead>
 <tr>
@@ -347,44 +399,44 @@ average change is <strong>+0.3327</strong> (95% CI <strong>[+0.2718,
 <tbody>
 <tr>
 <td>Qwen2.5-1.5B</td>
-<td>0.622</td>
-<td>0.988</td>
-<td><strong>+0.366</strong> [0.283, 0.426]</td>
+<td>0.6334</td>
+<td>0.9878</td>
+<td><strong>+0.3544</strong> [0.2731, 0.4150]</td>
 </tr>
 <tr>
 <td>SmolLM2-1.7B</td>
-<td>0.447</td>
-<td>0.981</td>
-<td><strong>+0.534</strong> [0.461, 0.580]</td>
+<td>0.4524</td>
+<td>0.9806</td>
+<td><strong>+0.5282</strong> [0.4555, 0.5748]</td>
 </tr>
 <tr>
 <td>SmolLM3-3B</td>
-<td>0.655</td>
-<td>0.982</td>
-<td><strong>+0.327</strong> [0.253, 0.385]</td>
+<td>0.6621</td>
+<td>0.9751</td>
+<td><strong>+0.3130</strong> [0.2419, 0.3701]</td>
 </tr>
 <tr>
 <td>Qwen3-4B</td>
-<td>0.878</td>
-<td>0.983</td>
-<td><strong>+0.104</strong> [0.060, 0.154]</td>
+<td>0.8855</td>
+<td>0.9837</td>
+<td><strong>+0.0981</strong> [0.0545, 0.1479]</td>
 </tr>
 </tbody>
 </table>
 <p>Notice the pattern already: the <strong>weakest</strong> base
-(SmolLM2, 0.447) gains the <strong>most</strong> (+0.534), and the
-<strong>strongest</strong> base (Qwen3-4B, 0.878) gains the
-<strong>least</strong> (+0.104). That's largely a <em>ceiling
+(SmolLM2, 0.4524) gains the <strong>most</strong> (+0.5282), and the
+<strong>strongest</strong> base (Qwen3-4B, 0.8855) gains the
+<strong>least</strong> (+0.0981). That's largely a <em>ceiling
 effect</em> — everyone ends near 0.98, so whoever started lowest had the
-most room to climb. Per-dataset, the gains are +0.19 (ToxicChat), +0.38
-(Prompt-Injections), +0.44 (Jailbreak-Classification).</p>
+most room to climb. Per-dataset, the gains are +0.1880 (ToxicChat),
++0.3704 (Prompt-Injections), +0.4119 (Jailbreak-Classification).</p>
 <hr />
 <h2 id="9-result-2--small-losses-on-new-data-transfer">9. Result 2 —
 small losses on new data (transfer)</h2>
 <p>On the four datasets the models never trained on, the same
 fine-tuning is a <strong>small average loss</strong>: fixed-panel change
-<strong>−0.0503</strong> (95% CI <strong>[−0.0760, −0.0250]</strong>,
-one-sided upper bound <strong>−0.0288</strong>). But the average hides a
+<strong>−0.0589</strong> (95% CI <strong>[−0.0837, −0.0321]</strong>,
+one-sided upper bound <strong>−0.0362</strong>). But the average hides a
 striking split:</p>
 <table>
 <thead>
@@ -398,55 +450,57 @@ striking split:</p>
 <tbody>
 <tr>
 <td>Qwen2.5-1.5B</td>
-<td>0.822</td>
-<td>0.791</td>
-<td>−0.030 [−0.078, <strong>+0.018</strong>] ← range crosses zero</td>
+<td>0.8187</td>
+<td>0.7798</td>
+<td>−0.0389 [−0.0829, <strong>+0.0062</strong>] ← range crosses
+zero</td>
 </tr>
 <tr>
 <td>SmolLM2-1.7B</td>
-<td>0.787</td>
-<td>0.838</td>
-<td><strong>+0.051</strong> [0.018, 0.082] ← improved!</td>
+<td>0.7904</td>
+<td>0.8304</td>
+<td><strong>+0.0400</strong> [0.0003, 0.0776] ← positive point
+estimate</td>
 </tr>
 <tr>
 <td>SmolLM3-3B</td>
-<td>0.914</td>
-<td>0.794</td>
-<td><strong>−0.120</strong> [−0.156, −0.083]</td>
+<td>0.9102</td>
+<td>0.8234</td>
+<td><strong>−0.0869</strong> [−0.1114, −0.0613]</td>
 </tr>
 <tr>
 <td>Qwen3-4B</td>
-<td>0.945</td>
-<td>0.843</td>
-<td><strong>−0.102</strong> [−0.129, −0.075]</td>
+<td>0.9438</td>
+<td>0.7939</td>
+<td><strong>−0.1499</strong> [−0.1963, −0.1050]</td>
 </tr>
 </tbody>
 </table>
 <p>Per-dataset, the losses concentrate on the
-<strong>jailbreak-style</strong> sets (WildJailbreak −0.079,
-JailbreakBench −0.073), while the over-refusal set (XSTest) barely moves
-(−0.010).</p>
-<h3 id="the-key-nuance-who-fine-tuning-helps-vs-hurts">The key nuance:
-who fine-tuning helps vs. hurts</h3>
+<strong>jailbreak-style</strong> sets (WildJailbreak −0.0792,
+JailbreakBench −0.0776), while the over-refusal set (XSTest) barely
+moves (−0.0120).</p>
+<h3 id="the-key-nuance-checkpoint-heterogeneity-behind-the-average">The
+key nuance: checkpoint heterogeneity behind the average</h3>
 <p>Look at the "After SFT" column: on new data, fine-tuning
-<strong>squeezes every model into a narrow ~0.79–0.84 band</strong>,
-even though the bases ranged widely (0.79 to 0.94). Because that band
-acts like a fixed destination:</p>
+<strong>squeezes every model into a narrow ~0.78–0.83 band</strong>,
+even though the bases ranged widely (0.79 to 0.94). The four point
+estimates therefore have different directions:</p>
 <ul>
-<li>a <strong>weak</strong> base (SmolLM2, started at 0.787) gets
-<strong>pulled up</strong> → +0.051;</li>
-<li><strong>strong</strong> bases (SmolLM3 0.914, Qwen3-4B 0.945) get
-<strong>dragged down</strong> → −0.120, −0.102.</li>
+<li>SmolLM2 changes by <strong>+0.0400</strong>;</li>
+<li>Qwen2.5's interval crosses zero;</li>
+<li>SmolLM3 and Qwen3-4B change by <strong>−0.0869</strong> and
+<strong>−0.1499</strong>.</li>
 </ul>
+<p>But Δ = SFT − base, so relating that change to base AP measured on
+the same rows is mathematically coupled. Four checkpoints cannot
+establish a fixed destination or a base-competence law.</p>
 <blockquote>
-<p><strong>Why the −0.05 average is misleading.</strong> Imagine
-fine-tuning always lands new-data skill at ~0.80. A weak model at 0.70
-gains +0.10; a strong one at 0.95 loses −0.15. Average them: (+0.10 −
-0.15)/2 = −0.025 — a tiny dip that <strong>erases both the real help and
-the real harm</strong>. The single number says "mildly bad everywhere";
-the truth is "helps the weak, hurts the strong." <em>(These per-model
-directions are descriptive point estimates from a legacy artifact —
-suggestive, not proven.)</em></p>
+<p><strong>Why the −0.06 average is incomplete.</strong> As a toy
+example, changes of +0.10 and −0.15 average to only −0.025, hiding the
+opposing effects. The observed checkpoint directions above are clean-v2
+retrospective estimates, not a validated predictor based on starting
+strength.</p>
 </blockquote>
 <hr />
 <h2 id="10-the-big-picture--the-specialization-plane">10. The big
@@ -468,40 +522,41 @@ alt="Specialization plane" /></p>
                                 ▲ better
      transfer-favored           │           UNIFORM GAIN
      (worse trained,            │        (better on BOTH)
-      better new)               │     • all 5 SmolLM2 seeds
-        (empty)                 │     • Qwen2.5 seed 43        → 6 dots
+      better new)               │     • SmolLM2 seeds 42–45
+        (empty)                 │     • Qwen2.5 seed 42        → 5 dots
     ────────────────────────────┼────────────────────────────▶ represented
                                 │                                change
-     uniform loss               │     • Qwen2.5 (other 4 seeds)  (trained data)
-     (worse on both)            │     • all 5 SmolLM3 seeds
-        (empty)                 │     • all 5 Qwen3-4B seeds    → 14 dots
+     uniform loss               │     • Qwen2.5 seeds 43–46      (trained data)
+     (worse on both)            │     • SmolLM2 seed 46
+        (empty)                 │     • all 5 SmolLM3 seeds
+                                │     • all 5 Qwen3-4B seeds    → 15 dots
                                 ▼ worse   SPECIALIZATION
                                           (better trained, worse new)</code></pre>
-<p><strong>14 of the 20 dots land in the lower-right "specialization"
+<p><strong>15 of the 20 dots land in the lower-right "specialization"
 quadrant</strong> — better on familiar data, worse on new data. The
-other <strong>6 are in "uniform gain"</strong> (all 5 SmolLM2 seeds +
-one Qwen2.5 seed). <em>No</em> dot is in the loss quadrants. So the
+other <strong>5 are in "uniform gain"</strong> (SmolLM2 seeds 42–45 and
+Qwen2.5 seed 42). <em>No</em> dot is in the loss quadrants. So the
 dominant story is <strong>specialization, not free improvement
-everywhere</strong> — and the exceptions are exactly the weak base
-(SmolLM2).</p>
+everywhere</strong>.</p>
 <hr />
-<h2 id="11-what-happens-at-a-real-yesno-cutoff">11. What happens at a
-real yes/no cutoff</h2>
+<h2 id="11-what-happens-at-a-calibration-selected-diagnostic-cutoff">11.
+What happens at a calibration-selected diagnostic cutoff</h2>
 <p><em>(background — calibration + operating point)</em></p>
-<p>AP is threshold-free, but to actually <em>deploy</em> a guard you
-must draw a line. Two steps:</p>
+<p>AP is threshold-free, but a yes/no diagnostic needs a cutoff. The
+paper uses two steps:</p>
 <ol type="1">
-<li><strong>Calibration (temperature scaling).</strong> Small models are
-often overconfident, so we divide the score by one tuned number (the
-"temperature"), fit on a held-back calibration set, to make "90% unsafe"
-mean roughly 90%. This <strong>doesn't reorder</strong> prompts — it
-just rescales the probabilities.</li>
-<li><strong>Threshold.</strong> Pick a cutoff, chosen on calibration
-data as a <strong>conservative cap</strong> so that <em>at most ~5%</em>
-of genuinely safe prompts get flagged (the target <strong>false-positive
-rate</strong>). Because the cap is conservative, the rate you actually
-see on test can land well below 5%. Then <strong>measure</strong> what
-really happens on test data:
+<li><strong>Calibration (temperature scaling).</strong> Divide the logit
+score by one fitted temperature, using only the held-back calibration
+set. This <strong>doesn't reorder</strong> prompts; it can improve
+alignment between scores and observed label frequencies on that
+calibration distribution. It does not guarantee calibrated probabilities
+on transfer data.</li>
+<li><strong>Threshold.</strong> On pooled calibration negatives, choose
+the recall-maximizing cutoff whose one-sided 95% row-level
+Clopper–Pearson upper bound on FPR is at most <strong>5%</strong>. This
+is a conservative finite-sample diagnostic for that calibration
+sample—not a production or distribution-shift guarantee. Freeze the
+cutoff, then <strong>measure</strong> what happens on test data:
 <ul>
 <li><strong>TPR / recall</strong> = share of <em>unsafe</em> prompts
 caught (higher better);</li>
@@ -510,63 +565,70 @@ flagged (lower better).</li>
 </ul></li>
 </ol>
 <blockquote>
-<p><strong>Mini-example (100 prompts: 80 safe, 20 unsafe).</strong> Set
-the cutoff so only ~5% of safe prompts trip the alarm → 4 of 80 wrongly
-flagged (FPR = 5%). At that same cutoff the guard catches 15 of 20
-unsafe prompts (TPR = 75%); 5 slip through.</p>
+<p><strong>Illustrative mini-example (not the study's threshold
+calculation).</strong> Among 80 safe prompts, 4 false alarms give an
+empirical FPR of 5%. If the same cutoff catches 15 of 20 unsafe prompts,
+its recall is 75%. The study additionally requires the one-sided upper
+confidence bound—not merely the empirical 4/80 rate—to meet the 5%
+calibration criterion.</p>
 </blockquote>
-<p><strong>What the paper finds at the operating point:</strong></p>
+<p><strong>What the paper finds at this diagnostic operating
+point:</strong></p>
 <ul>
-<li><strong>Represented (trained-on) data:</strong> recall jumps
-<strong>13.4% → 76.6%</strong> at only ~1% false alarms — a big, clean
-win where the guard trained.</li>
-<li><strong>Transfer (new) data:</strong> recall barely moves
-(<strong>52.6% → 55.4%</strong>) but false alarms get
-<strong>worse</strong> — benchmark-macro FPR <strong>8.3% →
-13.7%</strong>, and pooled FPR (all safe prompts thrown into one pile
-instead of averaging per benchmark) <strong>4.4% → 14.6%</strong>
-(roughly triples). Note the ~5% cap from step 2 is only guaranteed on
-the <em>calibration</em> data; the cutoff is frozen there and never
-re-tuned, so on new distributions it no longer holds and the realized
-FPR sails past 5% (the base is already at 8.3%). Losing false-alarm
-control off-distribution is itself part of the finding — on novel
-prompts you catch about the same, and cry wolf more.</li>
+<li><strong>Represented (trained-on) data:</strong> observed recall
+changes <strong>13.0% → 76.9%</strong> at only ~1% false alarms—a large
+gain on these represented tests.</li>
+<li><strong>Transfer (new) data:</strong> recall increases
+(<strong>51.7% → 58.1%</strong>) but false alarms get
+<strong>worse</strong> — benchmark-macro FPR <strong>8.1% →
+15.5%</strong>, and pooled FPR (all safe prompts thrown into one pile
+instead of averaging per benchmark) <strong>4.3% → 17.0%</strong>. The
+5% criterion from step 2 applies only to the row-level one-sided bound
+computed from pooled calibration negatives. The cutoff is frozen there
+and never re-tuned; it provides no 5% guarantee on a shifted test
+distribution, where realized FPR can exceed 5% (the base is already at
+8.1%).</li>
 </ul>
 <hr />
 <h2 id="12-stress-tests--false-alarms-and-missed-attacks">12. Stress
 tests — false alarms and missed attacks</h2>
-<p>The two one-sided diagnostic sets sharpen the picture:</p>
+<p>The two single-class diagnostic sets add stress evidence:</p>
 <ul>
 <li><strong>OR-Bench (all benign)</strong> — false-alarm rate
-<strong>12.7% → 10.0%</strong>: fine-tuning slightly reduces
-over-blocking of safe prompts. A small plus.</li>
-<li><strong>HarmBench (all harmful, hard) — recall 78.4% →
-57.5%</strong>, a <strong>20.9-point drop</strong>. After fine-tuning
-the guard <strong>misses about one in five more real attacks</strong> on
-this held-out harm set. This is the sharpest downside in the whole
-study, and it's a safety-relevant one.</li>
+<strong>11.8% → 12.0%</strong>: essentially flat, with a
+<strong>0.2-point increase</strong> in over-blocking.</li>
+<li><strong>HarmBench (all harmful, hard) — recall 78.0% →
+60.0%</strong>, an observed <strong>18.0-point drop</strong>. After
+fine-tuning, the guard misses about 18 percentage points more harmful
+examples on this held-out stress set. This is the largest observed
+downside in the study and is safety-relevant.</li>
 </ul>
-<p>Together they confirm the theme: fine-tuning did <strong>not</strong>
-produce a uniformly better guard.</p>
+<p>Together they are consistent with the broader specialization pattern;
+neither one-class set alone estimates performance on a mixed deployment
+population.</p>
 <hr />
-<h2 id="12b-a-fix-compose-dont-tune">12b. A fix: compose, don't
+<h2
+id="12b-separate-clean-v2-retrospective-paper-b-analysis--compose-dont-tune">12b.
+Separate clean-v2 retrospective Paper B analysis — compose, don't
 tune</h2>
-<p>The results pose a problem — fine-tuning wins on familiar data but
-gives up ground on new data. The obvious reaction is to fine-tune
-<em>better</em>. Here's an early look at a cheaper fix (from a planned
-follow-up, "Compose, Don't Tune"): instead of tuning harder,
-<strong>keep the original untuned model in the decision.</strong></p>
+<p>This section is <strong>not a Paper A result</strong>. It previews a
+separate, clean-v2 retrospective Paper B analysis, <a
+href="../docs/paper-b-compose-dont-tune-plan.md">"Compose, Don't
+Tune"</a>, using the same underlying scored rows to explore a candidate
+mitigation. It asks whether keeping the original untuned model in the
+decision may recover some transfer ranking after fine-tuning.</p>
 <blockquote>
 <p><strong>Background — combining two guards (an "ensemble").</strong>
 Run <em>two</em> guards on each prompt — the untuned base and the
-fine-tuned adapter — and <strong>average their
-unsafe-probabilities</strong> into one score (that's an
-<em>ensemble</em>). A <em>second opinion</em>: the tuned specialist is
-best on prompts like its training; the untuned generalist holds up
-better on new prompts; averaging keeps much of both. It's cheap — same
-backbone with the adapter on/off, two quick passes, <strong>no
-retraining</strong>. <em>Mini-example:</em> base says 0.30 unsafe, tuned
-says 0.90 → ensemble = (0.30+0.90)/2 = <strong>0.60</strong>.</p>
+fine-tuned adapter — and <strong>average their temperature-scaled unsafe
+scores</strong> into one score (that's an <em>ensemble</em>). A
+<em>second opinion</em>: when the guards make different ranking errors,
+their average can preserve useful signal from both. The same backbone
+runs with the adapter off and on, so there is <strong>no
+retraining</strong>, but the method still doubles the forward-pass work
+unless both passes run in parallel. <em>Mini-example:</em> base says
+0.30 unsafe, tuned says 0.90 → ensemble = (0.30+0.90)/2 =
+<strong>0.60</strong>.</p>
 </blockquote>
 <p>Doing this on the same data (macro-AP, panel mean; higher is
 better):</p>
@@ -581,113 +643,129 @@ better):</p>
 <tbody>
 <tr>
 <td>untuned base</td>
-<td>0.65</td>
-<td>0.87</td>
+<td>0.658</td>
+<td>0.866</td>
 </tr>
 <tr>
 <td>tuned (SFT)</td>
-<td><strong>0.98</strong></td>
-<td>0.82</td>
+<td><strong>0.982</strong></td>
+<td>0.807</td>
 </tr>
 <tr>
 <td><strong>composed (base + tuned, averaged)</strong></td>
-<td>0.96</td>
-<td><strong>0.89</strong></td>
+<td>0.962</td>
+<td><strong>0.883</strong></td>
 </tr>
 </tbody>
 </table>
-<p>The ensemble keeps almost all the tuned guard's familiar-data gain
-(0.98 → 0.96) <strong>and</strong> does better than the tuned guard on
-new data (0.82 → 0.89), pulling generalization back toward the base —
-with no extra fine-tuning.</p>
-<p><strong>What it does — and doesn't do (be honest).</strong> Composing
-<strong>reliably beats the tuned guard</strong> on new data for
-<em>every</em> model. It does <strong>not</strong> beat a
-<em>strong</em> untuned base: for the strongest model (Qwen3-4B) it's
-slightly <em>below</em> the base on new data (0.93 vs 0.94) and for
-SmolLM3 it only ties. So it <strong>protects against the damage
-fine-tuning did</strong> — it doesn't dominate everything — and it helps
-most exactly where fine-tuning hurt most (the strong bases):</p>
+<p>The ensemble keeps most of the tuned guard's observed familiar-data
+gain (0.982 → 0.962), and its transfer point estimate is higher than the
+tuned guard's (0.807 → 0.883), pulling the score toward the base—with no
+extra fine-tuning. On transfer, composed minus SFT is
+<strong>+0.075</strong> (95% CI <strong>[+0.058, +0.093]</strong>) and
+composed minus base is <strong>+0.017</strong> (95% CI <strong>[+0.005,
++0.030]</strong>). On represented data, composition is
+<strong>−0.019</strong> below SFT (95% CI <strong>[−0.031,
+−0.010]</strong>), so this is not a universal or Pareto improvement.</p>
+<p><strong>What the preliminary point estimates do—and don't
+show.</strong> The composed score is above the tuned guard on transfer
+data for every model in this fixed panel. It does <strong>not</strong>
+beat a <em>strong</em> untuned base: it is slightly below SmolLM3's base
+(0.907 vs 0.910) and below the strongest model, Qwen3-4B (0.914 vs
+0.944). So it can <strong>recover much of the damage fine-tuning
+did</strong> without dominating every base or SFT result:</p>
 <table>
 <thead>
 <tr>
 <th>Model (new-data strength of base)</th>
-<th>untuned base</th>
-<th>tuned</th>
-<th>composed</th>
+<th style="text-align: right;">untuned base</th>
+<th style="text-align: right;">tuned</th>
+<th style="text-align: right;">composed</th>
+<th style="text-align: right;">composed − base</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>SmolLM2-1.7B (weakest)</td>
-<td>0.79</td>
-<td>0.84</td>
-<td>0.86</td>
+<td style="text-align: right;">0.790</td>
+<td style="text-align: right;">0.830</td>
+<td style="text-align: right;">0.857</td>
+<td style="text-align: right;"><strong>+0.066</strong></td>
 </tr>
 <tr>
 <td>Qwen2.5-1.5B</td>
-<td>0.82</td>
-<td>0.79</td>
-<td>0.86</td>
+<td style="text-align: right;">0.819</td>
+<td style="text-align: right;">0.780</td>
+<td style="text-align: right;">0.855</td>
+<td style="text-align: right;"><strong>+0.036</strong></td>
 </tr>
 <tr>
 <td>SmolLM3-3B</td>
-<td>0.91</td>
-<td>0.79</td>
-<td>0.91</td>
+<td style="text-align: right;">0.910</td>
+<td style="text-align: right;">0.823</td>
+<td style="text-align: right;">0.907</td>
+<td style="text-align: right;">−0.003</td>
 </tr>
 <tr>
 <td>Qwen3-4B (strongest)</td>
-<td>0.94</td>
-<td>0.84</td>
-<td>0.93</td>
+<td style="text-align: right;">0.944</td>
+<td style="text-align: right;">0.794</td>
+<td style="text-align: right;">0.914</td>
+<td style="text-align: right;">−0.029</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Caveats (early result).</strong> These are the same
-<em>legacy</em> scores as the rest — treat the numbers as a signal, not
-a confirmed result (a clean re-run is needed). Composing improves the
-<em>ranking</em>, not the <em>calibration</em>: at a fixed yes/no cutoff
-the false-alarm rate on new data is still too high, so you'd re-tune the
-threshold for new traffic. And it costs two passes per prompt (still
-cheap, not free).</p>
-<p><strong>Takeaway — compose, don't tune.</strong> If you fine-tune a
-small guard, <strong>don't discard the original</strong> — average the
-two guards' scores. You keep most of the in-domain gain <em>and</em>
-recover much of the lost generalization, especially when your base was
-already strong. Reach for composition before more or fancier
-fine-tuning.</p>
+<p>The per-model effects are mixed. Because same-row base AP is also
+part of the <code>composed − base</code> contrast, this table cannot by
+itself show that base strength predicts recovery.</p>
+<p><strong>Caveats (separate preliminary Paper B result).</strong>
+Reusing Paper A's clean-v2 retrospective scored rows makes this an
+exploratory analysis, not an independent replication or prospective
+test. Composing improves the observed <em>ranking</em>, not necessarily
+<em>calibration</em>: its transfer false-alarm behavior still requires
+separately held-out threshold evaluation. It also costs two passes per
+prompt. The current shuffle checks do not compare base+SFT against a
+same-cost ensemble of two independently fine-tuned guards, so they
+cannot show that keeping the base is special. Independent prospective
+data, an SFT+SFT control, and a base-competence measure taken on data
+separate from the recovery outcome are needed before treating
+composition as a general remedy or decision rule.</p>
+<p><strong>Paper B hypothesis.</strong> If you fine-tune a small guard,
+retaining the original score may be a useful mitigation candidate. In
+this preliminary fixed-panel analysis, averaging keeps most of the
+represented-data gain and recovers some transfer ranking. The mixed
+per-model comparison with base and the represented-data tradeoff rule
+out a universal or Pareto claim. That hypothesis still needs an
+independent prospective test.</p>
 <hr />
 <h2 id="13-what-this-means-in-practice">13. What this means in
 practice</h2>
 <ul>
 <li><strong>Fine-tune when your live traffic looks like your training
-data.</strong> On data like your training sources (the "represented" /
-trained-on regime), the win is large and reliable (recall 13% → 77%). If
-your deployment really matches your sources, fine-tuning is worth
-it.</li>
-<li><strong>Expect erosion on novel attacks.</strong> On new datasets
-the guard never trained on (the "transfer" regime), fine-tuning tends to
-trade away generalization — more false alarms, and a real drop in
-catching hard, unseen harm.</li>
+data.</strong> On data like these training sources (the "represented" /
+trained-on regime), the observed gain is large (recall 13.0% → 76.9%).
+Validate the effect on your own traffic before deployment.</li>
+<li><strong>Check for erosion on dataset-held-out attacks.</strong> On
+the transfer benchmarks, fine-tuning shows more false alarms and an
+observed drop in catching hard harmful examples.</li>
 <li><strong>Always test on datasets the model never trained on.</strong>
 A single trained-on benchmark will crown fine-tuning the winner and hide
 the transfer cost. Report <em>both</em> regimes.</li>
-<li><strong>Consider the base's starting strength.</strong> A weak base
-has the most to gain and little to lose; a strong base may be <em>better
-left alone</em> for screening new/transfer traffic — it can already be
-the better guard there before you touch it. <em>(This is a suggestive
-pattern across 4 models, not a proven law — see limitations.)</em></li>
+<li><strong>Do not route by starting strength from this panel.</strong>
+The four checkpoint effects are heterogeneous, but same-row
+base-versus-change comparisons are coupled. Test every base/adapted pair
+on target transfer data; validate any competence rule on an independent
+development measure and a prospectively locked outcome.</li>
 </ul>
 <hr />
 <h2 id="14-honest-limitations-what-not-to-over-read">14. Honest
 limitations (what not to over-read)</h2>
 <ul>
-<li><strong>Legacy artifact.</strong> These scores were produced before
-the strengthened, locked pipeline, so they are
-<strong>estimation-only</strong>. A clean, pre-registered rerun is
-needed before any number is "confirmatory." (The repository ships that
-clean pipeline; it just hasn't been re-run.)</li>
+<li><strong>Retrospective fixed-panel evidence.</strong> The analysis is
+<strong>estimation-only</strong>. Re-running a locked pipeline can
+verify execution, but it cannot make previously inspected transfer sets
+prospective. Confirmatory claims require a new sealed cohort and a
+prospectively locked plan.</li>
 <li><strong>Balanced test pools overstate real-world precision.</strong>
 The test sets are ~50/50 safe/unsafe; real traffic has <em>far</em>
 fewer unsafe prompts, and precision/AP look rosier on balanced data than
@@ -697,7 +775,8 @@ inspected during development, so "transfer" means
 <em>dataset-held-out</em>, not <em>never-before-seen</em>.</li>
 <li><strong>Only 4 models, 2 lineages (Qwen, SmolLM), 1.5–4B.</strong>
 Conclusions are about <em>this panel</em>, not all guards; the
-base-competence pattern rests on only 4 points.</li>
+base-competence interpretation rests on four mathematically coupled
+same-row points and remains a hypothesis.</li>
 <li><strong>Mixed native policies.</strong> The four transfer datasets
 encode different definitions of "unsafe" (harm vs. refusal vs.
 jailbreak), so their macro-average blends distinct policies.</li>
@@ -706,31 +785,34 @@ response/tool-call/multi-turn moderation.</li>
 </ul>
 <hr />
 <h2 id="15-one-paragraph-recap">15. One-paragraph recap</h2>
-<p>Fine-tuning <strong>specializes</strong> a small safety guard: it
-delivers large, reliable gains on data resembling its training sources
-(represented macro-AP <strong>+0.33</strong>, everyone to ~0.98) while
-causing a small average loss on genuinely new datasets (transfer
-<strong>−0.05</strong>) and a real drop in catching hard unseen harm
-(HarmBench recall <strong>−20.9 points</strong>). The average transfer
-number hides a split — fine-tuning <strong>helps weak bases and hurts
-strong ones</strong> — and 14 of 20 fine-tunes sit in the
-"better-on-familiar, worse-on-new" quadrant. So the benchmark you choose
-to report decides whether fine-tuning looks like a win. Report
-<strong>both</strong> regimes with uncertainty ranges, and treat these
-specific numbers as <strong>suggestive pending a clean
-rerun</strong>.</p>
+<p>Fine-tuning <strong>specializes</strong> a small safety guard in this
+fixed panel: the analysis estimates large gains on data resembling its
+training sources (represented macro-AP <strong>+0.32</strong>, everyone
+to ~0.98), a small average loss on dataset-held-out transfer benchmarks
+(<strong>−0.06</strong>), and an observed drop on the HarmBench stress
+set (recall <strong>−18.0 points</strong>). The average transfer number
+hides checkpoint heterogeneity — one gain, one interval spanning zero,
+and two losses — and 15 of 20 fine-tunes sit in the "better-on-familiar,
+worse-on-new" quadrant. So the benchmark you choose to report decides
+whether fine-tuning looks like a win. Report <strong>both</strong>
+regimes with conditional fixed-panel uncertainty ranges, and treat these
+clean-v2 numbers as retrospective estimates, not prospective or
+confirmatory effects.</p>
 <hr />
-<p><em>Numbers in this edition are generated from the same committed
-results as the formal paper (<a
-href="../artifacts/paper_a_sft/analysis"><code>../artifacts/paper_a_sft/analysis/</code></a>).
-Concept explanations were drafted and independently accuracy-checked.
-See <a href="GLOSSARY.md">GLOSSARY.md</a> for quick definitions and <a
-href="../paper-a"><code>../paper-a/</code></a> for the full formal
-paper.</em></p>
-<div class="pagebreak"></div><h1 id="glossary--plain-definitions">Glossary — plain definitions</h1>
+<p><em>Paper A numbers in this edition are generated from the clean-v2
+Paper A results (<a
+href="../artifacts/paper_a_sft_v2/analysis"><code>../artifacts/paper_a_sft_v2/analysis/</code></a>).
+The clearly marked composition preview is a separate preliminary Paper B
+analysis. See <a href="#glossary">GLOSSARY.md</a> for quick definitions
+and <a href="../paper-a"><code>../paper-a/</code></a> for the full
+formal Paper A.</em></p>
+<div class="pagebreak" id="glossary"></div>
+
+<h1 id="glossary--plain-definitions">Glossary — plain definitions</h1>
 <p>Quick reference for the terms used in the <a
-href="README.md">plain-language edition</a>. Ordered roughly from "what
-is being built" to "how it's measured."</p>
+href="#the-benchmark-chooses-the-winner--plain-language-edition">plain-language
+edition</a>. Ordered roughly from "what is being built" to "how it's
+measured."</p>
 <h3 id="prompt-safety-guard">Prompt-safety guard</h3>
 <p>A filter that reads a user's <strong>prompt</strong> and outputs
 <strong>safe</strong> or <strong>unsafe</strong>. Cheap to run in front
@@ -759,9 +841,12 @@ verdict word. <strong>Completion-only loss on the verdict token</strong>
 = the model is graded only on producing the one answer token
 (<code>safe</code>/<code>unsafe</code>), not on echoing the prompt.</p>
 <h3 id="seed">Seed</h3>
-<p>The random number that initializes a training run. Running <strong>5
-seeds (42–46)</strong> per model gives 5 slightly different fine-tunes,
-so you can see how much the result wobbles from randomness.</p>
+<p>A number that controls pseudorandom choices in a training run. Here
+the <strong>training seed</strong> affects adapter initialization and
+dropout, while a separate fixed data-order seed keeps batch order
+identical. Running <strong>5 seeds (42–46)</strong> per model describes
+run-to-run optimization variation under this one recipe; it does not
+measure variation across models, datasets, or recipes.</p>
 <h3 id="logit--logit-difference-score">Logit / logit-difference
 score</h3>
 <p>A <strong>logit</strong> is the model's raw, unnormalized preference
@@ -769,8 +854,9 @@ number for a candidate next word. The guard's score is the gap
 <code>s(x) = z_unsafe − z_safe</code> at the final token. Positive →
 leans unsafe.</p>
 <h3 id="softmax">Softmax</h3>
-<p>Turns the two logits into two probabilities that add up to 1, so the
-score becomes a 0–1 "probability of unsafe."</p>
+<p>Turns the two logits into two bounded shares that add up to 1. The
+resulting 0–1 unsafe share is useful as a score, but it is not
+automatically a calibrated probability.</p>
 <h3 id="represented-sources">Represented sources</h3>
 <p>Held-out test rows from the <strong>same datasets used in
 training</strong> (same style, new examples). Like this year's exam on a
@@ -815,19 +901,22 @@ benchmark-macro then panel-mean</h3>
 <p>Average the AP <strong>across benchmarks</strong> so each dataset
 counts equally ("macro"), then <strong>across the 4 models</strong>
 ("panel"), and for fine-tuned guards <strong>across the 5 seeds</strong>
-too. The headline "+0.33 / −0.05" numbers are these averages of
+too. The headline "+0.323 / −0.059" numbers are these averages of
 averages.</p>
 <h3 id="calibration--temperature-scaling">Calibration / temperature
 scaling</h3>
-<p>Rescaling the score into an honest probability by dividing by one
-tuned number (the "temperature"), fit on a held-back calibration set. It
-<strong>doesn't reorder</strong> prompts — just makes stated
-probabilities match reality better.</p>
+<p>Dividing the logit score by one fitted number (the "temperature"),
+using a held-back calibration set. It <strong>doesn't reorder</strong>
+prompts. It can improve agreement between scores and observed label
+frequencies on that calibration distribution, but does not guarantee
+calibrated probabilities on transfer data.</p>
 <h3 id="threshold--operating-point">Threshold / operating point</h3>
-<p>The cutoff score above which a prompt is flagged. Chosen here as a
-<strong>conservative cap</strong> so at most ~5% of safe prompts are
-flagged (target FPR). The realized TPR/FPR are then
-<strong>measured</strong> on test data.</p>
+<p>The cutoff score above which a prompt is flagged. Here it is selected
+on pooled calibration negatives to maximize calibration recall while the
+one-sided 95% row-level Clopper–Pearson upper bound on FPR is at most
+5%. That is a calibration-sample diagnostic constraint, not a production
+or distribution-shift guarantee. The cutoff is frozen and realized
+TPR/FPR are then <strong>measured</strong> on test data.</p>
 <h3 id="bootstrap-paired-hierarchical">Bootstrap (paired,
 hierarchical)</h3>
 <p>A way to estimate uncertainty by <strong>resampling your own
@@ -836,35 +925,44 @@ the number each time. <strong>Paired</strong> = compare base vs.
 fine-tuned to measure the <em>change</em>. <strong>Hierarchical</strong>
 = resample at two levels: which seeds count, and — since the eval sets
 contain many near-duplicate prompts — how much each group of those
-duplicates counts. The 4 models are held fixed.</p>
+duplicates counts. The 4 models are held fixed, so this describes
+conditional resampling variation for this panel—not variation across all
+possible guard models.</p>
 <h3 id="confidence-interval-ci--one-sided-bound-lcb-ucb">Confidence
 interval (CI) / one-sided bound (LCB, UCB)</h3>
 <ul>
-<li><strong>Two-sided 95% CI</strong> — the middle 95% of the bootstrap
-results; a plausible range for the true average change.</li>
-<li><strong>LCB</strong> (lower confidence bound) — "at least this
-much." <strong>UCB</strong> (upper) — "no more than this."</li>
+<li><strong>Two-sided 95% percentile-bootstrap interval</strong> — the
+middle 95% of recomputed fixed-panel changes under the specified
+seed/family resampling.</li>
+<li><strong>LCB/UCB</strong> — the corresponding one-sided lower/upper
+bootstrap quantile.</li>
 </ul>
+<p>These are conditional on the four checkpoints, benchmark collection,
+labels, and analysis choices. They are not a 95% probability statement
+about a true population effect or guarantees for future models and
+data.</p>
 <h3 id="precision-focused--descriptive-analysis-mode">Precision-focused
 / descriptive (analysis mode)</h3>
 <p>The deliberate choice to report <strong>intervals only — no p-value,
 no "statistically significant," no pass/fail</strong> — because the
-scores are a legacy artifact analyzed after the fact. Directions are
-<strong>suggestive, not proven</strong>; a clean pre-registered rerun
-would be needed to claim significance.</p>
+analysis is retrospective and evaluation data were inspected during
+development. A locked rerun can strengthen execution provenance, but
+confirmatory evidence would require a new sealed cohort and a
+prospectively locked analysis.</p>
 <h3 id="specialization-plane">Specialization plane</h3>
 <p>The core figure: x = represented AP change, y = transfer AP change,
 one dot per (model, seed). Lower-right quadrant = "specialization"
-(better on familiar data, worse on new). 14 of 20 dots land there.</p>
+(better on familiar data, worse on new). 15 of 20 dots land there.</p>
 <h3 id="specialization-the-finding">Specialization (the finding)</h3>
 <p>Fine-tuning making a guard <strong>better on its training sources but
-not broadly better</strong> (and often worse on novel data) — as opposed
-to a general capability upgrade.</p>
+not broadly better</strong> (and often worse on dataset-held-out
+transfer data) — as opposed to a general capability upgrade.</p>
 <h3 id="ensemble--composition">Ensemble / composition</h3>
 <p>Using more than one model and combining their outputs into one
 decision. Here: run the untuned base <strong>and</strong> the fine-tuned
-adapter on the same prompt and <strong>average their
-unsafe-probabilities</strong>. A "second opinion" that keeps the
-specialist's in-domain skill and the generalist's out-of-domain
-robustness — the "compose, don't tune" fix.</p>
-</body></html>
+adapter on the same prompt and average their temperature-scaled unsafe
+scores. In this repository, composition is a <strong>separate
+preliminary Paper B analysis</strong>, not a formal Paper A finding or
+an established fix.</p>
+</body>
+</html>

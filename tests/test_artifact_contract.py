@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ import paper_a_common as C  # noqa: E402
 import lock_paper_a_sft as lock_script  # noqa: E402
 import run_paper_a_sft as run_script  # noqa: E402
 import eval_paper_a_sft as eval_script  # noqa: E402
+import package_paper_a_release as package_script  # noqa: E402
 
 
 def _write(path: Path, text: str) -> None:
@@ -198,6 +200,22 @@ def _strict_fixture(tmp_path: Path) -> tuple[dict, Path]:
     return lock, lock_path
 
 
+def _write_release_fixture(tmp_path: Path, lock: dict) -> dict:
+    """Add the score files and external anchor required by release-cache mode."""
+    score_root = tmp_path / lock["artifact_paths"]["scores"]
+    _write(score_root / "scores.parquet", "fixture parquet bytes\n")
+    C.write_json(score_root / "metadata.json", {
+        "lock_sha256": lock["lock_sha256"],
+        "scores_sha256": C.sha256_file(score_root / "scores.parquet"),
+    })
+    # Composition postdates the original execution-source tuple but is part of
+    # the release analyzer/verifier trust boundary.
+    composition = tmp_path / "experiments/analyze_composition.py"
+    if not composition.exists():
+        _write(composition, "fixture composition analyzer\n")
+    return C.write_release_cache_contract(lock, repo_root=tmp_path)
+
+
 def test_strict_lock_verifies_self_config_manifests_audit_and_sources(tmp_path):
     lock, _ = _strict_fixture(tmp_path)
     report = C.verify_lock(lock, verify_files=True, repo_root=tmp_path)
@@ -205,6 +223,139 @@ def test_strict_lock_verifies_self_config_manifests_audit_and_sources(tmp_path):
     assert report["files_verified"] is True
     assert report["execution_sources"]["n_files"] == len(C.EXECUTION_SOURCE_FILES)
     assert set(report["manifests"]["splits"]) == set(C.LOCK_MANIFEST_FILES)
+
+
+def test_release_cache_lock_uses_bound_public_release_without_raw_manifests(tmp_path):
+    lock, _ = _strict_fixture(tmp_path)
+    release = _write_release_fixture(tmp_path, lock)
+    raw_dir = tmp_path / lock["artifact_paths"]["manifests"]
+    shutil.rmtree(raw_dir)
+
+    with pytest.raises(C.ArtifactContractError, match="manifest.*missing"):
+        C.verify_lock(lock, verify_files=True, repo_root=tmp_path)
+    report = C.verify_release_cache_lock(lock, repo_root=tmp_path)
+    assert report["release_cache_only"] is True
+    assert report["release_contract"]["release_sha256"] == release["release_sha256"]
+    assert report["release_contract"]["anchor_path"] == release["anchor_path"]
+    assert report["public_release"]["sha256"] == lock["public_release"]["manifest_sha256"]
+    assert report["execution_sources"] == {
+        "aggregate_sha256": lock["execution_sources"]["aggregate_sha256"],
+        "n_files": len(C.EXECUTION_SOURCE_FILES),
+        "local_files_verified": False,
+        "original_paper_a_execution_source_verification":
+            "separate_immutable_source_bundle",
+    }
+
+    public_train = tmp_path / lock["artifact_paths"]["public_manifests"] / "train.jsonl"
+    public_train.write_text(public_train.read_text(encoding="utf-8") + "{}\n",
+                            encoding="utf-8")
+    with pytest.raises(C.ArtifactContractError, match="public-manifest file tree mismatch"):
+        C.verify_release_cache_lock(lock, repo_root=tmp_path)
+
+
+def test_public_release_package_uses_exact_allowlist_and_excludes_raw_artifacts(tmp_path):
+    lock, _ = _strict_fixture(tmp_path)
+    _write_release_fixture(tmp_path, lock)
+    source = tmp_path / lock["artifact_paths"]["root"]
+    destination = tmp_path / "dist" / "paper-a-release"
+    staged = package_script.stage_release(
+        source, destination, repo_root=tmp_path)
+
+    staged_artifact = staged / lock["artifact_paths"]["root"]
+    assert (staged / "SHA256SUMS").is_file()
+    assert (staged / C.DEFAULT_RELEASE_ANCHOR_PATH).is_file()
+    assert {path.name for path in staged_artifact.iterdir()} == {
+        "LOCK.json", "RELEASE.json", "public_manifests", "scores"}
+    assert {path.name for path in (staged_artifact / "scores").iterdir()} == {
+        "scores.parquet", "metadata.json"}
+    for forbidden in package_script.FORBIDDEN_NAMES:
+        assert not any(
+            forbidden in {part.lower() for part in path.relative_to(staged).parts}
+            for path in staged.rglob("*"))
+
+    with pytest.raises(FileExistsError):
+        package_script.stage_release(source, destination, repo_root=tmp_path)
+
+
+def test_release_cache_and_default_verification_both_reject_current_source_drift(
+        tmp_path):
+    lock, _ = _strict_fixture(tmp_path)
+    _write_release_fixture(tmp_path, lock)
+    current_analysis_source = tmp_path / "experiments/analyze_paper_a_sft.py"
+    current_analysis_source.write_text(
+        current_analysis_source.read_text(encoding="utf-8") + "# post-run hardening\n",
+        encoding="utf-8")
+
+    with pytest.raises(C.ArtifactContractError, match="execution source hash mismatch"):
+        C.verify_lock(lock, verify_files=True, repo_root=tmp_path)
+
+    with pytest.raises(C.ArtifactContractError,
+                       match="analyzer/verifier source tree mismatch"):
+        C.verify_release_cache_lock(lock, repo_root=tmp_path)
+
+
+def test_release_anchor_rejects_joint_score_and_metadata_rewrite(tmp_path):
+    lock, _ = _strict_fixture(tmp_path)
+    release = _write_release_fixture(tmp_path, lock)
+    assert C.verify_release_cache_lock(lock, repo_root=tmp_path)[
+        "release_contract"]["release_sha256"] == release["release_sha256"]
+
+    score_root = tmp_path / lock["artifact_paths"]["scores"]
+    scores = score_root / "scores.parquet"
+    metadata = score_root / "metadata.json"
+    scores.write_bytes(b"jointly rewritten score bytes")
+    rewritten = C.read_json(metadata)
+    rewritten["scores_sha256"] = C.sha256_file(scores)
+    rewritten["attacker_note"] = "metadata was rewritten consistently"
+    C.write_json(metadata, rewritten)
+
+    # Neither RELEASE.json nor its external config anchor was changed.
+    with pytest.raises(C.ArtifactContractError, match="release scores hash mismatch"):
+        C.verify_release_cache_lock(lock, repo_root=tmp_path)
+
+
+def test_release_anchor_itself_is_required_and_binds_exact_release_bytes(tmp_path):
+    lock, _ = _strict_fixture(tmp_path)
+    release = _write_release_fixture(tmp_path, lock)
+    anchor = Path(release["anchor_path"])
+    anchor.unlink()
+    with pytest.raises(C.ArtifactContractError, match="release anchor is missing"):
+        C.verify_release_cache_lock(lock, repo_root=tmp_path)
+
+    _write_release_fixture(tmp_path, lock)
+    release_path = Path(release["release_path"])
+    release_obj = C.read_json(release_path)
+    release_obj["attacker_note"] = "new self-consistent release"
+    release_obj["release_sha256"] = C.canonical_obj_sha256({
+        key: value for key, value in release_obj.items() if key != "release_sha256"})
+    C.write_json(release_path, release_obj)
+    with pytest.raises(C.ArtifactContractError, match="anchor does not match RELEASE.json bytes"):
+        C.verify_release_cache_lock(lock, repo_root=tmp_path)
+
+
+@pytest.mark.parametrize("value, expected", [
+    (0, 0), (1, 1), (0.0, 0), (1.0, 1), (False, 0), (True, 1),
+    ("safe", 0), ("unsafe", 1), ("0", 0), ("1", 1),
+])
+def test_normalize_binary_label_accepts_only_explicit_binary_values(value, expected):
+    assert C.normalize_binary_label(value) == expected
+
+
+@pytest.mark.parametrize("value", [
+    -1, 2, 10 ** 1000, -0.5, 0.5, 1.5,
+    float("nan"), float("inf"), float("-inf"),
+])
+def test_normalize_binary_label_rejects_nonbinary_or_nonfinite_numerics(value):
+    with pytest.raises(ValueError, match="exactly finite 0 or 1"):
+        C.normalize_binary_label(value)
+    with pytest.raises(ValueError, match="exactly finite 0 or 1"):
+        C.row_gold({"gold": value, "label": "safe"})
+
+
+def test_row_gold_does_not_fall_back_past_a_malformed_explicit_gold_value():
+    with pytest.raises(ValueError, match="unrecognized label"):
+        C.row_gold({"gold": "0.5", "label": "safe"})
+    assert C.row_gold({"label": "safe"}) == 0
 
 
 def test_legacy_lock_requires_explicit_opt_in(tmp_path):
@@ -521,6 +672,25 @@ def test_final_training_rejects_max_step_override(tmp_path, monkeypatch):
     assert run_script.cmd_train(args) == 2
 
 
+def test_final_train_and_eval_preflight_runtime_software(tmp_path, monkeypatch, capsys):
+    lock, lock_path = _strict_fixture(tmp_path)
+    monkeypatch.setattr(C, "REPO_ROOT", tmp_path)
+    drifted = dict(lock["software_versions"])
+    drifted["torch"] = "drifted"
+    monkeypatch.setattr(C, "software_versions", lambda: dict(drifted))
+
+    args = argparse.Namespace(
+        lock=str(lock_path), allow_legacy_lock=False, manifest=None,
+        max_steps=None, nonfinal=False, dry_run=False, out=None,
+        model_key=None, seed=None, seeds=None, device=None, force=False,
+    )
+    assert run_script.cmd_train(args) == 2
+    assert "runtime software differs" in capsys.readouterr().err
+
+    assert eval_script.main(["--lock", str(lock_path)]) == 2
+    assert "runtime software differs" in capsys.readouterr().err
+
+
 def test_dry_run_cannot_write_canonical_final_run_metadata(tmp_path, monkeypatch):
     _lock, lock_path = _strict_fixture(tmp_path)
     monkeypatch.setattr(C, "REPO_ROOT", tmp_path)
@@ -649,6 +819,13 @@ def test_combined_score_digest_is_bound_and_verified(tmp_path):
     C.write_json(metadata, metadata_obj)
     second = C.verify_score_artifact(scores, metadata, lock)
     assert second["metadata_sha256"] != first["metadata_sha256"]
+    unbound = C.read_json(metadata)
+    unbound["lock_sha256"] = "0" * 64
+    C.write_json(metadata, unbound)
+    with pytest.raises(C.ArtifactContractError, match="lock hash"):
+        C.verify_score_artifact(scores, metadata, lock)
+    unbound["lock_sha256"] = lock["lock_sha256"]
+    C.write_json(metadata, unbound)
     scores.write_bytes(b"tampered")
     with pytest.raises(C.ArtifactContractError, match="combined score hash mismatch"):
         C.verify_score_artifact(scores, metadata, lock)
@@ -723,6 +900,29 @@ def test_cache_identity_includes_batch_size_and_producer_runtime():
     cached["producer_runtime_sha256"] = "different"
     assert C.cache_is_valid(cached, expected) == (
         False, ["producer_runtime_sha256"])
+
+
+@pytest.mark.parametrize("field", ["source", "split", "gold", "family_id"])
+def test_cache_replay_requires_full_manifest_identity(field):
+    frame, _bundle_meta, _manifest_rows = _tiny_score_frame()
+    cached = frame.iloc[[0]].copy()
+    row = {
+        key: cached.iloc[0][key]
+        for key in ("sample_id", "content_sha256", "source", "split", "gold", "family_id")
+    }
+    expected = {"n_rows": 1}
+    assert eval_script._cache_rows_match(cached, [row], expected) == (True, [])
+
+    bad = cached.copy()
+    bad.loc[bad.index[0], field] = (
+        1 - int(row[field]) if field == "gold" else f"drifted-{field}")
+    ok, issues = eval_script._cache_rows_match(bad, [row], expected)
+    assert not ok
+    assert f"{field}_identity" in issues
+
+    missing_column = cached.drop(columns=["family_id"])
+    assert eval_script._cache_rows_match(missing_column, [row], expected) == (
+        False, ["columns"])
 
 
 def test_temperature_fit_rejects_unsuccessful_optimizer(monkeypatch):

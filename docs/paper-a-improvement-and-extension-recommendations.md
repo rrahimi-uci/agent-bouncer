@@ -2,8 +2,9 @@
 
 Reviewer recommendations for *"The Benchmark Chooses the Winner"*
 ([`../paper-a/benchmark_chooses_the_winner.tex`](../paper-a/benchmark_chooses_the_winner.tex)),
-grounded in the current committed results under
-[`../artifacts/paper_a_sft/analysis/`](../artifacts/paper_a_sft/analysis). Written 2026-07-13.
+grounded in the clean-v2 retrospective results under
+[`../artifacts/paper_a_sft_v2/analysis/`](../artifacts/paper_a_sft_v2/analysis).
+Written 2026-07-13; execution status and numbers updated 2026-07-14.
 
 This is a strong, honestly-hedged measurement paper. The recommendations below are
 ordered by leverage: what most increases the paper's credibility and contribution per
@@ -17,49 +18,51 @@ removed — the scope discipline is a feature; keep it.
 Read straight off `results.json` / `sensitivity.json`:
 
 - **Represented gain is largely a ceiling effect.** SFT drives *every* checkpoint to
-  ~0.98 represented macro-AP regardless of where its base started (0.447–0.878). So the
-  headline "+0.333" represented gain is mostly headroom: `Δ_rep ≈ 0.98 − base_rep`. True
+  ~0.98 represented macro-AP regardless of where its base started (0.452–0.886). So the
+  headline "+0.323" represented gain is mostly headroom: `Δ_rep ≈ 0.98 − base_rep`. True
   but nearly mechanical — it should be framed as *saturation*, not *improvement*.
-- **The interesting effect is on transfer, and it is a base-competence interaction.**
+- **The interesting effect is on transfer, with checkpoint heterogeneity.**
   SFT compresses transfer AP toward a common ~0.79–0.84 band: the range across
-  checkpoints shrinks from **0.158 (base) to 0.052 (SFT), ~3×**. Concretely it **helps
-  the weakest base** (SmolLM2 +0.051) and **hurts the strongest** (SmolLM3 −0.120,
-  Qwen3-4B −0.102). The aggregate −0.050 hides this.
+  checkpoints shrinks from **0.158 (base) to 0.052 (SFT), ~3×**. Concretely SmolLM2
+  changes by +0.040, Qwen2.5's interval crosses zero, and SmolLM3/Qwen3-4B change by
+  −0.087/−0.150. The aggregate −0.059 hides this. Because `Δ = SFT − base`, a same-row
+  regression of change on base AP is mathematically coupled; four purposively chosen
+  checkpoints cannot establish a base-competence law.
 - **Transfer loss is concentrated in jailbreak-style OOD.** Per-benchmark Δ: WildJailbreak
-  −0.079, JailbreakBench −0.073, WildGuardTest −0.039, XSTest −0.010 (≈flat). The
+  −0.079, JailbreakBench −0.078, WildGuardTest −0.067, XSTest −0.012 (≈flat). The
   over-refusal contrast set is barely touched; the loss is on adversarial jailbreaks.
 - **A concrete safety cost is buried in the stress diagnostics.** HarmBench recall falls
-  **78.4% → 57.5% (−20.9pp)** after SFT — the guard newly *misses* one in five harmful
+  **78.0% → 60.0% (−18.0pp)** after SFT — the guard newly misses substantially more harmful
   prompts on a held-out harm set. This is arguably the most policy-relevant single number
   in the paper and currently gets one line.
-- **Deployment FPR inflates.** Transfer pooled-negative FPR rises **4.4% → 14.6%**
-  (macro 8.3% → 13.7%) at calibration-targeted thresholds.
-- **Status: estimation-only on a legacy artifact.** `analysis_mode = precision_focused`,
-  `score_artifact.legacy = true`. The paper itself names a clean rerun as the gate to
-  confirmatory status.
+- **Deployment FPR inflates.** Transfer pooled-negative FPR rises **4.3% → 17.0%**
+  (macro 8.1% → 15.5%) at calibration-targeted thresholds.
+- **Status: clean-v2 execution, retrospective estimation.** `analysis_mode =
+  precision_focused`; the lock, manifests, 20 adapters, 24 score bundles, and analysis
+  now satisfy the v2 contract. Prior cohort exposure still blocks a prospective or
+  confirmatory interpretation.
 
 ---
 
 ## 2. Improvements — strengthen the claim you already have
 
-### P0 — Execute the clean v2 rerun (the paper's own blocker)
+### P0 — Execute the clean v2 rerun — completed 2026-07-14
 
-The manuscript repeatedly defers to "a clean rerun is required." The v2 pipeline already
-exists in the `Makefile` (`manifests → audit → lock → train → eval → analyze` into
-`artifacts/paper_a_sft_v2/`). Running it:
+The full `manifests → audit → lock → train → eval → analyze` pipeline has now run under
+`artifacts/paper_a_sft_v2/`. It:
 
 - repairs the documented family-link defects (36 JailbreakBench + 58 XSTest unjoined
   pairs; 2 represented families crossing calibration/ID);
 - fixes the truncation bug (26 eval prompts + ~16–17 train rows/checkpoint lost the
   system instruction under left-truncation);
-- replaces the partially-inspected seed-7 WildGuard/WildJailbreak cohorts;
-- unlocks `powered_confirmatory` analysis (intersection–union test, Holm, bootstrap
-  *p*-value) instead of descriptive-only wording.
+- replaces 605 of the 1,220 archived WildGuard/WildJailbreak rows under the locked
+  hash-ranked construction, while retaining and disclosing 615 previously inspected rows;
+- produces clean, reproducible execution evidence while correctly retaining the
+  `precision_focused` retrospective analysis mode.
 
-**Compute reality:** legacy runs were 6–10 min each on A100; the full 4×5 panel is ~5–10
-A100-hours, or feasible (slowly) on the M4 Max (per project notes SmolLM3-3B converges by
-~step 40; the smaller three are faster). This is the single highest-leverage action and is
-cheap. **Do this first;** most items below compose with it.
+**Executed compute:** the five-run medians were 8.7, 7.4, 11.3, and 12.6 minutes for
+Qwen2.5, SmolLM2, SmolLM3, and Qwen3 respectively on one A100 40GB. This closes the
+execution-provenance blocker, not the prospective-cohort blocker.
 
 ### P1 — Add at least one genuinely uninspected transfer benchmark
 
@@ -73,43 +76,47 @@ previously-inspected rows. A confirmatory transfer claim needs a benchmark that 
   and tests external recurrence of the pattern.
 - Pull one fresh public guard benchmark at a pinned revision and score it *once*, blind.
 
-### P1 — Report a low-prevalence / matched-FPR deployment view
+### P1 — Report a low-prevalence / calibration-target operating-point view
 
 Limitations concede balanced pools overstate production precision. Add, at realistic
 unsafe prevalence (e.g. 1–5%): recall at a fixed pooled-FPR budget, and precision/AP under
 re-weighting. This converts the operating-point section from "diagnostic" to a genuinely
 useful deployment statement and makes the FPR-inflation finding land harder.
 
-### P2 — Confirmatory statistics (after P0)
+### P2 — Confirmatory design (only after a new prospective cohort is locked)
 
-With the clean lock: the intersection–union claim gate with Holm control, a bootstrap
-*p*-value, and a **mixed-effects model** (checkpoint fixed panel, seed nested, benchmark
-random) to produce a principled aggregate with proper uncertainty — replacing the
-panel-mean + hierarchical bootstrap as the *primary* (keep the bootstrap as sensitivity).
+Do not convert the current clean-v2 retrospective run into confirmatory evidence by adding
+post-hoc tests. First lock a justified null, estimand, power/precision plan, seed count, and
+genuinely uninspected cohort. A null-calibrated test may then be primary; mixed-effects or
+hierarchical models are optional only if their population and sampling assumptions match
+the design. Keep the fixed-panel paired estimate when inference remains conditional on the
+named checkpoints and benchmarks.
 
 ---
 
 ## 3. Extensions — new contributions
 
-### E1 (flagship) — The base-competence law: *who* fine-tuning helps vs hurts
+### E1 (flagship hypothesis) — Does independently measured base performance predict the effect?
 
-The strongest latent result in the current data (§1) is that **SFT compresses guards
-toward a common specialized regime**: it lifts weak bases and degrades strong ones on
-transfer, and saturates everyone on represented sources. Turn this from a buried
-heterogeneity note into the paper's second headline:
+The current data (§1) show **SFT compressing guards toward a narrower transfer band** while
+saturating everyone on represented sources. The four same-row contrasts motivate a hypothesis,
+but their apparent relationship with base AP is mathematically coupled. Test the hypothesis
+without building that coupling into the design:
 
-- Formalize: regress `Δ_transfer` on `base_transfer_AP` (n=4 today shows a clean negative
-  relationship; the weakest base is the *only* transfer gainer).
+- Pre-specify base competence on an independent locked development cohort, then model its
+  interaction with treatment against `Δ_transfer` on a disjoint prospective cohort. Do not
+  regress `Δ_transfer` on `base_transfer_AP` from the same rows.
 - **Extend the panel to ~10–15 checkpoints** across sizes (0.5B–8B) and families
-  (add e.g. Llama-3.2, Gemma-2, Phi, Qwen3 sizes) to power the relationship into a
-  quantitative claim with a real slope and CI.
-- Deliver an **actionable decision rule**: *fine-tune weak bases; keep strong bases
-  zero-shot for OOD screening.* That is a practitioner takeaway no current guard paper
-  states, and it is directly supported by your data.
+  (add e.g. Llama-3.2, Gemma-2, Phi, Qwen3 sizes) and report a family-aware interaction
+  estimate with a slope and interval; a larger panel alone does not cure same-row coupling.
+- Treat any **decision rule**—for example, fine-tune weak bases but retain or compose a
+  strong base for transfer screening—as a hypothesis to validate, not a rule established
+  by the current four-model panel.
 
-This is the highest-value extension: it reuses all existing machinery, needs only more
-checkpoints (cheap), and upgrades the contribution from "specialization happens on 4
-models" to "specialization is predictable from base competence."
+This is a high-value extension if the independently measured relationship survives: it reuses
+the evaluation machinery, but needs a new locked development/outcome split as well as more
+checkpoints. Only then could the contribution move from "heterogeneity appears in four named
+models" to "specialization is predictable from a pre-transfer competence measure."
 
 ### E2 — Training dose–response frontier
 
@@ -128,9 +135,9 @@ lexical/surface cues shared with the training sources? Test with simple ablation
 and SFT hidden states on represented vs transfer prompts). Even a partial answer to *why*
 elevates the paper above pure measurement.
 
-### E4 — HarmBench recall-collapse deep-dive
+### E4 — HarmBench recall-decline deep-dive
 
-The −20.9pp HarmBench recall drop deserves its own short analysis: which behavior
+The −18.0pp HarmBench recall drop deserves its own short analysis: which behavior
 categories are newly missed post-SFT, and does the miss rate scale with distance from the
 training sources? This is a safety-relevant, self-contained result (needs a per-category
 rescore of HarmBench, available once the rerun exists).
@@ -152,8 +159,9 @@ fairness, and the mortgage case study for good reason. Keep them out of Paper A:
 
 - **SFT-vs-DPO-vs-GRPO** is a *separate* paper (the objective axis), not a Paper A
   extension — the manuscript explicitly scopes it out. Do not re-merge.
-- **Mortgage / fairness / ensembling** belong to the Paper B line (see
-  [`paper-b-feasibility-investigation.md`](paper-b-feasibility-investigation.md)).
+- **Mortgage and fairness** remain separate follow-on lines; output-space composition is
+  governed by the retrospective Paper B prototype plan
+  ([`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md)).
 - Adding checkpoints (E1) and datasets (P1) is *deepening the same claim*; adding new
   axes (objectives, domains, architectures-as-contributions) is *sprawl*. Prefer depth.
 
@@ -161,15 +169,15 @@ fairness, and the mortgage case study for good reason. Keep them out of Paper A:
 
 ## 5. Suggested sequencing
 
-1. **P0 clean rerun** → unlocks confirmatory status and fixes the known defects. (days)
-2. **P1 uninspected benchmark (ExpGuard) + low-prevalence view** → closes the two biggest
+1. **P0 clean rerun — complete** → fixes execution and known preprocessing/provenance defects.
+2. **P1 uninspected benchmark (ExpGuard) + low-prevalence view** → addresses the two biggest
    validity gaps. (days)
-3. **E1 panel expansion + base-competence law** → the flagship upgrade; also supplies the
-   confirmatory power P2 wants. (1–2 weeks of mostly-unattended training)
+3. **E1 prospectively locked panel expansion** → tests the base-performance interaction
+   hypothesis with adequate breadth. (1–2 weeks of mostly-unattended training)
 4. **E3/E4 mechanism + HarmBench** → depth, if aiming for a stronger venue.
 5. **E2/E5** → optional frontier/mitigation if space and time allow.
 
-**Minimum credible upgrade:** P0 + P1. **Strongest realistic paper:** P0 + P1 + E1 (+ P2),
-which converts an honest but panel-limited estimation study into a confirmatory,
-mechanism-bearing result with a practitioner decision rule — without leaving the scope the
-refactor established.
+**Minimum next upgrade:** P1. **Strongest realistic paper:** completed P0 + a prospectively
+locked P1/E1 design, with P2 only if its inferential assumptions are prespecified and met.
+E3 is separately required before making a mechanism claim, and an actionable decision rule
+must be validated rather than inferred from the current four-model panel.

@@ -26,16 +26,18 @@ Training on labeled examples — here, prompts paired with the correct verdict w
 answer token (`safe`/`unsafe`), not on echoing the prompt.
 
 ### Seed
-The random number that initializes a training run. Running **5 seeds (42–46)** per model gives
-5 slightly different fine-tunes, so you can see how much the result wobbles from randomness.
+A number that controls pseudorandom choices in a training run. Here the **training seed** affects
+adapter initialization and dropout, while a separate fixed data-order seed keeps batch order
+identical. Running **5 seeds (42–46)** per model describes run-to-run optimization variation
+under this one recipe; it does not measure variation across models, datasets, or recipes.
 
 ### Logit / logit-difference score
 A **logit** is the model's raw, unnormalized preference number for a candidate next word. The
 guard's score is the gap `s(x) = z_unsafe − z_safe` at the final token. Positive → leans unsafe.
 
 ### Softmax
-Turns the two logits into two probabilities that add up to 1, so the score becomes a 0–1
-"probability of unsafe."
+Turns the two logits into two bounded shares that add up to 1. The resulting 0–1 unsafe share
+is useful as a score, but it is not automatically a calibrated probability.
 
 ### Represented sources
 Held-out test rows from the **same datasets used in training** (same style, new examples).
@@ -71,46 +73,55 @@ get the same score.
 ### Macro-AP / benchmark-macro then panel-mean
 Average the AP **across benchmarks** so each dataset counts equally ("macro"), then **across the
 4 models** ("panel"), and for fine-tuned guards **across the 5 seeds** too. The headline
-"+0.33 / −0.05" numbers are these averages of averages.
+"+0.323 / −0.059" numbers are these averages of averages.
 
 ### Calibration / temperature scaling
-Rescaling the score into an honest probability by dividing by one tuned number (the
-"temperature"), fit on a held-back calibration set. It **doesn't reorder** prompts — just makes
-stated probabilities match reality better.
+Dividing the logit score by one fitted number (the "temperature"), using a held-back calibration
+set. It **doesn't reorder** prompts. It can improve agreement between scores and observed label
+frequencies on that calibration distribution, but does not guarantee calibrated probabilities
+on transfer data.
 
 ### Threshold / operating point
-The cutoff score above which a prompt is flagged. Chosen here as a **conservative cap** so at
-most ~5% of safe prompts are flagged (target FPR). The realized TPR/FPR are then **measured** on
-test data.
+The cutoff score above which a prompt is flagged. Here it is selected on pooled calibration
+negatives to maximize calibration recall while the one-sided 95% row-level Clopper–Pearson upper
+bound on FPR is at most 5%. That is a calibration-sample diagnostic constraint, not a production or
+distribution-shift guarantee. The cutoff is frozen and realized TPR/FPR are then **measured**
+on test data.
 
 ### Bootstrap (paired, hierarchical)
 A way to estimate uncertainty by **resampling your own results** (with replacement) thousands of
 times and recomputing the number each time. **Paired** = compare base vs. fine-tuned to measure
 the *change*. **Hierarchical** = resample at two levels: which seeds count, and — since the eval
 sets contain many near-duplicate prompts — how much each group of those duplicates counts. The 4
-models are held fixed.
+models are held fixed, so this describes conditional resampling variation for this panel—not
+variation across all possible guard models.
 
 ### Confidence interval (CI) / one-sided bound (LCB, UCB)
-- **Two-sided 95% CI** — the middle 95% of the bootstrap results; a plausible range for the true
-  average change.
-- **LCB** (lower confidence bound) — "at least this much." **UCB** (upper) — "no more than this."
+- **Two-sided 95% percentile-bootstrap interval** — the middle 95% of recomputed fixed-panel
+  changes under the specified seed/family resampling.
+- **LCB/UCB** — the corresponding one-sided lower/upper bootstrap quantile.
+
+These are conditional on the four checkpoints, benchmark collection, labels, and analysis
+choices. They are not a 95% probability statement about a true population effect or guarantees
+for future models and data.
 
 ### Precision-focused / descriptive (analysis mode)
 The deliberate choice to report **intervals only — no p-value, no "statistically significant,"
-no pass/fail** — because the scores are a legacy artifact analyzed after the fact. Directions are
-**suggestive, not proven**; a clean pre-registered rerun would be needed to claim significance.
+no pass/fail** — because the analysis is retrospective and evaluation data were inspected during
+development. A locked rerun can strengthen execution provenance, but confirmatory evidence would
+require a new sealed cohort and a prospectively locked analysis.
 
 ### Specialization plane
 The core figure: x = represented AP change, y = transfer AP change, one dot per (model, seed).
-Lower-right quadrant = "specialization" (better on familiar data, worse on new). 14 of 20 dots
+Lower-right quadrant = "specialization" (better on familiar data, worse on new). 15 of 20 dots
 land there.
 
 ### Specialization (the finding)
 Fine-tuning making a guard **better on its training sources but not broadly better** (and often
-worse on novel data) — as opposed to a general capability upgrade.
+worse on dataset-held-out transfer data) — as opposed to a general capability upgrade.
 
 ### Ensemble / composition
 Using more than one model and combining their outputs into one decision. Here: run the untuned
-base **and** the fine-tuned adapter on the same prompt and **average their unsafe-probabilities**.
-A "second opinion" that keeps the specialist's in-domain skill and the generalist's out-of-domain
-robustness — the "compose, don't tune" fix.
+base **and** the fine-tuned adapter on the same prompt and average their temperature-scaled
+unsafe scores. In this repository, composition is a **separate preliminary Paper B analysis**,
+not a formal Paper A finding or an established fix.

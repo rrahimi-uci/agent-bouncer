@@ -52,10 +52,13 @@ artifacts/paper_a_sft/calibration/
 # Corrected v2 namespace: keep raw/manifold-heavy artifacts local. Text-free
 # public_manifests/, audit summaries, locks, and analysis outputs remain releasable.
 artifacts/paper_a_sft_v2/manifests/
-artifacts/paper_a_sft_v2/scores/
+/artifacts/paper_a_sft_v2/scores/*
+!/artifacts/paper_a_sft_v2/scores/scores.parquet
+!/artifacts/paper_a_sft_v2/scores/metadata.json
 artifacts/paper_a_sft_v2/runs/
 artifacts/paper_a_sft_v2/base_scores/
 artifacts/paper_a_sft_v2/calibration/
+artifacts/paper_a_sft_v2/smoke/
 
 # Archived explorer prompt samples may contain NC-licensed or gated text.
 paper-a/paper-html/explorer/samples.local.js
