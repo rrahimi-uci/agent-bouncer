@@ -214,19 +214,31 @@ def main(argv: list[str] | None = None) -> int:
     splits = load_benchmark(args.benchmark)
     specs = json.load(open(args.guards))
     os.makedirs(args.out, exist_ok=True)
-    table = []
+    table, skipped = [], []
     for spec in specs:
-        guard = guard_from_spec(spec)
-        res = score_and_evaluate(guard, splits, args.eval_split, args.target_fpr)
+        name = spec.get("name", "?")
+        try:
+            guard = guard_from_spec(spec)
+            res = score_and_evaluate(guard, splits, args.eval_split, args.target_fpr)
+        except Exception as e:  # noqa: BLE001 - a guard that won't load/score is skipped, not fatal
+            skipped.append({"guard": name, "error": f"{type(e).__name__}: {e}"})
+            print(f"{name:24s} SKIPPED ({type(e).__name__}: {str(e)[:80]})")
+            continue
         write_json(res["scores"], os.path.join(args.out, f"scores_{guard.name}.json"))
         write_json(res["report"], os.path.join(args.out, f"report_{guard.name}.json"))
         tf = res["report"]["threshold_free"]
+        op = res["report"].get("operating_point", {})
+        fair = res["report"].get("fairness_delta_context", {})
+        g0d1 = res["report"].get("per_quadrant", {}).get("G0D1", {})
         table.append({"guard": guard.name, "kind": guard.kind,
                       "AP_G": tf["G"]["average_precision"], "AP_D": tf["D"]["average_precision"],
-                      "AP_final": tf["final"]["average_precision"]})
+                      "AP_final": tf["final"]["average_precision"],
+                      "G0D1_n": g0d1.get("n"), "G0D1_missed": g0d1.get("missed"),
+                      "delta_context": fair.get("mean_abs_delta")})
         print(f"{guard.name:24s} AP_G={tf['G']['average_precision']:.3f} "
               f"AP_D={tf['D']['average_precision']:.3f} AP_final={tf['final']['average_precision']:.3f}")
-    write_json({"eval_split": args.eval_split, "benchmark": args.benchmark, "table": table},
+    write_json({"eval_split": args.eval_split, "benchmark": args.benchmark,
+                "table": table, "skipped": skipped},
                os.path.join(args.out, "baseline_table.json"))
     return 0
 
