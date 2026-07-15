@@ -1,9 +1,9 @@
 # Paper B plan
 
-The authoritative research plan is
-[`../docs/paper-b-compose-dont-tune-plan.md`](../docs/paper-b-compose-dont-tune-plan.md).
-It selects the composition axis and supersedes the older objective-axis and mortgage joint-stack
-alternatives for the near-term Paper B.
+This is the authoritative research plan for the near-term Paper B. It selects the composition
+axis (a calibrated average of the untuned base and its SFT adapter) and supersedes the older
+objective-axis and mortgage joint-stack alternatives. The manuscript is
+[`compose_dont_tune.tex`](compose_dont_tune.tex).
 
 This folder is the implementation workspace. Its current phase is **retrospective draft**, not a
 separately locked prospective study.

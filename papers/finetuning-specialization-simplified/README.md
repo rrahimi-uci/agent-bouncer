@@ -18,7 +18,7 @@ the formal Paper A.*
 > [LaTeX paper](../finetuning-specialization/) and the
 > clean-v2 results in [`../artifacts/paper_a_sft_v2/analysis/`](../artifacts/paper_a_sft_v2/analysis)
 > win. The separate Paper B preview is governed by its own
-> [analysis plan](../docs/paper-b-compose-dont-tune-plan.md).
+> [analysis plan](../base-adapter-composition/).
 >
 > **Want the full paper-format edition?** This page is the quick read. The complete,
 > **paper-formatted** version — abstract, numbered sections, all eight tables (incl. per-seed),
@@ -395,7 +395,7 @@ alone estimates performance on a mixed deployment population.
 ## 12b. Separate clean-v2 retrospective Paper B analysis — compose, don't tune
 
 This section is **not a Paper A result**. It previews a separate, clean-v2 retrospective Paper B
-analysis, ["Compose, Don't Tune"](../docs/paper-b-compose-dont-tune-plan.md), using the same
+analysis, ["Compose, Don't Tune"](../base-adapter-composition/), using the same
 underlying scored rows to explore a candidate mitigation. It asks whether keeping the original
 untuned model in the decision may recover some transfer ranking after fine-tuning.
 

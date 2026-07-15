@@ -9,7 +9,7 @@
 > which to drop**, and (3) a **literature review** that grounds the plan's **feasibility and
 > novelty**. It reuses Paper A's clean v2 lock/manifest so SFT/DPO/…/GRPO are directly
 > comparable, and it ties the objective axis to the composition remedy of
-> [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md).
+> [Paper B, *Compose, Don't Tune*](../papers/base-adapter-composition/).
 
 Written 2026-07-14. Grounded in a five-facet literature review (see §9 for sources and their
 verification status). **Citations are tiered**: some arXiv IDs were fetched/verified this
@@ -402,6 +402,6 @@ advantage definition and Dr. GRPO's verified std-normalization critique, **not**
 ---
 
 *Cross-references:* [`paper-b-topic-proposal.md`](paper-b-topic-proposal.md) (RQs, asset inventory,
-run-plan) · [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md) (the composition
-remedy this axis interacts with) · [`paper-a-improvement-and-extension-recommendations.md`](paper-a-improvement-and-extension-recommendations.md)
+run-plan) · [Paper B, *Compose, Don't Tune*](../papers/base-adapter-composition/) (the composition
+remedy this axis interacts with) · [Paper A](../papers/finetuning-specialization/)
 (the clean rerun whose SFT slice this campaign shares).

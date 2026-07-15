@@ -4,7 +4,7 @@
 > review found the *composition* idea (ensemble the untuned base with the tuned adapter) is a
 > cheaper, more novel, GPU-free near-term paper. The objective axis below needs a GPU retrain
 > (no per-row DPO/GRPO scores survive) and reproduces published SFT-vs-RL results, so it moves
-> behind the composition paper. See [`paper-b-compose-dont-tune-plan.md`](paper-b-compose-dont-tune-plan.md).
+> behind the composition paper. See [Paper B, *Compose, Don't Tune*](../papers/base-adapter-composition/).
 
 A concrete, feasibility-grounded proposal written 2026-07-13 after inventorying what survives
 on disk, and corrected after the 2026-07-14 review. Legacy directional summaries survive, but no
