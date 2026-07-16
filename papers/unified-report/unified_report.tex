@@ -141,17 +141,15 @@ recover?) and then asks whether any of it holds where it matters most --- \emph{
 where a violation can read as perfectly polite text.
 \end{background}
 
-\paragraph{Why an engineering leader should care.} The gap between a benchmark score and field behavior is
-not academic. A guard chosen on a leaderboard --- or ``improved'' by a quick fine-tune --- can quietly do
-three expensive things at once in production: \textbf{(1)} raise false alarms that block legitimate users
-(we measure pooled transfer false alarms climbing $\TransferBaseFPRPct\%\!\to\!\TransferSFTFPRPct\%$),
-\textbf{(2)} miss the hardest attacks it was meant to stop (HarmBench recall
-$\HarmBenchBaseRecallPct\%\!\to\!\HarmBenchSFTRecallPct\%$), and \textbf{(3)} --- in a regulated domain ---
-pass a policy violation that reads as polite text, or treat a protected group differently, which is a
-compliance and fair-lending problem, not merely a lower number. This report is both a way to catch those
-failures \emph{before} deployment and a set of concrete choices --- when to fine-tune, when to instead
-\emph{compose}, and when a general guard is simply not enough for a regulated domain
-(the decision guide, \Cref{sec:practitioner}) --- written so a practitioner can act on them.
+A guard chosen on a leaderboard --- or ``improved'' by a quick fine-tune --- can quietly do three expensive
+things at once in production: \textbf{(1)} raise false alarms that block legitimate users (pooled transfer
+false alarms climb $\TransferBaseFPRPct\%\!\to\!\TransferSFTFPRPct\%$); \textbf{(2)} miss the hardest
+attacks it was meant to stop (HarmBench recall $\HarmBenchBaseRecallPct\%\!\to\!\HarmBenchSFTRecallPct\%$);
+and \textbf{(3)}, in a regulated domain, pass a policy violation that reads as polite text or treat a
+protected group differently --- a compliance and fair-lending problem, not merely a lower number. The four
+questions below, and the decision guide that follows from them (\Cref{sec:practitioner}), exist to catch
+these failures \emph{before} deployment: when to fine-tune, when to instead \emph{compose}, and when a
+general guard is simply not enough for a regulated domain.
 
 Converting a general instruction model into a safety guard with a short parameter-efficient fine-tune
 \citep{elesedy2024loraguard} and reporting its score on a public suite \citep{bassani2024guardbench}
