@@ -121,8 +121,13 @@ def score_checkpoint(model_id: str, revision: str, rows: list[dict], *, dtype: s
     dt = select_decision_tokens(tok)
     safe_id, unsafe_id = dt["safe_id"], dt["unsafe_id"]
     out: dict[str, float] = {}
+    # device-aware allocator hygiene: torch.mps/torch.cuda .empty_cache (None on CPU).
+    # Without this the MPS allocator cache balloons across ~hundreds of batches -> unified-memory
+    # swap -> the process thrashes ("stuck"). One model per fresh process is the primary guard;
+    # this is belt-and-suspenders within a model's batch loop.
+    empty_cache = getattr(getattr(torch, device, None), "empty_cache", None)
     with torch.no_grad():
-        for i in range(0, len(rows), batch_size):
+        for step, i in enumerate(range(0, len(rows), batch_size)):
             chunk = rows[i:i + batch_size]
             prompts = [build_prompt(tok, r["prompt"]) for r in chunk]
             enc = tok(prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024).to(device)
@@ -131,7 +136,12 @@ def score_checkpoint(model_id: str, revision: str, rows: list[dict], *, dtype: s
             for k, r in enumerate(chunk):
                 lz = logits[k, last[k]]
                 out[r["id"]] = _sigmoid(float(lz[unsafe_id]) - float(lz[safe_id]))
+            del logits, enc
+            if empty_cache and step % 16 == 0:
+                empty_cache()
     del model
+    if empty_cache:
+        empty_cache()
     return out
 
 
@@ -161,9 +171,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mock", action="store_true", help="deterministic pseudo-scores (offline smoke)")
     ap.add_argument("--limit", type=int, default=None, help="cap rows (smoke)")
     ap.add_argument("--parquet-path", default=None, help="local ExpGuard test parquet (tokenless; e.g. on a GPU VM)")
+    ap.add_argument("--only", default=None,
+                    help="comma-separated panel names to (re)score in THIS process; others reused from disk. "
+                         "Run one model per process to avoid multi-load hangs / allocator balloon.")
+    ap.add_argument("--force", action="store_true", help="re-score even if a scores file already exists")
     ap.add_argument("--dtype", default="auto")
     ap.add_argument("--device", default=None)
     args = ap.parse_args(argv)
+    only = set(args.only.split(",")) if args.only else None
 
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     labels_path = out / "labels_index.json"  # text-free: id -> {label, domain}
@@ -191,10 +206,19 @@ def main(argv: list[str] | None = None) -> int:
             # deterministic pseudo-score from the row hash (offline smoke only)
             scores = {rid: (int(rid, 16) % 1000) / 1000.0 for rid in labels}
         else:
-            print(f"[expguard] scoring {name} ({model_id}@{revision[:8]}) on {len(rows)} rows ...")
-            scores = score_checkpoint(model_id, revision, rows, dtype=args.dtype,
-                                      batch_size=bs, device=args.device)
-            scores_path.write_text(json.dumps({k: round(v, 6) for k, v in scores.items()}, indent=0))
+            selected = only is None or name in only
+            if selected and (args.force or not scores_path.exists()):
+                print(f"[expguard] scoring {name} ({model_id}@{revision[:8]}) on {len(rows)} rows "
+                      f"[dtype={args.dtype} device={args.device or 'auto'}] ...")
+                scores = score_checkpoint(model_id, revision, rows, dtype=args.dtype,
+                                          batch_size=bs, device=args.device)
+                scores_path.write_text(json.dumps({k: round(v, 6) for k, v in scores.items()}, indent=0))
+            elif scores_path.exists():
+                print(f"[expguard] REUSE {name}: existing scores at {scores_path.name}")
+                scores = {k: float(v) for k, v in json.loads(scores_path.read_text()).items()}
+            else:
+                print(f"[expguard] SKIP {name}: not selected (--only) and no existing scores")
+                continue
         m = compute_metrics(scores, labels)
         row = {"guard": name, "overall_ap": m["overall"]["ap"], "overall_auroc": m["overall"]["auroc"],
                **{f"{d}_ap": m[d]["ap"] for d in DOMAINS}, "per_domain": m}
