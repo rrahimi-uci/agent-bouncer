@@ -117,7 +117,9 @@ evidence tiers and by regenerating every number from committed per-row scores.
 \noindent\textbf{Impact for high-compliance business.} Do not choose a guard by a single leaderboard
 number: measure it against its own base, on your traffic, at your prevalence; you can recover cross-domain
 robustness \emph{without} paying to retrain; and you must gate on domain-grounded compliance \emph{and}
-fairness, which general-safety accuracy does not capture. All evidence here is \emph{retrospective and
+fairness, which general-safety accuracy does not capture. And because the guard is a single
+$\approx$10--50\,ms forward pass (measured; \Cref{tab:latency}), a small self-hosted guard keeps regulated
+data in-house at far lower latency and per-call cost than a frontier hosted API. All evidence here is \emph{retrospective and
 estimation-only} on a fixed panel (mortgage labels are LLM-judge, not expert-adjudicated), so no causal or
 fair-lending claim is licensed; code, data manifests, and the frozen benchmark are public
 (\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
@@ -283,9 +285,50 @@ flips with the benchmark.
   threshold on the target regime (ranking recovery $\neq$ calibration transfer).
   \item \textbf{In a regulated domain, build domain-grounded, dual-labeled evaluation} and a
   protected-pair invariance check; a general-safety score does not cover compliance.
+  \item \textbf{Prefer a small, self-hosted guard for inline, high-volume, or regulated traffic}: one
+  local forward pass is $\approx$10--50\,ms (\Cref{tab:latency}) and keeps regulated prompts in-house,
+  versus a per-call fee and a network round-trip to a third party (\Cref{tab:deployment}).
 \end{enumerate}
 Each step carries its caveat: these are estimates on a fixed panel, and the domain labels are a
 measuring stick, not a verdict.
+
+\subsection{Latency and cost: the case for a small, self-hosted guard}
+\label{sec:practitioner-cost}
+An inline guard runs on \emph{every} request, so its own latency and cost sit on the critical path.
+Because our guard emits a single verdict token --- one forward pass, no autoregressive generation --- it
+is fast and cheap to run: measured per-call latency is $\approx$10--50\,ms depending on model size
+(\Cref{tab:latency}), from $10.4$\,ms (P50) for Qwen2.5-1.5B to $25.2$\,ms for Qwen3-4B, with P90 within
+$\approx$50\,ms, on a single A100 at batch~16. Latency tracks model size and prompt length, not any decode
+budget, because there is nothing to decode.
+
+\input{generated/latency_table}
+
+A frontier hosted-API guard cannot match this on the two axes that decide an inline deployment
+(\Cref{tab:deployment}). It adds a network round-trip --- typically hundreds of milliseconds --- to
+\emph{every} request; it bills a per-token fee that scales with traffic; and, decisively for a regulated
+domain, it sends every prompt to a third party. A compact guard that a team hosts, versions, and audits
+in-house keeps regulated data inside the boundary and adds only tens of milliseconds. Together with the
+specialization (Act~I) and composition (Act~III) findings, this is the practical case for building guards
+from small checkpoints rather than routing every request to a frontier model.
+
+\begin{table}[htbp]\centering\small
+\caption{Deployment economics of an \emph{inline} guard: a small self-hosted guard versus a frontier
+hosted-API guard. The small-guard latency is \emph{measured} in this study (\Cref{tab:latency}); the
+frontier column is an \emph{illustrative, order-of-magnitude} comparison from public hosted-API
+characteristics (typical round-trip latency and per-token list pricing as of mid-2026), \emph{not} a
+measurement made here.}
+\label{tab:deployment}
+\begin{tabular}{@{}p{0.20\linewidth} p{0.36\linewidth} p{0.36\linewidth}@{}}
+\toprule
+ & Small self-hosted guard (this report) & Frontier hosted-API guard \\
+\midrule
+Per-call latency & one local forward pass, $\approx$10--50\,ms (\Cref{tab:latency}) & network round-trip to a hosted API, typically $10^{2}$--$10^{3}$\,ms \\
+Marginal cost / call & only amortized local compute --- a 1.5--4B model serves on a commodity GPU (or CPU) & a per-token fee on every request, at the vendor's list price \\
+Data residency & regulated prompts never leave your boundary & every request is sent to a third party --- a data-governance / compliance concern \\
+Operational coupling & self-contained; pinned, versioned, auditable in-house & external availability, rate limits, and silent model updates \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 
 \input{sections/limitations-validation}   % what it does NOT establish + evidence ledger + roadmap
