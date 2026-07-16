@@ -22,11 +22,15 @@ window. Nothing here fabricates numbers; pending pieces await their locked runs.
   self-test passes) + `experiments/run_paper_c_objective.py` (imports clean; TRL DPO/GRPO/KTO/ORPO
   trainers, reusing the frozen rows + LoRA recipe + run_meta).
 
-## Running
-- **ExpGuard base eval** (background) — scoring 4 checkpoints × 2,275 prompts on MPS. Partial:
-  Qwen2.5 overall AP 0.921, SmolLM2 0.883 (per-domain finance/health/law recorded). SmolLM3 + Qwen3-4B
-  pending (slow on MPS). On completion: `expguard_table.tex` is emitted, Act IV's ExpGuard box is
-  replaced with the real per-domain table, PDF rebuilt, scores committed.
+## Done and committed (cont.)
+
+- **ExpGuard base eval — COMPLETE (Act IV breadth).** All 4 checkpoints scored zero-shot on ExpGuard
+  (2,275 rows; finance/health/law) on a spot L4 GPU and independently re-run on Apple MPS (agree to
+  3–4 decimals). Overall AP: SmolLM3-3B 0.956, Qwen3-4B 0.951, Qwen2.5-1.5B 0.921, SmolLM2-1.7B 0.883 —
+  the best domain guard is *not* the largest model. `tab:expguard` + `fig:expguard-domains` are in Act IV;
+  text-free per-row scores committed; `reproduce.py --check` passes. NB: the eval now stores the raw
+  decision margin (not the saturating sigmoid), which is what makes AP reproducible from committed scores.
+  The *tuned* (base-vs-SFT) ExpGuard comparison remains future work.
 
 ## Pending (needs a GPU; won't finish in this window)
 - **Objective axis (DPO/GRPO), Act II.** Code is ready and offline-validated; the actual training needs
