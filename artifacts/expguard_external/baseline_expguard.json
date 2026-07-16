@@ -1,0 +1,155 @@
+{
+  "dataset": "6rightjade/expguardmix",
+  "split": "expguardtest.parquet",
+  "task": "prompt_label",
+  "n_rows": 2275,
+  "domains": [
+    "finance",
+    "healthcare",
+    "law"
+  ],
+  "panel": [
+    "qwen25_15b_base",
+    "smollm2_17b_base",
+    "smollm3_3b_base",
+    "qwen3_4b_base"
+  ],
+  "table": [
+    {
+      "guard": "qwen25_15b_base",
+      "overall_ap": 0.9208,
+      "overall_auroc": 0.8955,
+      "finance_ap": 0.9383,
+      "healthcare_ap": 0.9056,
+      "law_ap": 0.9177,
+      "per_domain": {
+        "overall": {
+          "ap": 0.9208,
+          "auroc": 0.8955,
+          "n": 2275,
+          "n_pos": 1256
+        },
+        "finance": {
+          "ap": 0.9383,
+          "auroc": 0.8989,
+          "n": 964,
+          "n_pos": 576
+        },
+        "healthcare": {
+          "ap": 0.9056,
+          "auroc": 0.8941,
+          "n": 771,
+          "n_pos": 393
+        },
+        "law": {
+          "ap": 0.9177,
+          "auroc": 0.8967,
+          "n": 540,
+          "n_pos": 287
+        }
+      }
+    },
+    {
+      "guard": "smollm2_17b_base",
+      "overall_ap": 0.8832,
+      "overall_auroc": 0.8399,
+      "finance_ap": 0.8869,
+      "healthcare_ap": 0.8921,
+      "law_ap": 0.8679,
+      "per_domain": {
+        "overall": {
+          "ap": 0.8832,
+          "auroc": 0.8399,
+          "n": 2275,
+          "n_pos": 1256
+        },
+        "finance": {
+          "ap": 0.8869,
+          "auroc": 0.8167,
+          "n": 964,
+          "n_pos": 576
+        },
+        "healthcare": {
+          "ap": 0.8921,
+          "auroc": 0.8695,
+          "n": 771,
+          "n_pos": 393
+        },
+        "law": {
+          "ap": 0.8679,
+          "auroc": 0.8416,
+          "n": 540,
+          "n_pos": 287
+        }
+      }
+    },
+    {
+      "guard": "smollm3_3b_base",
+      "overall_ap": 0.9561,
+      "overall_auroc": 0.9351,
+      "finance_ap": 0.9579,
+      "healthcare_ap": 0.9545,
+      "law_ap": 0.9579,
+      "per_domain": {
+        "overall": {
+          "ap": 0.9561,
+          "auroc": 0.9351,
+          "n": 2275,
+          "n_pos": 1256
+        },
+        "finance": {
+          "ap": 0.9579,
+          "auroc": 0.927,
+          "n": 964,
+          "n_pos": 576
+        },
+        "healthcare": {
+          "ap": 0.9545,
+          "auroc": 0.9422,
+          "n": 771,
+          "n_pos": 393
+        },
+        "law": {
+          "ap": 0.9579,
+          "auroc": 0.9415,
+          "n": 540,
+          "n_pos": 287
+        }
+      }
+    },
+    {
+      "guard": "qwen3_4b_base",
+      "overall_ap": 0.9506,
+      "overall_auroc": 0.9273,
+      "finance_ap": 0.957,
+      "healthcare_ap": 0.9377,
+      "law_ap": 0.9568,
+      "per_domain": {
+        "overall": {
+          "ap": 0.9506,
+          "auroc": 0.9273,
+          "n": 2275,
+          "n_pos": 1256
+        },
+        "finance": {
+          "ap": 0.957,
+          "auroc": 0.9262,
+          "n": 964,
+          "n_pos": 576
+        },
+        "healthcare": {
+          "ap": 0.9377,
+          "auroc": 0.9227,
+          "n": 771,
+          "n_pos": 393
+        },
+        "law": {
+          "ap": 0.9568,
+          "auroc": 0.9398,
+          "n": 540,
+          "n_pos": 287
+        }
+      }
+    }
+  ]
+}

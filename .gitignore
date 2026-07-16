@@ -61,3 +61,6 @@ artifacts/paper_a_sft_v2/calibration/
 artifacts/paper_a_sft_v2/smoke/
 
 # Archived explorer prompt samples may contain NC-licensed or gated text.
+
+# reproduce.py build intermediate (canonical copy is committed under papers/unified-report/generated/)
+mortgage-benchmark/generated/

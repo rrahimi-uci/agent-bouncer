@@ -89,7 +89,9 @@ transferable decision threshold.
 \textbf{(IV)~Domains.} A general-safety score does not cover regulated-domain compliance: an
 HMDA-grounded, \emph{dual-labeled} mortgage benchmark isolates requests that read as safe yet violate
 policy (the load-bearing \textbf{G0/D1} stratum), adds a protected-class fairness-invariance gate, and is
-complemented by an external, \emph{expert-annotated} replication across \textbf{finance, health, and law}.
+complemented by an external, \emph{expert-annotated} replication across \textbf{finance, health, and law}
+(all four guards rank domain violations well zero-shot, AP $0.88$--$0.96$, but the leader is SmolLM3-3B ---
+\emph{not} the largest model, and a different winner than the mortgage benchmark picks).
 
 \smallskip
 \noindent The recurring character throughout is Qwen3-4B --- the strongest base, the one that specializes
@@ -188,7 +190,27 @@ the frozen \texttt{v1\_hmda2022} release scored by the evaluator.}
 \label{fig:mortgage-bars}
 \end{figure}
 
-\input{generated/expguard_table}                % tab:expguard (stub until the base eval lands)
+\paragraph{Result --- external breadth (finance/health/law).} On ExpGuard's expert-annotated prompts,
+all four base checkpoints already rank domain violations well \emph{zero-shot} (aggregate AP
+$0.88$--$0.96$; \Cref{tab:expguard}, \Cref{fig:expguard-domains}). The ordering echoes Act~I's lesson
+rather than raw capacity: \textbf{SmolLM3-3B is the strongest domain guard} (AP $0.956$, near-uniform
+across the three verticals), with Qwen3-4B a close second ($0.951$), while the smaller checkpoints trail
+(Qwen2.5-1.5B $0.921$, SmolLM2-1.7B $0.883$) --- the ranking is \emph{not} monotone in parameter count.
+As external, expert-labeled evidence these numbers sit at a strictly stronger label tier than the mortgage
+LLM-judge, so they are reported \emph{beside}, and never pooled with, the mortgage or retrospective-panel
+numbers. The ranking score is the raw decision margin $z_{\text{unsafe}}-z_{\text{safe}}$ (not a saturating
+probability), so \code{eval\_expguard\_external.py --from-scores} reproduces every entry exactly from the
+committed text-free per-row scores; the run was independently cross-checked on an L4 GPU and Apple MPS
+(agreement to $3$--$4$ decimals).
+
+\input{generated/expguard_table}                % tab:expguard (4-guard result; from committed margins)
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.86\linewidth]{fig_expguard_domains.pdf}
+\caption{Per-domain average precision (finance/health/law) for the four base guards on ExpGuard,
+zero-shot. The best domain guard (SmolLM3-3B) is \emph{not} the largest model, echoing Act~I: capability
+and benchmark rank are distinct axes. AP is shown on a zoomed $[0.80,1.00]$ scale.}
+\label{fig:expguard-domains}
+\end{figure}
 
 \section{Synthesis --- one lesson at four scales}
 \label{sec:synthesis}

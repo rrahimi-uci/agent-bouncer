@@ -150,9 +150,43 @@ def mortgage_baseline():
     fig.savefig(HERE / "fig_mortgage_baseline.pdf", metadata={"CreationDate": None}); plt.close(fig)
 
 
+def expguard_domains():
+    """Per-domain AP (finance/health/law) for the 4 base guards on ExpGuard (baseline_expguard.json)."""
+    p = REPO / "artifacts/expguard_external/baseline_expguard.json"
+    if not p.exists():
+        return
+    d = json.loads(p.read_text())
+    tbl = {r["guard"]: r for r in d.get("table", [])}
+    order = [g for g in ("qwen25_15b_base", "smollm2_17b_base", "smollm3_3b_base", "qwen3_4b_base") if g in tbl]
+    if not order:
+        return
+    pretty = {"qwen25_15b_base": "Qwen2.5\n1.5B", "smollm2_17b_base": "SmolLM2\n1.7B",
+              "smollm3_3b_base": "SmolLM3\n3B", "qwen3_4b_base": "Qwen3\n4B"}
+    labels = [pretty[g] for g in order]
+    fin = [tbl[g]["finance_ap"] for g in order]
+    hea = [tbl[g]["healthcare_ap"] for g in order]
+    law = [tbl[g]["law_ap"] for g in order]
+    x = range(len(order)); w = 0.26
+    fig, ax = plt.subplots(figsize=(6.6, 3.7))
+    ax.bar([i - w for i in x], fin, w, label="finance", color=BLUE)
+    ax.bar(list(x), hea, w, label="health", color=GREEN)
+    ax.bar([i + w for i in x], law, w, label="law", color=ORANGE)
+    ax.set_xticks(list(x)); ax.set_xticklabels(labels)
+    ax.set_ylim(0.8, 1.0)
+    ax.set_ylabel("average precision (AP)")
+    ax.set_title("Act IV breadth: zero-shot base guards on ExpGuard\n"
+                 "(finance / health / law --- best guard is not the largest)")
+    for xs, vals in (([i - w for i in x], fin), (list(x), hea), ([i + w for i in x], law)):
+        for xi, v in zip(xs, vals):
+            ax.text(xi, v + 0.003, f"{v:.2f}", ha="center", va="bottom", fontsize=6.5)
+    ax.legend(frameon=False, fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3)
+    fig.subplots_adjust(bottom=0.24)
+    fig.savefig(HERE / "fig_expguard_domains.pdf", metadata={"CreationDate": None}); plt.close(fig)
+
+
 def main():
     made = []
-    for fn in (act1_percheckpoint, act3_composition, mortgage_quadrant, mortgage_baseline):
+    for fn in (act1_percheckpoint, act3_composition, mortgage_quadrant, mortgage_baseline, expguard_domains):
         try:
             fn(); made.append(fn.__name__)
         except Exception as e:

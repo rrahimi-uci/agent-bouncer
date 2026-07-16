@@ -99,8 +99,14 @@ def _sigmoid(x: float) -> float:
 
 def score_checkpoint(model_id: str, revision: str, rows: list[dict], *, dtype: str,
                      batch_size: int, device: str | None) -> dict[str, float]:  # pragma: no cover - GPU/MPS
-    """z_unsafe - z_safe -> prob, via the canonical guard_research prompt + decision tokens.
-    Byte-parity with mortgage LogitDiffGuard / Paper A scoring."""
+    """Guard score = the raw margin z_unsafe - z_safe at the decision position, via the canonical
+    guard_research prompt + decision tokens (byte-parity with Paper A / the mortgage LogitDiffGuard).
+
+    We store the RAW margin, not sigmoid(margin). AP/AUROC are rank metrics, and a confident guard
+    saturates sigmoid to exactly 1.0/0.0 for |margin| > ~37 (e.g. Qwen3-4B ties ~1000 rows at 1.0),
+    which collapses the model's ranking of confident predictions into one tie and makes the metric
+    non-reproducible from the stored (rounded) probabilities. The margin never saturates, so
+    ---from-scores reproduces the live number exactly."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from guard_research.prompts import build_prompt, select_decision_tokens
@@ -135,7 +141,7 @@ def score_checkpoint(model_id: str, revision: str, rows: list[dict], *, dtype: s
             last = enc["attention_mask"].sum(1) - 1
             for k, r in enumerate(chunk):
                 lz = logits[k, last[k]]
-                out[r["id"]] = _sigmoid(float(lz[unsafe_id]) - float(lz[safe_id]))
+                out[r["id"]] = float(lz[unsafe_id]) - float(lz[safe_id])  # raw margin (higher = unsafe)
             del logits, enc
             if empty_cache and step % 16 == 0:
                 empty_cache()
