@@ -78,82 +78,36 @@ in High-Compliance Regulated Domains}
 
 
 \begin{abstract}
-\noindent\textbf{The problem.} A safety \emph{guard} is a small model that labels each incoming request
-\code{safe} or \code{unsafe} before an assistant acts on it. Teams build one by fine-tuning a base model
-and keeping whichever variant scores best on a public benchmark --- then read that score as ``how good the
-guard is.'' It is not: a guard's score is \emph{co-produced} by the benchmark it is read on, the training
-objective, the decision threshold, and the domain, so the leaderboard-best guard can be the wrong guard for
-the traffic you actually serve.
+\noindent A safety \emph{guard} --- a small model that labels each request \code{safe} or \code{unsafe}
+before an assistant acts --- is usually chosen by its score on a public benchmark. That score is
+\emph{co-produced} by the benchmark, the training objective, the decision threshold, and the domain, so
+the leaderboard-best guard can be the wrong guard for the traffic you serve.
 
 \smallskip
-\noindent\textbf{Why it matters, and what it costs, in high-compliance domains.} In finance, health, law,
-and mortgage lending the dangerous requests often read as \emph{polite, compliant text} --- e.g.\ a
-mortgage inquiry that quietly steers by a protected class. A guard tuned to look strong on generic
-benchmarks can silently miss these domain violations, and can treat protected groups differently in ways
-accuracy never surfaces --- turning a good-looking score into regulatory, fair-lending, and reputational
-exposure. The costs are measurable: fine-tuning a guard to raise its familiar-data score, then deploying at
-a calibrated threshold, more than \emph{triples} the pooled false-alarm rate on unseen traffic
-($\TransferBasePooledFPRPct\%\!\to\!\TransferSFTPooledFPRPct\%$; the macro-averaged rate nearly doubles,
-$\TransferBaseFPRPct\%\!\to\!\TransferSFTFPRPct\%$) while \emph{dropping} hard-attack recall
-($\HarmBenchBaseRecallPct\%\!\to\!\HarmBenchSFTRecallPct\%$); a cutoff that looked safe in calibration
-decays under sub-standard-deviation drift; and at realistic ($\sim\!1\%$) prevalence, precision collapses
-and the very \emph{ranking} of guards reorders.
+\noindent We measure what a fine-tune actually buys by comparing each guard only against its \emph{own}
+pre-tuning base on identical rows, separating \emph{represented} (trained-on) from \emph{transfer}
+(held-out) sources. Four findings on one fixed panel of compact checkpoints: (i)~fine-tuning
+\emph{specializes} --- it lifts represented ranking to a shared ceiling ($\RepDelta$ macro-AP) but
+changes transfer by only $\TransferDelta$, more than \emph{tripling} the pooled false-alarm rate at a
+calibrated threshold; (ii)~a retraining-free base$+$adapter \emph{composition} recovers much of the lost
+transfer ($\PilotTransferDeltaSFT$ vs.\ the fine-tune); (iii)~a \emph{preregistered confirmatory} study
+over ten released checkpoints confirms the same specialization even for purpose-built guards, while
+KL-regularized SFT preserves transfer but at a represented cost --- not a free win; and (iv)~in regulated
+domains the numerically top-ranked guard \emph{differs} across mortgage, finance, health, and law.
 
 \smallskip
-\noindent\textbf{What we propose.} A disciplined, reproducible way to measure what a guard's
-fine-tune actually bought --- and to choose guards for regulated products. On one fixed panel of four
-compact checkpoints (Qwen2.5-1.5B, SmolLM2-1.7B, SmolLM3-3B, Qwen3-4B) we compare each guard only against
-its \emph{own} pre-tuning base on identical data (so a change is attributable to the fine-tune, not to a
-model swap); separate \emph{familiar} (represented) from \emph{unseen} (transfer) test data; add a
-\emph{retraining-free} composition that averages the base and its fine-tune; and evaluate in depth on an
-HMDA-grounded,
-\emph{dual-labeled} mortgage benchmark with a protected-class fairness gate, plus an external
-expert-labeled finance/health/law set (ExpGuard, 2{,}275 rows).
-
-\smallskip
-\noindent\textbf{What we find.} Fine-tuning \emph{specializes} but does not transfer: it lifts
-familiar-data ranking to a near-common ceiling ($\approx\!0.98$; $\RepDelta$ on average) yet changes
-held-out transfer by only $\TransferDelta$ on average --- on this four-checkpoint panel an \emph{attractor}
-pulls each model toward a benchmark-fixed endpoint, so ``stronger bases specialize more'' is largely
-arithmetic, not skill. Composition recovers much of the lost transfer without retraining
-($\PilotTransferDeltaSFT$ over the fine-tune, at the cost of a second inference pass). And a
-general-safety score does not cover domain compliance: general-purpose instruction models, used zero-shot as
-guards, rank mortgage violations only
-moderately and their fairness varies widely, and the top-ranked finance/health/law guard (SmolLM3-3B at
-AP $0.956$, within overlapping marginal CIs of the larger Qwen3-4B --- order unresolved) is \emph{not} the largest model and \emph{not} the
-guard the mortgage benchmark prefers (directionally, on a small split) --- the numerically top-ranked
-guard differs across benchmarks.
-
-\smallskip
-\noindent\textbf{What is new.} Prior work either compares \emph{different} models on a leaderboard or shows
-generically that fine-tuning can erode safety; both conflate the fine-tune's effect with differences
-between models. Our paired same-checkpoint estimand isolates it, and we contribute the
-attractor/endpoint-invariance reframing, a retraining-free transfer-recovery operator, a dual-labeled
-domain benchmark with a fairness-invariance gate, and a \emph{preregistered, confirmatory} starting-type
-adaptation study across ten released checkpoints (\Cref{sec:adaptation}) --- kept honest by never
-pooling weaker and stronger evidence tiers and by regenerating every number from committed per-row
-scores.
-
-\smallskip
-\noindent\textbf{Impact for high-compliance, regulated domains.} Do not choose a guard by a single leaderboard
-number: measure it against its own base, on your traffic, at your prevalence; you can recover cross-domain
-robustness \emph{without} paying to retrain; and you must gate on domain-grounded compliance \emph{and}
-fairness, which general-safety accuracy does not capture. And because the guard is a single
-$\approx$10--50\,ms forward pass (measured; \Cref{tab:latency}), a small self-hosted guard keeps regulated
-data in-house at a measured per-call latency of tens of milliseconds (serving-mode load, concurrency, and
-cost break-even are not benchmarked here). Acts~I--III are \emph{retrospective and estimation-only} on this
-fixed panel (mortgage labels are LLM-judge, not expert-adjudicated), while the preregistered adaptation
-study (\Cref{sec:adaptation}) is the one confirmatory piece; no causal or
-fair-lending claim is licensed; code, data manifests, and the frozen benchmark are public
-(\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
+\noindent The contribution is a measurement-and-decision \emph{workflow}, not a winning model. Acts~I--III
+are retrospective on an inspected panel; only the adaptation study is confirmatory; the domain arms are
+base-only and zero-shot; no causal or fair-lending claim is licensed. Code, data manifests, and the
+frozen benchmark are public (\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
 \end{abstract}
+
+\clearpage
+\tableofcontents
 
 \clearpage
 \input{sections/executive-spread}   % the five-minute route (cards + selector + study map)
 
-\tableofcontents
-
-\clearpage
 \section{Introduction: why ``is this guard good?'' is the wrong question}
 \label{sec:intro}
 
