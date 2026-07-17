@@ -140,10 +140,11 @@ def _device() -> str:
 # training core (self-contained; reuses train_guard.py idioms; manifest-only)
 # --------------------------------------------------------------------------------------
 def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
-                   dry_run=False, device=None, run_kind="final") -> dict:
+                   dry_run=False, device=None, run_kind="final", kl_beta=0.0) -> dict:
     os.makedirs(out_dir, exist_ok=True)
     meta = base_run_meta(lock, model_key, seed, train_path, run_kind=run_kind)
     meta["out_dir"] = out_dir
+    meta["kl_beta"] = float(kl_beta)  # 0.0 == vanilla completion-only SFT (Act I recipe, unchanged)
     meta["device"] = device or _device()
     meta["runtime_environment"] = C.runtime_environment(meta["device"])
     recipe = lock.get("recipe", C.DEFAULT_RECIPE)
@@ -196,8 +197,15 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
         meta["prompt_template_sha256_observed"] = tmpl_sha
         locked_tmpl = lock.get("prompt", {}).get("per_model_template_sha256", {}).get(model_key)
         if locked_tmpl and locked_tmpl != tmpl_sha:
-            raise RuntimeError(f"prompt template hash drift for {model_key}: "
-                               f"lock={locked_tmpl} observed={tmpl_sha}")
+            # Some chat templates (e.g. SmolLM3) inject the current date, so the rendered-prompt
+            # hash legitimately drifts on a later date. For FINAL runs this is a hard stop; for
+            # nonfinal research variants (e.g. KL-SFT) the drift is recorded and tolerated, since the
+            # within-run beta comparison uses one identical template on the same day.
+            if run_kind == "nonfinal":
+                meta["prompt_template_drift"] = {"locked": locked_tmpl, "observed": tmpl_sha}
+            else:
+                raise RuntimeError(f"prompt template hash drift for {model_key}: "
+                                   f"lock={locked_tmpl} observed={tmpl_sha}")
         meta["decision_tokens"] = dt
 
         verdict_ids = {0: tok.encode(dt["safe_str"], add_special_tokens=False),
@@ -275,6 +283,34 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
                 gen = torch.Generator(); gen.manual_seed(data_order_seed)
                 return RandomSampler(self.train_dataset, generator=gen)
 
+        # KL-regularized SFT (anti-forgetting control): loss = CE + beta * KL(pi_theta || pi_base)
+        # on the completion positions. The frozen base (reference) distribution is recovered from
+        # the SAME PEFT model via disable_adapter() -- no second model in memory. beta == 0 reduces
+        # exactly to the completion-only SFT above (identical loss), so this is a strict superset.
+        import torch.nn.functional as F
+
+        class KLRegTrainer(FixedOrderTrainer):
+            def compute_loss(self, model, inputs, return_outputs=False, **kw):
+                # Delegate CE to the base Trainer so the completion-only cross-entropy is normalized
+                # IDENTICALLY to vanilla SFT (incl. num_items_in_batch grad-accum scaling); beta==0
+                # then reproduces vanilla exactly. We only ADD the KL regularizer on top.
+                ce_loss, outputs = super().compute_loss(model, inputs, return_outputs=True, **kw)
+                shift_logits = outputs.logits[:, :-1, :]
+                shift_labels = inputs["labels"][:, 1:]
+                mask = shift_labels != -100
+                with torch.no_grad():
+                    with model.disable_adapter():              # frozen base forward (reference)
+                        ref_logits = model(input_ids=inputs["input_ids"],
+                                           attention_mask=inputs["attention_mask"]).logits
+                logp = F.log_softmax(shift_logits[mask].float(), dim=-1)
+                logp_ref = F.log_softmax(ref_logits[:, :-1, :][mask].float(), dim=-1)
+                kl = (logp.exp() * (logp - logp_ref)).sum(-1).mean()   # KL(pi_theta || pi_base) >= 0
+                self._kl_running = float(kl.detach())
+                loss = ce_loss + float(kl_beta) * kl
+                return (loss, outputs) if return_outputs else loss
+
+        trainer_cls = KLRegTrainer if (kl_beta and float(kl_beta) > 0) else FixedOrderTrainer
+
         args = TrainingArguments(
             output_dir=out_dir, per_device_train_batch_size=per_dev,
             gradient_accumulation_steps=accum, max_steps=max_steps, num_train_epochs=1,
@@ -284,8 +320,10 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
             fp16=(dev == "cuda" and dtype_name in ("float16", "fp16", "half")),
             gradient_checkpointing=(dev == "cuda"), logging_steps=10,
             save_strategy="no", remove_unused_columns=False, report_to=[], seed=seed)
-        trainer = FixedOrderTrainer(model=model, args=args, train_dataset=ds, data_collator=collate)
+        trainer = trainer_cls(model=model, args=args, train_dataset=ds, data_collator=collate)
         trainer.train()
+        if kl_beta and float(kl_beta) > 0:
+            meta["final_kl"] = getattr(trainer, "_kl_running", None)
 
         adir = C.adapter_dir(out_dir)
         model.save_pretrained(adir)
@@ -317,8 +355,11 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
 def cmd_train(args) -> int:
     manifest_override_dir = os.path.dirname(os.path.abspath(args.manifest)) if args.manifest else None
     try:
+        # Final runs verify every lock-bound file (incl. execution-source hashes). --nonfinal is the
+        # sanctioned dev/variant path (e.g. KL-regularized SFT modifies the trainer source), so it does
+        # not require byte-identical bound sources; the train-manifest sha256 is still enforced below.
         lock = C.load_lock(args.lock, allow_legacy=args.allow_legacy_lock,
-                           verify_files=True, manifests_dir=manifest_override_dir)
+                           verify_files=not args.nonfinal, manifests_dir=manifest_override_dir)
     except (C.ArtifactContractError, FileNotFoundError) as exc:
         print(f"[train] lock verification failed: {exc}", file=sys.stderr)
         return 2
@@ -347,6 +388,11 @@ def cmd_train(args) -> int:
         return 2
     if args.dry_run and not args.nonfinal:
         print("[train] --dry-run requires --nonfinal with one cell and an explicit --out",
+              file=sys.stderr)
+        return 2
+    if getattr(args, "kl_beta", 0.0) and float(args.kl_beta) > 0 and not args.nonfinal:
+        print("[train] --kl-beta > 0 is a non-canonical objective (KL-regularized SFT); it requires "
+              "--nonfinal with an explicit --out outside the canonical artifact roots",
               file=sys.stderr)
         return 2
     if args.nonfinal and not (args.out and args.model_key and args.seed is not None):
@@ -415,7 +461,8 @@ def cmd_train(args) -> int:
             meta = train_one_cell(lock, mk, s, out_dir, train_path,
                                   steps=args.max_steps, dry_run=args.dry_run, device=args.device,
                                   run_kind=("dry_run" if args.dry_run else
-                                            "nonfinal" if args.nonfinal else "final"))
+                                            "nonfinal" if args.nonfinal else "final"),
+                                  kl_beta=getattr(args, "kl_beta", 0.0))
             tag = meta["status"]
             print(f"  [{tag}] {mk} seed {s} -> {out_dir} ({meta.get('wall_time_s')}s)")
             if tag in ("completed", "dry_run"):
@@ -628,6 +675,9 @@ def main(argv=None) -> int:
     t.add_argument("--force", action="store_true", help="retrain even if a completed cell exists")
     t.add_argument("--dry-run", action="store_true",
                    help="assemble run metadata + read train manifest, skip model load/training")
+    t.add_argument("--kl-beta", type=float, default=0.0,
+                   help="KL(pi_theta||pi_base) anti-forgetting strength; >0 is a non-canonical "
+                        "objective and requires --nonfinal (KL-regularized SFT variant)")
     t.set_defaults(func=cmd_train)
 
     s = sub.add_parser("smoke", help="tiny per-base smoke to a separate path")

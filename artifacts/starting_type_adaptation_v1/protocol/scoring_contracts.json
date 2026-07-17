@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "study_id": "starting_type_adaptation_v1",
+  "contract_role": "derived_validated_against_primary_contract",
+  "finalization_status": "dev_nonfinal",
+  "normative_source": {"path": "artifacts/starting_type_adaptation_v1/protocol/primary_contract.json"},
+  "note": "Three non-substitutable contract views (proposal Section 8). study_native is primary for all within-checkpoint deltas; official_native is the retention panel; common_sensitivity is a secondary standardization view. Renderer/target/mask/margin bytes are locked at LOCK time; guard-native study contracts are registered stubs in experiments/starting_type_common.py and raise NotImplementedError until Phase-0 pins revisions and locks each renderer.",
+  "views": {
+    "study_native": {
+      "role": "primary",
+      "answers": "how does the same binary adaptation pressure change each checkpoint while preserving its top-level guard interface",
+      "primary_for": ["three_condition_within_checkpoint_comparison", "within_checkpoint_deltas", "kl_sft_vs_seed_paired_sft", "movement_vectors"],
+      "supervise": "complete top-level verdict token sequence only; never the first sub-token alone; auxiliary schema fields masked from CE",
+      "contracts": {
+        "paper_a_safe_unsafe": {"applies_to": ["qwen25_15b", "smollm2_17b", "smollm3_3b", "qwen3_4b"], "implemented": true, "verdict": "safe|unsafe single token + EOS", "source": "guard_research.prompts"},
+        "shieldgemma_yes_no": {"applies_to": ["shieldgemma_2b"], "implemented": false, "verdict": "Yes|No", "policy": "one_locked_broad_study_policy", "note": "binary manifest cannot reconstruct four separate vendor policies; see policy_crosswalk.json"},
+        "qwen3guard_toplevel": {"applies_to": ["qwen3guard_gen_06b", "qwen3guard_gen_4b"], "implemented": false, "verdict": "top-level Safe vs Unsafe decision positions only", "masked": ["Controversial", "categories"]},
+        "granite_yes_no": {"applies_to": ["granite_guardian_31_2b"], "implemented": false, "verdict": "Yes|No", "risk_name": "harm"},
+        "llama_guard_toplevel": {"applies_to": ["llama_guard_3_1b"], "implemented": false, "verdict": "top-level safe vs unsafe; absent hazard IDs NOT supervised", "note": "20-token-pruned output head needs extra PEFT/output-head smoke test"},
+        "wildguard_prompt_harm": {"applies_to": ["wildguard_7b"], "implemented": false, "verdict": "prompt-harm field only", "masked": ["response_harm", "refusal"], "note": "response/refusal n/a generation measured as retention behavior only"}
+      },
+      "emit_per_score": [
+        "complete_candidate_sequence_log_likelihoods",
+        "raw_unsafe_margin",
+        "calibrated_probability_where_used",
+        "generated_verdict",
+        "parse_and_likelihood_generation_concordance",
+        "prompt_and_contract_hashes",
+        "original_and_scored_token_counts",
+        "truncation_wrapper_preservation_status",
+        "dtype_device_batch_runtime_fingerprint",
+        "model_tokenizer_adapter_starting_checkpoint_hashes"
+      ],
+      "store_raw_margins_not_only_sigmoid": true,
+      "unsafe_margin": "last-position z_unsafe - z_safe"
+    },
+    "official_native": {
+      "role": "retention_panel",
+      "answers": "what happens to each released product's intended interface after adaptation",
+      "scored_conditions": ["unmodified", "sft", "kl_sft"],
+      "malformed_output_policy": "error_or_abstention_never_safe",
+      "contracts": {
+        "shieldgemma_2b": {"prompt": "official_policy_conditioned", "policies_scored_separately": 4, "aggregation": "locked_maximum_risk", "hash": "policy_wording_and_aggregation_hashed"},
+        "qwen3guard_gen": {"score_field": "severity", "candidates": ["Safe", "Unsafe", "Controversial"], "strict_margin": "logsumexp(Unsafe,Controversial) - Safe", "permissive_mapping": "locked_separately", "categories": "schema_retention_diagnostic_only"},
+        "granite_guardian_31": {"template": "native_chat", "risk_name": "harm", "score": "Yes|No probability/margin"},
+        "llama_guard_3": {"template": "official_single_user_chat", "verdict": "full safe/unsafe sequence", "hazard_categories": "retained_as_diagnostics"},
+        "wildguard_7b": {"prompt": "full_official_structured", "score_field": "prompt_harm", "missing_response_refusal_default_safe": false}
+      },
+      "fidelity_gate": "each research-derived continuous likelihood adapter requires a locked fidelity threshold comparing likelihood argmax with deterministic generation before AP is claim-bearing",
+      "retention_measures": ["parse_success", "native_verdict_category_concordance", "taxonomy_coverage", "format_validity", "refusal_response_field_validity_where_applicable", "divergence_from_released_native_verdict_distribution"]
+    },
+    "common_sensitivity": {
+      "role": "secondary",
+      "answers": "does a comparison survive mechanical prompt standardization",
+      "contract": "paper_a_safe_unsafe",
+      "applies_to": "all conditions where mechanically valid",
+      "supports": ["mechanically_standardized_cross_model_ranking", "strict_cross_type_interaction"],
+      "do_not_train_second_adapter_unless_preregistered_separately": true,
+      "caveat": "poor common-contract score does not prove a native guard is weak; high common-contract score does not prove the native schema survived"
+    }
+  },
+  "no_pool_rule": "study-native, official-native, and common views are visibly separated and never pooled; none substitutes for another",
+  "cross_reference": {
+    "policy_crosswalk": "artifacts/starting_type_adaptation_v1/protocol/policy_crosswalk.json",
+    "harness_contracts": "experiments/starting_type_common.py (VerdictContract, get_contract)"
+  }
+}

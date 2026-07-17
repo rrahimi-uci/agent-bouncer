@@ -10,6 +10,7 @@
 \usepackage{float}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{colortbl}
 \usepackage[most]{tcolorbox}
 \usepackage{enumitem}
 \usepackage{caption}
@@ -29,6 +30,8 @@
 \definecolor{bgblueedge}{HTML}{2563EB}
 \definecolor{tkgreen}{HTML}{EAF7EE}
 \definecolor{tkgreenedge}{HTML}{15803D}
+\definecolor{guidealt}{HTML}{F2FBF5}   % zebra tint for the guidelines table
+\definecolor{guiderule}{HTML}{BFE3CB}  % soft green rule
 \newtcolorbox{background}[1]{colback=bgblue,colframe=bgblueedge,title={#1},fonttitle=\bfseries\small,
   fontupper=\small,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,breakable}
 \newtcolorbox{takeaway}[1]{colback=tkgreen,colframe=tkgreenedge,title={#1},fonttitle=\bfseries\small,
@@ -48,6 +51,8 @@
 % ---- generated macros bound to the locked results (numbers are never hand-typed) ----
 \input{generated/results_macros_gen} % Paper A: \Rep*, \Transfer*, \HarmBench*, \SpecializationSeedCount, ...
 \input{generated/pilot_macros}       % Paper B: \Pilot*
+\input{generated/klsft_macros}       % KL-SFT anti-forgetting control: \KL* (placeholder until run completes)
+\input{generated/adaptation_macros}  % Starting-type adaptation study: \Ada* (H values + LCBs + verdicts)
 
 \title{\textbf{The Benchmark Chooses the Winner:}\\[3pt]
 \large Measuring, Tuning, and Composing Small Safety Guards\\
@@ -103,15 +108,18 @@ general-safety score does not cover domain compliance: general-purpose instructi
 guards, rank mortgage violations only
 moderately and their fairness varies widely, and the top-ranked finance/health/law guard (SmolLM3-3B at
 AP $0.956$, statistically tied with the larger Qwen3-4B) is \emph{not} the largest model and \emph{not} the
-guard the mortgage benchmark prefers --- the winner flips with the benchmark.
+guard the mortgage benchmark prefers (directionally, on a small split) --- the numerically top-ranked
+guard differs across benchmarks.
 
 \smallskip
 \noindent\textbf{What is new.} Prior work either compares \emph{different} models on a leaderboard or shows
 generically that fine-tuning can erode safety; both conflate the fine-tune's effect with differences
 between models. Our paired same-checkpoint estimand isolates it, and we contribute the
-attractor/endpoint-invariance reframing, a retraining-free transfer-recovery operator, and a dual-labeled
-domain benchmark with a fairness-invariance gate --- kept honest by never pooling weaker and stronger
-evidence tiers and by regenerating every number from committed per-row scores.
+attractor/endpoint-invariance reframing, a retraining-free transfer-recovery operator, a dual-labeled
+domain benchmark with a fairness-invariance gate, and a \emph{preregistered, confirmatory} starting-type
+adaptation study across ten released checkpoints (\Cref{sec:adaptation}) --- kept honest by never
+pooling weaker and stronger evidence tiers and by regenerating every number from committed per-row
+scores.
 
 \smallskip
 \noindent\textbf{Impact for high-compliance, regulated domains.} Do not choose a guard by a single leaderboard
@@ -199,6 +207,7 @@ audit, not a deployment recommendation.
 \input{sections/background-setup}   % Background (full) + The shared experimental setup (full methods)
 \input{sections/related-work}       % comprehensive related work
 \input{sections/act1}               % Act I detail (defines tab:primary, fig:plane, tab:sensitivity)
+\input{sections/act-adaptation}     % Confirmatory starting-type adaptation study (10 checkpoints; sec:adaptation, tab:adaptation)
 \begin{figure}[htbp]\centering
 \includegraphics[width=0.8\linewidth]{fig_act1_percheckpoint.pdf}
 \caption{Per-checkpoint view of Act I: SFT lifts represented-source macro-AP for every checkpoint (blue), but the transfer change (orange) ranges from $+0.04$ (SmolLM2) to $-0.15$ (Qwen3-4B) --- the fixed-panel average hides opposite signs.}
@@ -274,6 +283,72 @@ fairness gate (Act~III).
 The recurring cast makes it concrete: Qwen3-4B, the strongest base, specializes the most on transfer,
 is the one composition hurts, yet is \emph{numerically} the best and most invariant zero-shot mortgage
 guard (on a small split, so read as a direction) --- the ranking flips with the benchmark.
+
+\Cref{tab:guidelines} distills the whole study into the guideline each finding implies: what we
+learned, the evidence for it here, and what a practitioner should therefore \emph{do}. Every row is
+anchored to a result in this report; where a finding is directional (small split) or fixed-panel, the
+guideline is qualified accordingly.
+
+\begin{table}[htbp]\centering\small
+\caption{What this study establishes, and the professional guideline each finding implies. Numbers are
+macro-AP deltas from the fixed panel (represented $=$ in-distribution sources, transfer $=$ held-out
+sources); CIs/LCBs are one-sided bootstrap bounds. Acts~I--II are retrospective estimation on an
+inspected panel (\emph{not} preregistered/confirmatory --- see limitations); only the adaptation
+study is preregistered. Read directional rows (marked) as a direction, not a verdict.}
+\label{tab:guidelines}
+\renewcommand{\arraystretch}{1.4}
+\setlength{\extrarowheight}{2.5pt}
+\arrayrulecolor{guiderule}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.235\linewidth} >{\raggedright\arraybackslash}p{0.335\linewidth} >{\raggedright\arraybackslash}p{0.35\linewidth}@{}}
+\rowcolor{tkgreenedge}
+{\color{white}\bfseries What we learned} & {\color{white}\bfseries Evidence (this study)} & {\color{white}\bfseries Guideline: what to do} \\
+\rowcolor{white}
+\textbf{\textcolor{tkgreenedge}{1.}~A guard's ranking is co-produced by the benchmark --- it flips across benchmarks.} &
+Qwen3-4B is the worst transfer specializer yet the numerically best zero-shot mortgage guard
+(\Cref{sec:synthesis}; Act~III, directional/small split). &
+Never rank guards on a single leaderboard; score \emph{your} candidates on represented, held-out,
+over-refusal, and domain sets. \\
+\rowcolor{guidealt}
+\textbf{\textcolor{tkgreenedge}{2.}~Ordinary SFT buys represented-source ranking, not transfer.} &
+Represented AP $\RepDelta$ (LCB $\RepLCB$) vs.\ transfer $\TransferDelta$ (UCB $\TransferUCB$);
+specialization in \SpecializationSeedCount/\TotalSeedCount{} seeds (\Cref{tab:primary}). &
+Always compare a tune to its \emph{own} base on represented \emph{and} held-out sets --- a delta vs.\
+other models hides the transfer cost. \\
+\rowcolor{white}
+\textbf{\textcolor{tkgreenedge}{3.}~A base-anchored KL penalty buys back most of the transfer SFT gives up --- at a represented-source cost, no extra inference.} &
+KL-SFT ($\beta{=}0.5$): transfer \KLBetaHalfTransferDelta{} vs.\ SFT at a represented cost
+\KLBetaHalfRepDelta{} (general checkpoints, retrospective, $n{=}4$). The \emph{confirmatory} study
+(Row~7) finds this trade fails non-inferiority (\Cref{sec:adaptation}). &
+If you must SFT and care about OOD, add $\beta\,\mathrm{KL}(\pi_\theta\Vert\pi_{\text{base}})$
+($\beta{\approx}0.5$); it recovers transfer at no extra forward pass but a real represented-source
+cost --- a tradeoff dial, not a free upgrade. \\
+\rowcolor{guidealt}
+\textbf{\textcolor{tkgreenedge}{4.}~Output-space composition repairs a tuned guard's lost transfer --- at inference, not retraining.} &
+Base$+$adapter average recovers transfer and beats an equal-cost SFT$+$SFT ensemble
+(\Cref{tab:sftsft}), so the gain is the base's, not generic ensembling. &
+Compose to \emph{repair} a guard you already tuned; then recalibrate the threshold on the target
+regime (ranking recovery $\neq$ calibration transfer). \\
+\rowcolor{white}
+\textbf{\textcolor{tkgreenedge}{5.}~A domain change can hide the violation entirely; general-safety score $\neq$ compliance.} &
+Rankings and margins shift on the mortgage domain split (Act~III, \Cref{tab:composition};
+directional). &
+In a regulated domain, build domain-grounded, dual-labeled evaluation and a protected-pair
+invariance check before trusting any guard. \\
+\rowcolor{guidealt}
+\textbf{\textcolor{tkgreenedge}{6.}~A small, single-token guard is fast, cheap, and keeps data in-house.} &
+One forward pass $\approx$10--50\,ms on one A100 (\Cref{tab:latency}); no third-party egress. &
+Prefer a small self-hosted guard for inline, high-volume, or regulated traffic over a hosted-API
+round-trip. \\
+\rowcolor{white}
+\textbf{\textcolor{tkgreenedge}{7.}~Fine-tuning a \emph{released} guard specializes it too; KL-SFT keeps transfer but at a represented cost.} &
+Confirmatory 10-checkpoint study: SFT raises represented AP \AdaHGain{} (LCB \AdaHGainLCB{}) with a
+bound-confirmed transfer loss; KL-SFT preserves transfer (LCB \AdaHPreserveLCB{}) but its represented
+cost (LCB \AdaHCostLCB{}) fails the $-\AdaMargin$ non-inferiority margin (\Cref{sec:adaptation}). &
+Adapting a purpose-built guard is not exempt from the tradeoff; use KL-SFT as a tradeoff dial, not a
+free upgrade, and re-measure both splits on your own data. \\
+\arrayrulecolor{black}\bottomrule
+\end{tabular}
+\end{table}
 
 \section{The practitioner's decision guide}
 \label{sec:practitioner}

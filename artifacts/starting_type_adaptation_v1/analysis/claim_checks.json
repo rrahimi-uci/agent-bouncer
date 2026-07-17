@@ -1,0 +1,28 @@
+{
+  "RQ1": {
+    "H_conc_lcb": 0.18924467275509202,
+    "H_gain_lcb": 0.12917415910635147,
+    "criterion": "LCB(H_gain) > 0 AND LCB(H_conc) > 0",
+    "interpretation": "Our ordinary SFT protocol further specialized these released guards toward represented sources, with a bound-confirmed adaptation-held-out loss (fixed-panel, this recipe).",
+    "supported": true
+  },
+  "RQ2": {
+    "H_cost_lcb": -0.060223852872809375,
+    "H_preserve_lcb": 0.0346823349326446,
+    "criterion": "LCB(H_preserve) > 0 AND LCB(H_cost) > -0.02",
+    "interpretation": "KL-SFT trades adaptation gain for retention; it preserved held-out transfer but the represented-source non-inferiority margin was not met -- it is not a free improvement.",
+    "supported": false
+  },
+  "interpretation_source": "locked claim-registry keyed by bootstrap-bound predicates; NO point-estimate sign was consulted to select wording (non-HARKing).",
+  "multiplicity": "Bonferroni across the two RQ families: one-sided 97.5% per-family lower bounds control familywise alpha = 0.05.",
+  "non_inferiority_margin_m": 0.02,
+  "panel_conditional_limitation": "Bootstrap lower bounds are CONDITIONAL ON THE FIXED MODEL PANEL: the resample draws evaluation near-duplicate families (Poisson weights) and training seeds while holding model identities fixed, so intervals carry only eval-row and seed uncertainty -- not between-model-family uncertainty. With few families a single dominant family can drive the equal-family mean; read H_gain/H_conc/H_preserve/H_cost as fixed-panel summaries, not as generalization over a population of purpose-built guards.",
+  "predicates": {
+    "p_conc_lcb_gt_0": true,
+    "p_cost_lcb_gt_neg_m": false,
+    "p_gain_lcb_gt_0": true,
+    "p_held_sft_loss_ucb_lt_0": true,
+    "p_preserve_lcb_gt_0": true
+  },
+  "primary_beta": 0.5
+}

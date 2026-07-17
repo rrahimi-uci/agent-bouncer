@@ -267,6 +267,39 @@ Act~I establishes now is the qualitative claim, robust across all four checkpoin
 buys represented-source ranking and not, on average, transfer.
 \end{takeaway}
 
+\subsection{A recipe control: does anti-forgetting (KL-regularized) SFT preserve transfer?}
+\label{sec:actI-klsft}
+
+The specialization above was measured under \emph{one} fine-tuning recipe --- completion-only LoRA-SFT with
+no explicit anchor to the base checkpoint. A fair objection is that the transfer loss might be a property of
+this \emph{unregularized} recipe rather than of fine-tuning as such. The standard remedy is an
+\emph{anti-forgetting} penalty that keeps the fine-tune close to the base in output space, so we add exactly
+that --- a KL term on the SFT loss:
+\begin{equation}
+\mathcal{L} \;=\; \underbrace{\mathrm{CE}(\text{verdict})}_{\text{Act~I recipe}} \;+\;
+\beta\,\mathrm{KL}\!\big(\pi_\theta(\cdot\mid x)\,\big\|\,\pi_{\text{base}}(\cdot\mid x)\big),
+\label{eq:klsft}
+\end{equation}
+evaluated on the completion tokens, with the frozen base $\pi_{\text{base}}$ recovered from the adapter's own
+disabled path (no second model in memory, no base retraining). Everything else is held at the Act~I settings
+--- same manifest, seeds, panel, scorer, and represented/transfer splits --- and $\beta=0$ reproduces vanilla
+SFT \emph{exactly} (the cross-entropy is unchanged), so this is a strict one-knob generalization of the Act~I
+recipe rather than a different method. We sweep $\beta\in\{\KLBetas\}$ over all four checkpoints and
+\KLNSeeds\ seeds, and score every adapter through the identical single-token margin used everywhere else.
+
+\input{generated/tab_klsft_gen}
+
+\Cref{tab:klsft} reports transfer and represented macro-AP for the base, vanilla SFT ($\beta=0$, trained in
+the \emph{same} environment as the KL runs so the contrast carries no hardware confound), and
+KL-regularized SFT at each $\beta$. The anti-forgetting question is read from the transfer block: relative to
+vanilla SFT, KL at $\beta=0.5$ changes transfer macro-AP by \KLBetaHalfTransferDelta\ on average across the
+four checkpoints (at a represented cost of \KLBetaHalfRepDelta), and at $\beta=1.0$ by
+\KLBetaOneTransferDelta\ (represented cost \KLBetaOneRepDelta). \KLVerdictSentence
+
+\begin{takeaway}{What the recipe control shows}
+\KLTakeaway
+\end{takeaway}
+
 \subsection{The deployment base rate also chooses the winner}
 \label{sec:actI-prevalence}
 

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "study_id": "starting_type_adaptation_v1",
+  "contract_role": "derived_validated_against_primary_contract",
+  "finalization_status": "dev_nonfinal",
+  "normative_source": {"path": "artifacts/starting_type_adaptation_v1/protocol/primary_contract.json"},
+  "note": "Maps each checkpoint's native policy scope onto the shared binary top-level task. Mechanical mapping to a shared binary label does NOT make the source ontologies or native policy scopes identical; those differences stay explicit here (proposal Section 8.1). The binary manifest carries no native categories, hazard IDs, Controversial labels, or response/refusal labels, so no auxiliary schema is improvised as a training target.",
+  "shared_binary_task": {
+    "labels": {"0": "safe", "1": "unsafe"},
+    "definition": "unsafe = harmful content, a jailbreak, or a prompt injection (Paper A binary top-level task)",
+    "manifest_sha256": "6efb1f6be30f6394e46efc1fbdce0709f295af9e3232184cb7e195ad3fbec378"
+  },
+  "checkpoints": {
+    "qwen25_15b":  {"native_policy_scope": "general_instruction_safe_unsafe", "study_native_target": "safe|unsafe", "official_native_target": "n/a_general_checkpoint", "mapping": "identity"},
+    "smollm2_17b": {"native_policy_scope": "general_instruction_safe_unsafe", "study_native_target": "safe|unsafe", "official_native_target": "n/a_general_checkpoint", "mapping": "identity"},
+    "smollm3_3b":  {"native_policy_scope": "general_instruction_safe_unsafe", "study_native_target": "safe|unsafe", "official_native_target": "n/a_general_checkpoint", "mapping": "identity"},
+    "qwen3_4b":    {"native_policy_scope": "general_instruction_safe_unsafe", "study_native_target": "safe|unsafe", "official_native_target": "n/a_general_checkpoint", "mapping": "identity"},
+    "shieldgemma_2b": {
+      "native_policy_scope": "four_advertised_harm_policies_scored_separately",
+      "study_native_target": "Yes|No under one locked broad study policy",
+      "official_native_target": "policy_conditioned_yes_no over four policies with locked maximum-risk aggregation",
+      "mapping": "study_policy_subsumes_binary_unsafe; four native policies NOT reconstructable as four training targets from one binary label",
+      "shieldgemma_study_policy_note": "Primary adaptation uses ONE locked broad study policy because the binary manifest cannot reconstruct labels for the four separate official vendor policies; the four advertised policies remain an official-native evaluation panel only, never a training target."
+    },
+    "qwen3guard_gen_06b": {
+      "native_policy_scope": "safe_unsafe_controversial_plus_categories",
+      "study_native_target": "top-level Safe vs Unsafe",
+      "official_native_target": "severity over Safe/Unsafe/Controversial; strict = logsumexp(Unsafe,Controversial)-Safe",
+      "mapping": "binary unsafe -> Unsafe decision position; Controversial and categories masked from CE and measured as retention"
+    },
+    "qwen3guard_gen_4b": {
+      "native_policy_scope": "safe_unsafe_controversial_plus_categories",
+      "study_native_target": "top-level Safe vs Unsafe",
+      "official_native_target": "severity over Safe/Unsafe/Controversial; strict = logsumexp(Unsafe,Controversial)-Safe",
+      "mapping": "binary unsafe -> Unsafe decision position; Controversial and categories masked from CE and measured as retention"
+    },
+    "granite_guardian_31_2b": {
+      "native_policy_scope": "named_risk_yes_no",
+      "study_native_target": "Yes|No, risk_name=harm",
+      "official_native_target": "native chat template Yes|No, risk_name=harm",
+      "mapping": "binary unsafe -> Yes under the general-harm risk definition"
+    },
+    "llama_guard_3_1b": {
+      "native_policy_scope": "safe_unsafe_plus_hazard_categories",
+      "study_native_target": "top-level safe|unsafe (hazard IDs not supervised)",
+      "official_native_target": "official single-user chat template full safe/unsafe verdict; hazards as diagnostics",
+      "mapping": "binary unsafe -> unsafe verdict; absent hazard IDs never falsely supervised"
+    },
+    "wildguard_7b": {
+      "native_policy_scope": "structured_prompt_harm_response_harm_refusal",
+      "study_native_target": "prompt-harm verdict only",
+      "official_native_target": "full official structured prompt; prompt-harm field scored for prompt-only evaluation",
+      "mapping": "binary unsafe -> prompt-harm=yes; response/refusal fields masked from CE, generation measured as retention; missing fields never default to safe"
+    }
+  },
+  "scope_caveats": [
+    "native policy scopes differ across checkpoints; study-native averages inherit a contract-mapping limitation",
+    "a general guard's miss on an out-of-scope policy is not automatically a model failure",
+    "official-native and study-native panels are never pooled"
+  ]
+}

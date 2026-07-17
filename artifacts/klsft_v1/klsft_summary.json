@@ -1,0 +1,58 @@
+[
+  {
+    "model_key": "qwen25_15b",
+    "pretty": "Qwen2.5-1.5B",
+    "base_represented": 0.6334479120807383,
+    "sft_committed_represented": 0.9878368591782726,
+    "base_transfer": 0.8187372518913454,
+    "sft_committed_transfer": 0.7797930202782914,
+    "sft_inenv_represented": 0.9865896121996359,
+    "sft_inenv_transfer": 0.7936101356684402,
+    "kl0.5_represented": 0.978570161174798,
+    "kl0.5_transfer": 0.8497752974701086,
+    "kl1_represented": 0.9766313949279711,
+    "kl1_transfer": 0.8382196429753265
+  },
+  {
+    "model_key": "smollm2_17b",
+    "pretty": "SmolLM2-1.7B",
+    "base_represented": 0.4524256481766224,
+    "sft_committed_represented": 0.9806446511093977,
+    "base_transfer": 0.7904444683309602,
+    "sft_committed_transfer": 0.8304289493026074,
+    "sft_inenv_represented": 0.9797927483914222,
+    "sft_inenv_transfer": 0.83884204931824,
+    "kl0.5_represented": 0.9282629920735502,
+    "kl0.5_transfer": 0.8589018481498408,
+    "kl1_represented": 0.9082372116032846,
+    "kl1_transfer": 0.8434233144142809
+  },
+  {
+    "model_key": "smollm3_3b",
+    "pretty": "SmolLM3-3B",
+    "base_represented": 0.6620907798065075,
+    "sft_committed_represented": 0.9751110419676852,
+    "base_transfer": 0.9102361809080601,
+    "sft_committed_transfer": 0.8233775727401769,
+    "sft_inenv_represented": 0.980492566304261,
+    "sft_inenv_transfer": 0.8142202719286263,
+    "kl0.5_represented": 0.9236869078004641,
+    "kl0.5_transfer": 0.9025632386081458,
+    "kl1_represented": 0.8899476026583576,
+    "kl1_transfer": 0.8995729012902345
+  },
+  {
+    "model_key": "qwen3_4b",
+    "pretty": "Qwen3-4B",
+    "base_represented": 0.8855323071198766,
+    "sft_committed_represented": 0.9836529846661719,
+    "base_transfer": 0.9437885762006171,
+    "sft_committed_transfer": 0.7938899391843756,
+    "sft_inenv_represented": 0.9869080922352644,
+    "sft_inenv_transfer": 0.8229371907284438,
+    "kl0.5_represented": 0.9649240624488667,
+    "kl0.5_transfer": 0.9038432299338265,
+    "kl1_represented": 0.9457736980019952,
+    "kl1_transfer": 0.8938704675154006
+  }
+]

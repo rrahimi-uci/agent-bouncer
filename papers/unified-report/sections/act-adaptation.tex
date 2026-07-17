@@ -1,0 +1,71 @@
+\section{Adapting released guards: a confirmatory starting-type study}
+\label{sec:adaptation}
+
+Acts~I--III characterize what fine-tuning does to \emph{general} instruction checkpoints, on a panel the
+researcher inspected while building the method --- so they are retrospective estimation, not confirmed
+findings (\Cref{sec:honesty}). This section is the one \emph{confirmatory} piece: a preregistered
+study whose estimands, decision rules, non-inferiority margin, and interpretation wording were locked in
+a claim registry \emph{before} any score existed, so the verdicts below cannot be a post-hoc reading of
+the data (no HARKing). It asks two questions that the earlier acts raise but cannot settle:
+(RQ1) does the specialization tradeoff also hit models that are \emph{already} purpose-built safety
+guards, and (RQ2) is KL-SFT --- which recovered transfer for general checkpoints (\Cref{sec:actI-klsft})
+--- a \emph{free} improvement, i.e.\ does it retain transfer at no represented-source cost?
+
+\paragraph{Design.} A $2\times 3$ blocked grid: $\{$four general instruction checkpoints, six released
+purpose-built guards$\}\times\{$unmodified $U$, $+$SFT, $+$KL-SFT$\}$, over \AdaNCheckpoints{}
+checkpoints spanning \AdaNFamilies{} model families (gemma, granite, llama, mistral, qwen, smollm), five
+seeds, primary $\beta{=}\AdaPrimaryBeta$. Every guard keeps its \emph{native} top-level verdict
+interface (ShieldGemma \texttt{Yes/No}, Qwen3Guard \texttt{Safe/Unsafe}, Llama-Guard
+\texttt{safe/unsafe}, Granite \texttt{Yes/No}, WildGuard \texttt{yes/no}), validated byte-for-byte
+against the real tokenizer at a decision-position fidelity check before scoring; all cells share the
+frozen Paper~A binary manifest, LoRA recipe, and optimizer. We report macro-AP (mean over benchmark
+sources) on the RAW logit margin, on represented (\texttt{id\_test}) and held-out (\texttt{transfer})
+splits, as a within-checkpoint change vs.\ the \emph{same} unmodified checkpoint (the KL reference is
+that checkpoint). Each statistic H is an equal-weight mean over the six \emph{model} families; its
+one-sided $97.5\%$ lower bound comes from a 10{,}000-resample bootstrap that resamples \emph{evaluation}
+(benchmark-source) groups and training seeds while holding model identities fixed, Bonferroni-split
+across the two research questions (familywise $\alpha=0.05$).
+
+\input{generated/tab_adaptation_gen}
+
+\paragraph{RQ1 --- ordinary SFT specializes released guards too (supported).}
+Across the panel, our SFT protocol raised represented-source macro-AP by \AdaHGain{} (equal-family mean;
+LCB $\AdaHGainLCB>0$) while the gain was concentrated relative to held-out transfer (H\_conc \AdaHConc,
+LCB $\AdaHConcLCB>0$), with the preregistered criterion $\text{LCB}(\text{H\_gain})>0$ and
+$\text{LCB}(\text{H\_conc})>0$ both met. \Cref{tab:adaptation} shows the pattern is not a general-model
+artifact: the released guards move the same way --- SFT buys represented ranking (e.g.\ ShieldGemma-2B
+$+0.212$, Granite-Guard-2B $+0.139$) at a held-out cost (equal-family held-out change under SFT
+\AdaHheldSFT). Fine-tuning a released guard on your data specializes it toward your sources, at a
+bound-confirmed transfer cost, exactly as it does a general checkpoint.
+
+\paragraph{RQ2 --- KL-SFT retains transfer but is \emph{not} a free improvement (not supported).}
+KL-SFT did preserve held-out transfer relative to SFT (H\_preserve \AdaHPreserve, LCB $\AdaHPreserveLCB>0$):
+in \Cref{tab:adaptation} every KL-SFT held-out delta is less negative (or more positive) than its SFT
+counterpart. But the represented-source \emph{cost} of that retention, H\_cost \AdaHCost, has
+LCB \AdaHCostLCB, which does not clear the preregistered non-inferiority margin of $-\AdaMargin$ --- so
+the second criterion fails and RQ2 is \textbf{not supported}. KL-SFT trades represented-source adaptation
+gain for transfer retention; on this panel it is a genuine trade, not a free lunch. This is a more
+cautious verdict than the general-checkpoint KL control of \Cref{sec:actI-klsft} (where the represented
+cost was smaller), and the confirmatory design reports it as such rather than reading the favorable
+direction as a win.
+
+\paragraph{What this does and does not license.}
+The within-checkpoint deltas are causal only for \emph{this recipe on this checkpoint}; the
+general-vs-purpose contrast is a \emph{descriptive} blocked comparison (checkpoints are not randomly
+assigned to a starting type), not a causal claim about starting type. The bounds are conditional on the
+fixed model panel: the bootstrap resamples evaluation families and seeds but holds model identities
+fixed, so with few families a single dominant family can move the equal-family mean; read H as a
+fixed-panel summary, not a population estimate. One checkpoint, Llama-Guard-3-1B, shows essentially zero
+movement under both SFT and KL-SFT (\Cref{tab:adaptation}): its $20$-token-pruned, embedding-tied output
+head leaves the decision-token margins effectively unmoved by LoRA, so it contributes no adaptation
+signal and should be read as a null/degenerate cell, not evidence of robustness. It is retained in the
+equal-family means as a zero contribution; because a null family only pulls those means toward zero,
+dropping it does not weaken either verdict (it would only raise the RQ1 gain/concentration bounds and
+push the RQ2 cost bound further past the margin).
+
+\begin{takeaway}{Adapting a released guard}
+Fine-tuning a purpose-built guard on your data specializes it just like a general model (RQ1,
+bound-confirmed): you gain represented ranking and lose transfer. KL-SFT buys the transfer back but
+charges represented AP beyond the non-inferiority margin (RQ2 not supported) --- treat it as a
+tradeoff dial, not a free upgrade, and re-measure both splits on your own data.
+\end{takeaway}

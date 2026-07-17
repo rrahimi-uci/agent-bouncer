@@ -1,0 +1,36 @@
+# Pinned environment for the starting-type adaptation study (proposal: papers/unified-report/proposal.md).
+# Mirrors the Paper A / KL-SFT run environment so grad-accum normalization and tokenizer/render
+# behavior match. This is NOT a claim-bearing lock; artifacts/starting_type_adaptation_v1/LOCK.json
+# binds the exact software_versions from the actual execution host at Phase 3.
+#
+# Full install:      pip install -r requirements-starting-type-adaptation.txt
+# CPU analysis only:  the numpy/scipy/scikit-learn/pandas/pyarrow block below reproduces
+#                     every table/figure from committed text-free scores without model access.
+
+# --- training + KL-SFT trainer (GPU) ---
+transformers==5.12.1
+peft==0.19.1
+# torch matching the run (LOCK records torch 2.12.1+cu130; base version pinned here):
+torch==2.12.1
+accelerate==1.14.0
+safetensors==0.8.0
+sentencepiece
+
+# --- model-native prompt rendering (chat templates) ---
+jinja2>=3.1.0
+# guard tokenizers: shieldgemma/granite need sentencepiece+protobuf; wildguard (Mistral SP model)
+# needs protobuf + the slow tokenizer path (load_study_tokenizer falls back to use_fast=False);
+# some Qwen/Llama tokenizers pull tiktoken. Without these the guard tokenizers fail to load.
+protobuf
+tiktoken
+
+# --- core analysis: metrics, bootstrap, thresholds, table/figure generation (CPU) ---
+numpy
+scipy
+scikit-learn
+pandas
+pyarrow>=14
+PyYAML>=6
+
+# --- dev / test ---
+pytest

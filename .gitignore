@@ -13,7 +13,6 @@ venv/
 .ruff_cache/
 .coverage
 htmlcov/
-
 # ML artifacts
 mlruns/
 mlartifacts/
@@ -23,23 +22,18 @@ checkpoints/
 *.safetensors
 *.bin
 wandb/
-
 # Data (downloaded / generated — not committed)
 /data/
-
 # Raw third-party row text (ToxicChat CC-BY-NC, gated AI2, etc.) stays local.
 # Text-free release artifacts are written separately to public_manifests/.
 /artifacts/**/manifests/*.jsonl
-
 # Env / secrets
 .env
 .env.local
-
 # OS / editor
 .DS_Store
 .idea/
 .vscode/
-
 # Paper A: raw third-party rows (NC-licensed) and large run artifacts — not redistributed in-repo
 artifacts/paper_a_sft/manifests/
 artifacts/paper_a_sft/scores/
@@ -48,7 +42,6 @@ artifacts/paper_a_sft/base_scores/
 artifacts/paper_a_sft/calibration/
 !artifacts/paper_a_sft/public_manifests/
 !artifacts/paper_a_sft/public_manifests/**
-
 # Corrected v2 namespace: keep raw/manifold-heavy artifacts local. Text-free
 # public_manifests/, audit summaries, locks, and analysis outputs remain releasable.
 artifacts/paper_a_sft_v2/manifests/
@@ -59,8 +52,20 @@ artifacts/paper_a_sft_v2/runs/
 artifacts/paper_a_sft_v2/base_scores/
 artifacts/paper_a_sft_v2/calibration/
 artifacts/paper_a_sft_v2/smoke/
-
 # Archived explorer prompt samples may contain NC-licensed or gated text.
-
 # reproduce.py build intermediate (canonical copy is committed under papers/unified-report/generated/)
 mortgage-benchmark/generated/
+# adaptation study: large binaries (LoRA adapters, model caches) stay in GCS only; text-free
+# score parquets + analysis + preflight reports ARE committed for future reference (Paper A pattern).
+artifacts/starting_type_adaptation_v1/runs/
+artifacts/starting_type_adaptation_v1/starting_scores/
+artifacts/starting_type_adaptation_v1/smoke/
+artifacts/starting_type_adaptation_v1/downloads/
+artifacts/starting_type_adaptation_v1/manifests/
+/artifacts/starting_type_adaptation_v1/scores/*
+!/artifacts/starting_type_adaptation_v1/scores/*.parquet
+!/artifacts/starting_type_adaptation_v1/scores/*.metadata.json
+# KL-SFT (Act I control): keep text-free score parquets committed; adapters stay in GCS.
+artifacts/klsft_v1/runs/
+artifacts/klsft_v1/adapters/
+artifacts/starting_type_adaptation_v1/scores/combined.parquet

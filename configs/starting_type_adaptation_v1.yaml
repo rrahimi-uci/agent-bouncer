@@ -1,0 +1,157 @@
+# Starting-type adaptation study (proposal: papers/unified-report/proposal.md)
+# 2x3 blocked design: {general instruction checkpoint, released purpose-built guard}
+#   x {unmodified U, +ordinary SFT, +KL-SFT}.
+# The within-checkpoint deltas (SFT-U, KL-U, KL-SFT) are the controlled estimands; the KL
+# reference for any checkpoint is that SAME unmodified starting checkpoint.
+#
+# STATUS: revisions PINNED (Phase 0, 2026-07-16) to the resolved HF commit SHAs for all 10
+# checkpoints; HF_TOKEN confirmed to have accepted the gated licenses (gemma/llama/ai2) so all
+# repos are downloadable. Remaining Phase-0 gates before claim-bearing use: real-model
+# native-contract fidelity gates + per-checkpoint eligibility preflight (proposal 4.3).
+# This file is an authoring input only; protocol/primary_contract.json is the normative source.
+schema_version: 1
+study_id: starting_type_adaptation_v1
+
+# Shared, harmonized adaptation recipe (data/labels/seeds/optimizer/LoRA shared across all
+# checkpoints; only the model-native prompt render + verdict serialization vary per checkpoint).
+recipe:
+  train_manifest_from: paper_a_sft_v2   # reuse the frozen 1,200-row Paper A manifest by hash
+  seeds: [42, 43, 44, 45, 46]
+  data_order_seed: 42
+  max_steps: 300
+  max_length: 1024
+  effective_batch: 4
+  per_device_batch: 1
+  gradient_accumulation: 4
+  learning_rate: 0.0002
+  warmup_ratio: 0.03
+  scheduler: cosine
+  lora:
+    r: 32
+    alpha: 64
+    dropout: 0.05
+    target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  kl:
+    primary_beta: 0.5            # primary KL-SFT arm (proposal 5.5)
+    sensitivity_beta: [1.0]      # locked sensitivity, never test-selected
+    direction: forward_kl_theta_vs_reference   # KL(pi_theta || pi_reference) on supervised verdict positions
+  target_fpr: 0.05
+
+conditions: [unmodified, sft, kl_sft]   # explicit; NEVER encode kl_sft as sft+beta
+
+# ------------------------------------------------------------------------------------------
+# Panel A: general instruction starting checkpoints (the four Paper A checkpoints).
+# Revisions pinned from configs/paper_a_sft.yaml (immutable).
+# ------------------------------------------------------------------------------------------
+general_checkpoints:
+  qwen25_15b:
+    model_id: Qwen/Qwen2.5-1.5B-Instruct
+    model_revision: 989aa7980e4cf806f80c7fef2b1adb7bc71aa306
+    tokenizer_revision: 989aa7980e4cf806f80c7fef2b1adb7bc71aa306
+    trust_remote_code: false
+    dtype: bfloat16
+    family: qwen
+    contract: paper_a_safe_unsafe        # guard_research.prompts safe/unsafe head
+  smollm2_17b:
+    model_id: HuggingFaceTB/SmolLM2-1.7B-Instruct
+    model_revision: 31b70e2e869a7173562077fd711b654946d38674
+    tokenizer_revision: 31b70e2e869a7173562077fd711b654946d38674
+    trust_remote_code: false
+    dtype: bfloat16
+    family: smollm
+    contract: paper_a_safe_unsafe
+  smollm3_3b:
+    model_id: HuggingFaceTB/SmolLM3-3B
+    model_revision: a07cc9a04f16550a088caea529712d1d335b0ac1
+    tokenizer_revision: a07cc9a04f16550a088caea529712d1d335b0ac1
+    trust_remote_code: true
+    dtype: bfloat16
+    family: smollm
+    contract: paper_a_safe_unsafe        # NOTE: date-injected chat template -> template drift (nonfinal-tolerated)
+  qwen3_4b:
+    model_id: Qwen/Qwen3-4B
+    model_revision: 1cfa9a7208912126459214e8b04321603b3df60c
+    tokenizer_revision: 1cfa9a7208912126459214e8b04321603b3df60c
+    trust_remote_code: false
+    dtype: bfloat16
+    family: qwen
+    contract: paper_a_safe_unsafe
+
+# ------------------------------------------------------------------------------------------
+# Panel B: released purpose-built guard starting checkpoints. Revisions PINNED (Phase 0).
+# `contract` names the model-native top-level-verdict contract (implemented in
+# experiments/starting_type_common.py; guards' native scorers are added after preflight).
+# Each must pass the empirical eligibility preflight (proposal 4.3) before entering the
+# harmonized primary comparison.
+# ------------------------------------------------------------------------------------------
+purpose_built_checkpoints:
+  shieldgemma_2b:
+    model_id: google/shieldgemma-2b
+    model_revision: d1dffc9c8c9237a90aab09c61383791e718ef9e8
+    tokenizer_revision: d1dffc9c8c9237a90aab09c61383791e718ef9e8
+    trust_remote_code: false
+    dtype: bfloat16
+    family: gemma
+    access: gated_gemma_terms
+    native_output: policy_conditioned_yes_no
+    contract: shieldgemma_yes_no          # one locked broad study policy for adaptation
+    role: core_if_preflight_passes
+  qwen3guard_gen_06b:
+    model_id: Qwen/Qwen3Guard-Gen-0.6B
+    model_revision: fada3b2f655b89601929198343c94cd2f64d93cc
+    tokenizer_revision: fada3b2f655b89601929198343c94cd2f64d93cc
+    trust_remote_code: false
+    dtype: bfloat16
+    family: qwen          # counts as ONE family with the 4B for equal-family weighting
+    access: ungated_apache2
+    native_output: safe_unsafe_controversial
+    contract: qwen3guard_toplevel
+    role: efficiency_point
+  qwen3guard_gen_4b:
+    model_id: Qwen/Qwen3Guard-Gen-4B
+    model_revision: 6ec42827da0c1ff11e7a49dc269d2e810d27e108
+    tokenizer_revision: 6ec42827da0c1ff11e7a49dc269d2e810d27e108
+    trust_remote_code: false
+    dtype: bfloat16
+    family: qwen
+    access: ungated_apache2
+    native_output: safe_unsafe_controversial
+    contract: qwen3guard_toplevel
+    role: core_closest_bridge   # matches the report's Qwen3-4B general checkpoint
+  granite_guardian_31_2b:
+    model_id: ibm-granite/granite-guardian-3.1-2b
+    model_revision: 81145486e85c6c82c01e759c0356d9d6da4d21a5
+    tokenizer_revision: 81145486e85c6c82c01e759c0356d9d6da4d21a5
+    trust_remote_code: false
+    dtype: bfloat16
+    family: granite
+    access: ungated_apache2
+    native_output: yes_no_named_risk
+    contract: granite_yes_no      # risk_name=harm
+    role: core
+  llama_guard_3_1b:
+    model_id: meta-llama/Llama-Guard-3-1B
+    model_revision: acf7aafa60f0410f8f42b1fa35e077d705892029
+    tokenizer_revision: acf7aafa60f0410f8f42b1fa35e077d705892029
+    trust_remote_code: false
+    dtype: bfloat16
+    family: llama
+    access: gated_llama_community
+    native_output: safe_unsafe_plus_hazards
+    contract: llama_guard_toplevel  # 20-token-pruned output head: needs extra PEFT/output-head smoke test
+    role: core_if_access
+  wildguard_7b:
+    model_id: allenai/wildguard
+    model_revision: cbba4823f3e8020e5a74a5e29bf85072def6f2ff
+    tokenizer_revision: cbba4823f3e8020e5a74a5e29bf85072def6f2ff
+    trust_remote_code: false
+    dtype: bfloat16
+    family: mistral
+    access: gated_ai2_terms
+    native_output: structured_prompt_response_refusal
+    contract: wildguard_prompt_harm   # supervise prompt-harm verdict only; response/refusal masked
+    role: extended_scale_stress
+
+# Minimum claim-bearing purpose-built panel: >= 3 families with complete U/SFT/KL-SFT cells.
+# Both Qwen sizes count as ONE family for that gate and for equal-family weighting.
+min_purpose_built_families: 3

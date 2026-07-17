@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "study_id": "starting_type_adaptation_v1",
+  "contract_role": "derived_validated_against_primary_contract",
+  "finalization_status": "dev_nonfinal",
+  "normative_source": {"path": "artifacts/starting_type_adaptation_v1/protocol/primary_contract.json"},
+  "note": "Executable confirmatory predicates and a predicate-selected interpretation matrix. Wording is chosen by the first matched predicate under a fixed priority order, so language is NOT written post-hoc after inspecting results. No auto best-beta selection; primary beta=0.5 is fixed by the primary contract.",
+  "estimator_conventions": {
+    "family_reduction": "average checkpoints within family, then equal-family mean over complete families",
+    "delta_sft": "Delta_SFT(f,R) = mean over checkpoints in f of mean_r [ M(i,SFT,R,c_i_study,r) - M(i,U,R,c_i_study) ]",
+    "preservation": "P(f,R) = mean over checkpoints in f of mean_r [ M(i,KL,R,c_i_study,r) - M(i,SFT,R,c_i_study,r) ] (seed-paired)",
+    "metric": "tie_aware_non_interpolated_average_precision (guard_research.metrics.average_precision)",
+    "lcb": "one-sided 97.5% bootstrap lower confidence bound from the hierarchical paired Poisson family bootstrap (model identities fixed)",
+    "represented": "adaptation-represented regime",
+    "held_out": "adaptation-held-out regime"
+  },
+  "confirmatory_families": {
+    "count": 2,
+    "ids": ["RQ1", "RQ2"],
+    "multiplicity": {
+      "procedure": "bonferroni",
+      "familywise_alpha": 0.05,
+      "per_family_alpha": 0.025,
+      "per_family_two_sided_equivalent": "one-sided 97.5% lower bound per family-level intersection rule"
+    },
+    "intersection_rule": "a family is SUPPORTED only if ALL of its predicate LCB conditions hold jointly (intersection-union across the predicates within the family)"
+  },
+  "predicates": {
+    "H_gain": {
+      "family": "RQ1",
+      "estimand": "mean_f Delta_SFT(f, represented)",
+      "rule": "LCB(H_gain) > 0",
+      "meaning": "ordinary SFT has a positive equal-family represented-source gain",
+      "lcb_percentile": 97.5,
+      "lcb_side": "lower"
+    },
+    "H_conc": {
+      "family": "RQ1",
+      "estimand": "mean_f [ Delta_SFT(f, represented) - Delta_SFT(f, held_out) ]",
+      "rule": "LCB(H_conc) > 0",
+      "meaning": "represented-source movement exceeds adaptation-held-out movement (further specialization / concentration)",
+      "lcb_percentile": 97.5,
+      "lcb_side": "lower"
+    },
+    "H_preserve": {
+      "family": "RQ2",
+      "estimand": "mean_f P(f, held_out)",
+      "rule": "LCB(H_preserve) > 0",
+      "meaning": "KL-SFT preserves more adaptation-held-out macro-AP than seed-paired ordinary SFT",
+      "lcb_percentile": 97.5,
+      "lcb_side": "lower"
+    },
+    "H_cost": {
+      "family": "RQ2",
+      "estimand": "mean_f P(f, represented)",
+      "rule": "LCB(H_cost) > -m",
+      "m": 0.02,
+      "meaning": "KL-SFT's represented-source cost is within the non-inferiority margin m",
+      "lcb_percentile": 97.5,
+      "lcb_side": "lower"
+    }
+  },
+  "family_verdicts": {
+    "RQ1_supported": "LCB(H_gain) > 0 AND LCB(H_conc) > 0",
+    "RQ2_supported": "LCB(H_preserve) > 0 AND LCB(H_cost) > -0.02"
+  },
+  "non_inferiority": {
+    "margin_m": 0.02,
+    "units": "AP",
+    "rationale": "two units of the report's 0.01 practical tie band; substantive maximum tolerated represented-source loss; not estimated from results",
+    "locked_sensitivities": [0.01, 0.03],
+    "sensitivities_cannot_replace_primary_decision": true
+  },
+  "beta_policy": {
+    "primary_beta": 0.5,
+    "sensitivity_beta_grid": [1.0],
+    "auto_best_beta_selection": "forbidden",
+    "verdict_wording_selection": "predicate-driven only; never handwritten after inspection"
+  },
+  "interpretation_matrix": {
+    "selection": "evaluate rows in ascending priority order; emit the wording of the FIRST row whose predicate is TRUE. Priorities are disjoint per decision block so exactly one row fires per block.",
+    "blocks": ["RQ1", "RQ2", "RQ3", "RQ4", "RQ5", "fresh_cohort"],
+    "rows": [
+      {
+        "id": "IM_RQ1_fail",
+        "block": "RQ1",
+        "priority": 1,
+        "predicate": "NOT (LCB(H_gain) > 0 AND LCB(H_conc) > 0)",
+        "wording": "The preregistered further-specialization hypothesis was not supported; checkpoint-level movements remain descriptive."
+      },
+      {
+        "id": "IM_RQ1_pass_no_holdout_gain",
+        "block": "RQ1",
+        "priority": 2,
+        "predicate": "LCB(H_gain) > 0 AND LCB(H_conc) > 0 AND point_estimate(mean_f Delta_SFT(f, held_out)) <= 0",
+        "wording": "Our ordinary SFT protocol further specialized these released guards toward represented sources, with no mean held-out gain."
+      },
+      {
+        "id": "IM_RQ1_pass_holdout_gain",
+        "block": "RQ1",
+        "priority": 3,
+        "predicate": "LCB(H_gain) > 0 AND LCB(H_conc) > 0 AND point_estimate(mean_f Delta_SFT(f, held_out)) > 0",
+        "wording": "The gains are concentrated toward represented sources, but there is no absolute mean held-out loss."
+      },
+      {
+        "id": "IM_RQ2_fail_preserve",
+        "block": "RQ2",
+        "priority": 1,
+        "predicate": "NOT (LCB(H_preserve) > 0)",
+        "wording": "The preregistered anti-forgetting hypothesis was not supported under the locked coefficient and recipe."
+      },
+      {
+        "id": "IM_RQ2_preserve_but_cost_fails",
+        "block": "RQ2",
+        "priority": 2,
+        "predicate": "LCB(H_preserve) > 0 AND NOT (LCB(H_cost) > -0.02)",
+        "wording": "KL-SFT trades adaptation gain for retention; it is not a free improvement."
+      },
+      {
+        "id": "IM_RQ2_pass_both",
+        "block": "RQ2",
+        "priority": 3,
+        "predicate": "LCB(H_preserve) > 0 AND LCB(H_cost) > -0.02",
+        "wording": "Anchoring to the released guard preserved more transfer at an acceptable represented cost."
+      },
+      {
+        "id": "IM_RQ3_differ",
+        "block": "RQ3",
+        "priority": 1,
+        "predicate": "any Gamma_a_R paired interval excludes zero (descriptive fixed-panel interaction)",
+        "wording": "The two fixed panels responded differently (not: purpose-built training caused the difference)."
+      },
+      {
+        "id": "IM_RQ3_no_difference",
+        "block": "RQ3",
+        "priority": 2,
+        "predicate": "all Gamma_a_R paired intervals cross zero",
+        "wording": "The fixed general and purpose-built panels did not show a resolved difference in adaptation movement on this panel."
+      },
+      {
+        "id": "IM_RQ4_reversals",
+        "block": "RQ4",
+        "priority": 1,
+        "predicate": "any preregistered pairwise sign-reversal across benchmark or contract with paired interval excluding zero, OR top-1 turnover > 0 outside the tie band",
+        "wording": "Neither purpose-built initialization nor KL-SFT eliminates benchmark/contract dependence."
+      },
+      {
+        "id": "IM_RQ4_stable",
+        "block": "RQ4",
+        "priority": 2,
+        "predicate": "no preregistered pairwise difference is resolved outside the tie band and no top-1 turnover",
+        "wording": "The ranking-fragility extension was not supported on this fixed panel."
+      },
+      {
+        "id": "IM_RQ5_overwrite",
+        "block": "RQ5",
+        "priority": 1,
+        "predicate": "any checkpoint with resolved study-native top-level gain AND resolved official-native validity/performance loss (N_a < 0 with interval excluding zero, or schema validity below locked threshold)",
+        "wording": "The adaptation overwrote part of the released guard contract."
+      },
+      {
+        "id": "IM_fresh_cohort_absent",
+        "block": "fresh_cohort",
+        "priority": 1,
+        "predicate": "no fresh sealed cohort completed",
+        "wording": "All generalization claims remain retrospective and estimation-only."
+      }
+    ],
+    "null_results_reportable": true
+  },
+  "stop_narrow_gates": {
+    "narrow_or_stop_cross_type_claim_if": [
+      "fewer than three purpose-built families pass the harmonized contract-preserving preflight",
+      "architecture-specific target/module changes are needed for most purpose-built checkpoints",
+      "adapter-disabled KL reference recovery fails",
+      "native parser failure prevents a valid top-level score or the locked retention measurements",
+      "licenses prevent score-artifact publication",
+      "only hard labels with large ties can be obtained"
+    ],
+    "fallback": "retain checkpoint-level guard -> guard+SFT -> guard+KL-SFT case studies and native-contract retention; omit the pooled starting-type interaction"
+  }
+}

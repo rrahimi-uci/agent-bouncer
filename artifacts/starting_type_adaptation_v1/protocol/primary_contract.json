@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "study_id": "starting_type_adaptation_v1",
+  "contract_role": "normative_source_of_truth",
+  "finalization_status": "dev_nonfinal",
+  "note": "Derived from configs/starting_type_adaptation_v1.yaml (authoring input). This file is the normative source per proposal Section 12; the YAML is an authoring input only. Every derived protocol view (scoring_contracts, policy_crosswalk, claim_registry, exposure matrix) is generated from, or validated against, this contract's hash at LOCK time. Revisions marked PIN_AT_PHASE0 / PIN_FROM_paper_a_sft.yaml are NOT yet pinned; no field here is claim-bearing until artifacts/starting_type_adaptation_v1/LOCK.json binds it.",
+  "derived_from": {
+    "path": "configs/starting_type_adaptation_v1.yaml",
+    "sha256": "fb44a0fcdfed4d384d1a7d2a602cbde24130838260fdacb9a96af3ce62bff2fa",
+    "schema_version": 1
+  },
+  "proposal": {
+    "path": "papers/unified-report/proposal.md",
+    "sections_bound": [2, 3, 5, 6, 7, 8, 9, 10, 12, 13, 17]
+  },
+  "conditions": ["unmodified", "sft", "kl_sft"],
+  "condition_semantics": {
+    "unmodified": "exact released/unmodified starting checkpoint; no training; seed sentinel -1; kl_beta null",
+    "sft": "ordinary completion-only SFT initialized from the unmodified checkpoint; beta==0",
+    "kl_sft": "KL-regularized SFT from the same unmodified checkpoint; reference = that same checkpoint via adapter-disable",
+    "explicit_condition_required": "kl_sft must NEVER be encoded as condition=sft plus a nullable beta"
+  },
+  "recipe": {
+    "train_manifest_from": "paper_a_sft_v2",
+    "train_manifest_sha256": "6efb1f6be30f6394e46efc1fbdce0709f295af9e3232184cb7e195ad3fbec378",
+    "train_manifest_rows": 1200,
+    "seeds": [42, 43, 44, 45, 46],
+    "data_order_seed": 42,
+    "max_steps": 300,
+    "max_length": 1024,
+    "effective_batch": 4,
+    "per_device_batch": 1,
+    "gradient_accumulation": 4,
+    "learning_rate": 0.0002,
+    "warmup_ratio": 0.03,
+    "scheduler": "cosine",
+    "completion_loss": "complete_verdict_token_sequence_never_first_subtoken",
+    "lora": {
+      "r": 32,
+      "alpha": 64,
+      "dropout": 0.05,
+      "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    },
+    "kl": {
+      "primary_beta": 0.5,
+      "sensitivity_beta_grid": [1.0],
+      "direction": "forward_kl_theta_vs_reference",
+      "direction_expr": "KL(pi_theta(.|x) || pi_reference(.|x))",
+      "reference": "same_unmodified_starting_checkpoint_via_adapter_disable",
+      "supervised_positions_only": true,
+      "beta_selection": "predeclared_primary_never_test_selected",
+      "matched_achieved_kl_sensitivity": "reported_beside_every_preservation_cell_not_a_primary_selector"
+    },
+    "target_fpr": 0.05,
+    "harmonization": "shared_data_labels_seeds_optimizer_budget_lora; model-native prompt render + verdict serialization vary per checkpoint"
+  },
+  "panels": {
+    "general": {
+      "starting_type": "general",
+      "checkpoints": {
+        "qwen25_15b": {"model_id": "Qwen/Qwen2.5-1.5B-Instruct", "model_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306", "tokenizer_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306", "trust_remote_code": false, "dtype": "bfloat16", "family": "qwen", "contract": "paper_a_safe_unsafe"},
+        "smollm2_17b": {"model_id": "HuggingFaceTB/SmolLM2-1.7B-Instruct", "model_revision": "31b70e2e869a7173562077fd711b654946d38674", "tokenizer_revision": "31b70e2e869a7173562077fd711b654946d38674", "trust_remote_code": false, "dtype": "bfloat16", "family": "smollm", "contract": "paper_a_safe_unsafe"},
+        "smollm3_3b": {"model_id": "HuggingFaceTB/SmolLM3-3B", "model_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1", "tokenizer_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1", "trust_remote_code": true, "dtype": "bfloat16", "family": "smollm", "contract": "paper_a_safe_unsafe", "note": "date-injected chat template -> template drift (nonfinal-tolerated)"},
+        "qwen3_4b": {"model_id": "Qwen/Qwen3-4B", "model_revision": "PIN_FROM_paper_a_sft.yaml", "tokenizer_revision": "PIN_FROM_paper_a_sft.yaml", "trust_remote_code": false, "dtype": "bfloat16", "family": "qwen", "contract": "paper_a_safe_unsafe"}
+      }
+    },
+    "purpose_built": {
+      "starting_type": "purpose_built",
+      "revision_status": "PIN_AT_PHASE0",
+      "checkpoints": {
+        "shieldgemma_2b": {"model_id": "google/shieldgemma-2b", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "gemma", "access": "gated_gemma_terms", "native_output": "policy_conditioned_yes_no", "contract": "shieldgemma_yes_no", "role": "core_if_preflight_passes"},
+        "qwen3guard_gen_06b": {"model_id": "Qwen/Qwen3Guard-Gen-0.6B", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "qwen", "access": "ungated_apache2", "native_output": "safe_unsafe_controversial", "contract": "qwen3guard_toplevel", "role": "efficiency_point"},
+        "qwen3guard_gen_4b": {"model_id": "Qwen/Qwen3Guard-Gen-4B", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "qwen", "access": "ungated_apache2", "native_output": "safe_unsafe_controversial", "contract": "qwen3guard_toplevel", "role": "core_closest_bridge"},
+        "granite_guardian_31_2b": {"model_id": "ibm-granite/granite-guardian-3.1-2b", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "granite", "access": "ungated_apache2", "native_output": "yes_no_named_risk", "contract": "granite_yes_no", "role": "core"},
+        "llama_guard_3_1b": {"model_id": "meta-llama/Llama-Guard-3-1B", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "llama", "access": "gated_llama_community", "native_output": "safe_unsafe_plus_hazards", "contract": "llama_guard_toplevel", "role": "core_if_access", "note": "20-token-pruned output head: extra PEFT/output-head smoke test required"},
+        "wildguard_7b": {"model_id": "allenai/wildguard", "model_revision": "PIN_AT_PHASE0", "tokenizer_revision": "PIN_AT_PHASE0", "trust_remote_code": false, "dtype": "bfloat16", "family": "mistral", "access": "gated_ai2_terms", "native_output": "structured_prompt_response_refusal", "contract": "wildguard_prompt_harm", "role": "extended_scale_stress"}
+      }
+    }
+  },
+  "family_gate": {
+    "min_purpose_built_families": 3,
+    "both_qwen_sizes_count_as_one_family": true,
+    "cleanly_ungated_families": ["qwen", "granite"],
+    "gated_families_needed_for_third": ["gemma", "llama", "mistral"],
+    "phase0_requirement": "secure and snapshot at least one gated guard's terms before the lock; predeclare replacements",
+    "equal_family_weighting": "average checkpoints within family first, then weight every complete family equally",
+    "missing_cell_rule": "support cannot be declared from a favorable subset; all preregistered complete families enter under the locked rule; a failed cell blocks the fixed-panel aggregate",
+    "post_result_addition_forbidden": true
+  },
+  "contracts": {
+    "study_native": ["paper_a_safe_unsafe", "shieldgemma_yes_no", "qwen3guard_toplevel", "granite_yes_no", "llama_guard_toplevel", "wildguard_prompt_harm"],
+    "official_native": ["shieldgemma_2b", "qwen3guard_gen", "granite_guardian_31", "llama_guard_3", "wildguard_7b"],
+    "common_sensitivity": ["paper_a_safe_unsafe"],
+    "detail_view": "protocol/scoring_contracts.json",
+    "policy_crosswalk_view": "protocol/policy_crosswalk.json",
+    "do_not_pool": "study-native, official-native, and common views never substitute for one another and are never pooled"
+  },
+  "regime_benchmarks": {
+    "represented": ["toxicchat", "prompt_injections", "jailbreak_classification"],
+    "adaptation_held_out": ["jailbreakbench", "xstest", "wildguardtest", "wildjailbreak"],
+    "stress": ["orbench", "harmbench"],
+    "external_domain": ["expguard_finance", "expguard_health", "expguard_law"],
+    "mortgage": ["mortgage_general", "mortgage_domain"],
+    "held_out_label_caveat": "adaptation-held-out is relative to OUR incremental SFT/KL-SFT; it is NOT 'vendor-unseen'"
+  },
+  "estimands": {
+    "within_checkpoint_movement": {
+      "expr": "Delta_a(i,R) = mean_r [ M(i,a,R,c_i_study,r) - M(i,U,R,c_i_study) ]",
+      "methods": ["SFT", "KL"],
+      "movement_vector": "theta_a_i = (Delta_a(i,represented), Delta_a(i,adaptation_held_out))",
+      "causal_scope": "this locked recipe on that specific checkpoint only; not comparable across checkpoints/panels"
+    },
+    "kl_preservation_contrast": {
+      "expr": "P(i,R) = mean_r [ M(i,KL,R,c_i_study,r) - M(i,SFT,R,c_i_study,r) ]",
+      "pairing": "seed_and_data_order_paired",
+      "report": ["P(i,adaptation_held_out)", "P(i,represented)"]
+    },
+    "fixed_panel_interaction": {
+      "expr": "Gamma_a_R = mean_{f in F_P} barDelta_a(f,R) - mean_{f in F_G} barDelta_a(f,R)",
+      "family_reduction": "equal-checkpoint mean within family, then equal-family mean",
+      "status": "descriptive_fixed_panel_interaction_not_randomized_causal_effect",
+      "includes_contract_mapping_differences": true
+    },
+    "native_contract_retention": {
+      "expr": "N_a(i,R) = mean_r [ M(i,a,R,c_i_official,r) - M(i,U,R,c_i_official) ]",
+      "also": ["divergence_from_released_native_verdict_distribution", "generated_schema_concordance"]
+    },
+    "headroom_normalization": {
+      "expr": "Delta / (1 - AP_U)",
+      "reason": "purpose-built guards start near ceiling; report headroom-normalized gains beside raw AP and interpret H_conc/Gamma jointly with U baseline"
+    }
+  },
+  "primary_contrasts": {
+    "unit_expected_cardinality_per_row_per_checkpoint_per_primary_contract": "1 U + 5 SFT + 5 KL-SFT",
+    "sensitivity_cardinality": "beta=1.0 adds a separately locked 5-seed KL-SFT cell set",
+    "registry": [
+      {"id": "PC1", "rq": "RQ1", "content": "equal-family H_gain and H_conc predicates plus every purpose-built checkpoint's SFT-minus-unmodified movement"},
+      {"id": "PC2", "rq": "RQ2", "content": "equal-family H_preserve and H_cost > -m predicates plus every checkpoint's seed-paired KL-SFT-minus-SFT movement"},
+      {"id": "PC3", "rq": "RQ3", "content": "family-level purpose-built movement vectors for SFT and KL-SFT"},
+      {"id": "PC4", "rq": "RQ3", "content": "fixed-panel general-versus-purpose interaction Gamma, explicitly descriptive"},
+      {"id": "PC5", "rq": "RQ4", "content": "rank concordance between represented and adaptation-held-out panels; standardized all-model ranking uses common-contract sensitivity"},
+      {"id": "PC6", "rq": "RQ5", "content": "native-contract retention for purpose-built SFT versus KL-SFT"},
+      {"id": "PC7", "rq": "RQ6", "content": "ExpGuard and mortgage contrasts, secondary and in-tier"}
+    ],
+    "exploratory_note": "the complete model x benchmark matrix is exploratory; headline reversals may come only from this registry"
+  },
+  "decision_margins": {
+    "non_inferiority_margin_m": 0.02,
+    "non_inferiority_units": "AP",
+    "m_rationale": "two units of the report's 0.01 practical tie band; substantive maximum tolerated represented-source loss; NOT estimated from results",
+    "m_sensitivities": [0.01, 0.03],
+    "practical_tie_band": 0.01,
+    "tie_band_sensitivities": [0.005, 0.02],
+    "sensitivities_cannot_replace_primary_decision": true
+  },
+  "statistics": {
+    "primary_metric": "tie_aware_non_interpolated_average_precision",
+    "macro": "macro_AP_across_locked_benchmark_groups",
+    "canonical_metric_module": "guard_research.metrics.average_precision",
+    "confidence_method": "hierarchical_paired_poisson_family_bootstrap",
+    "bootstrap_resamples": "evaluation_families (Poisson(1) weights) + training_seeds; model_identities_FIXED",
+    "one_sided_lcb": "97.5% one-sided lower bound per family-level intersection rule",
+    "multiplicity": "Bonferroni over the two confirmatory families RQ1,RQ2 at familywise alpha=0.05",
+    "conditional_scope": "LCBs conditional on the fixed model panel; carry only eval-row + seed uncertainty; not between-model-family uncertainty",
+    "leave_one_family_out": "reported beside every confirmatory bound",
+    "seed_pairing": "ordinary SFT and KL-SFT paired by seed and data order",
+    "unmodified_treatment": "one fixed realization (seed=-1), not five duplicated seeds",
+    "unresolved_definition": "paired interval crosses zero",
+    "practically_equivalent_definition": "prespecified equivalence interval lies fully inside the tie margin"
+  },
+  "confirmatory_hypotheses": {
+    "detail_view": "protocol/claim_registry.json",
+    "families": ["RQ1", "RQ2"],
+    "predicates": ["H_gain", "H_conc", "H_preserve", "H_cost"]
+  },
+  "score_schema": {
+    "explicit_condition_field": "adaptation in {unmodified,sft,kl_sft}",
+    "store_raw_margin_not_only_sigmoid": true,
+    "unmodified_sentinels": {"seed": -1, "kl_beta": null, "initial_adapter_hash": null, "trained_adapter_hash": null, "achieved_kl": null},
+    "unsafe_margin": "last-position z_unsafe - z_safe"
+  }
+}
