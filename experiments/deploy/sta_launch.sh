@@ -45,13 +45,17 @@ for MK in $KEYS; do
   read -r MACHINE ACCEL ZONE <<< "$(plan_for "$MK")"
   if [ -z "$MACHINE" ]; then echo "[SKIP] unknown key: $MK"; continue; fi
   VM="sta-$(echo "$MK" | tr '_' '-')"
-  echo "=== launching $VM ($MK) $MACHINE/$ACCEL @ $ZONE ==="
+  # REEVAL=1 -> re-score from GCS adapters (no retrain); the VM name gets a -re suffix so it does not
+  # collide with a still-existing training VM of the same key.
+  META="model-key=$MK,bucket=$BUCKET"
+  if [ "${REEVAL:-0}" = "1" ]; then META="$META,reeval=1"; VM="$VM-re"; fi
+  echo "=== launching $VM ($MK) $MACHINE/$ACCEL @ $ZONE reeval=${REEVAL:-0} ==="
   gcloud compute instances create "$VM" --project="$PROJECT" --zone="$ZONE" \
     --machine-type="$MACHINE" --accelerator="type=$ACCEL,count=1" \
     --maintenance-policy=TERMINATE --provisioning-model=STANDARD \
     --image="$IMAGE" --image-project="$IMAGE_PROJECT" \
     --boot-disk-size=200GB --scopes=cloud-platform \
-    --metadata="model-key=$MK,bucket=$BUCKET" \
+    --metadata="$META" \
     --metadata-from-file="startup-script=$HERE/sta_startup.sh,hf-token=$HF_TOKEN_FILE" \
     && echo "  [OK] $VM created" \
     || echo "  [WARN] $VM launch failed (capacity?) -- retry a different zone"

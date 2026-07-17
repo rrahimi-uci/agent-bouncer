@@ -29,20 +29,33 @@ $PY -c "import transformers,peft,jinja2,sentencepiece,tiktoken; from peft import
 $PY experiments/preflight_starting_type_adaptation.py --key "$MK" --device cuda --dtype float32 \
     --skip-training --out /root/staout/preflight_${MK}.json || echo "preflight rc=$?"
 
-# Train all 11 cells (1 unmodified + 5 sft + 5 kl_sft primary beta) -- FINAL
-$PY experiments/run_starting_type_adaptation.py --checkpoints "$MK" --final --device cuda \
-    --out-root /root/staout/runs
-TRC=$?
-# Score the whole tree against the frozen Paper A scoring manifests -> per-checkpoint parquet -- FINAL
+# Train all 11 cells (1 unmodified + 5 sft + 5 kl_sft primary beta) -- FINAL. In REEVAL mode
+# (metadata reeval=1) skip training and pull the already-trained adapters from GCS (recover a run
+# whose eval was broken without paying to retrain).
+REEVAL=$(curl -s -H "$hdr" http://metadata/computeMetadata/v1/instance/attributes/reeval 2>/dev/null)
+if [ "$REEVAL" = "1" ]; then
+    echo "=== REEVAL mode: pulling trained adapters from GCS ==="
+    mkdir -p /root/staout/runs/${MK}
+    gsutil -m rsync -r "$BUCKET/results/adapters_${MK}" /root/staout/runs/${MK}
+    TRC=$?
+else
+    $PY experiments/run_starting_type_adaptation.py --checkpoints "$MK" --final --device cuda \
+        --out-root /root/staout/runs
+    TRC=$?
+fi
+# Score the whole tree against the frozen Paper A scoring manifests -> per-checkpoint parquet -- FINAL.
+# --out-root MUST match training (else all trained cells are "missing_adapter" and only the unmodified
+# base is scored). batch 8 avoids the big-vocab (gemma 256k) logits OOM on the 40GB A100.
 $PY experiments/run_eval_starting_type_adaptation.py --checkpoints "$MK" --final --device cuda \
-    --manifests-dir artifacts/paper_a_sft_v2/manifests --scores-dir /root/staout/scores --batch-size 32
+    --out-root /root/staout/runs \
+    --manifests-dir artifacts/paper_a_sft_v2/manifests --scores-dir /root/staout/scores --batch-size 8
 ERC=$?
-echo "=== $MK train_rc=$TRC eval_rc=$ERC ==="
+echo "=== $MK train_rc=$TRC eval_rc=$ERC reeval=$REEVAL ==="
 gsutil cp /root/staout/scores/sta_scores_${MK}.parquet "$BUCKET/results/" 2>/dev/null
 gsutil cp /root/staout/scores/sta_scores_${MK}.metadata.json "$BUCKET/results/" 2>/dev/null
 gsutil cp /root/staout/preflight_${MK}.json "$BUCKET/results/" 2>/dev/null
-gsutil -m cp -r /root/staout/runs/${MK} "$BUCKET/results/adapters_${MK}" 2>/dev/null
+[ "$REEVAL" = "1" ] || gsutil -m cp -r /root/staout/runs/${MK} "$BUCKET/results/adapters_${MK}" 2>/dev/null
 gsutil cp /var/log/sta.log "$BUCKET/logs/sta_${MK}.log"
-[ "$TRC" = "0" ] && [ "$ERC" = "0" ] && echo "train=$TRC eval=$ERC" | gsutil cp - "$BUCKET/results/DONE_${MK}"
+[ "$TRC" = "0" ] && [ "$ERC" = "0" ] && echo "train=$TRC eval=$ERC reeval=$REEVAL" | gsutil cp - "$BUCKET/results/DONE_${MK}"
 echo "=== $MK done train=$TRC eval=$ERC -- self-stopping ==="
 sudo shutdown -h +2
