@@ -337,3 +337,12 @@ a partial re-order, not a wholesale winner-flip --- but it is enough that a sing
 guards' apparent order at deployment prevalence. Reporting each headline guard as a curve $\mathrm{AP}(\pi_+)$
 rather than a single balanced number is a zero-cost recompute (roadmap), and it is the honest way to state a
 deployment precision.
+
+\edb{Represented AP $\RepDelta$ (LCB $\RepLCB$) vs.\ transfer $\TransferDelta$ (UCB $\TransferUCB$);
+specialization in $\SpecializationSeedCount/\TotalSeedCount$ seeds (\Cref{tab:primary}). A base-anchored
+KL penalty ($\beta{=}0.5$) buys back transfer (\KLBetaHalfTransferDelta{} vs.\ SFT) at a represented cost
+\KLBetaHalfRepDelta{} (\Cref{sec:actI-klsft}).}
+{Never replace a base guard on represented AP alone; compare each tune to its \emph{own} base on
+represented \emph{and} held-out sets, and if you must SFT while caring about OOD, add the KL penalty.}
+{Retrospective on a fixed four-checkpoint panel with an inspected manifest (overlap audit pending); a
+description of this recipe on these runs, not a population or causal law.}

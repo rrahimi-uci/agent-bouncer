@@ -255,3 +255,12 @@ significance claim (all numbers are descriptive contrasts on a fixed four-checkp
 manifest inspected during development). Finally, we compose only the SFT adapter here; whether the same
 operator recovers transfer for guards tuned with \emph{other objectives} (e.g.\ preference optimization)
 is left open.
+
+\edb{Output-space base$+$SFT averaging recovers transfer relative to SFT ($\PilotTransferDeltaSFT$) and
+beats an equal-cost SFT$+$SFT ensemble (\Cref{tab:sftsft}), so the gain is the base's, not generic
+ensembling; it has the highest worst-regime AP on the panel.}
+{If you have already SFT'd and transfer regressed, compose base$+$adapter to recover it without
+retraining --- then recalibrate the threshold on the target regime.}
+{Ranking recovery $\neq$ calibration transfer: the composition operating point still misses the
+illustrated $5\%$ FPR target ($11.4\%$). Descriptive, fixed-panel; the ensemble intuition is a
+motivation, not a proof.}
