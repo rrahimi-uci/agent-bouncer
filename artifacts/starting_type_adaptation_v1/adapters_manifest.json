@@ -1,0 +1,16 @@
+{
+  "note": "Trained LoRA adapters (10 cells/checkpoint: 5 sft + 5 kl_sft) are kept in GCS, not in-repo (size). Scores here are text-free.",
+  "bucket": "gs://jazztest-bucket/sta/results",
+  "adapters": {
+    "qwen25_15b": "gs://jazztest-bucket/sta/results/adapters_qwen25_15b/",
+    "smollm2_17b": "gs://jazztest-bucket/sta/results/adapters_smollm2_17b/",
+    "smollm3_3b": "gs://jazztest-bucket/sta/results/adapters_smollm3_3b/",
+    "qwen3_4b": "gs://jazztest-bucket/sta/results/adapters_qwen3_4b/",
+    "qwen3guard_gen_06b": "gs://jazztest-bucket/sta/results/adapters_qwen3guard_gen_06b/",
+    "qwen3guard_gen_4b": "gs://jazztest-bucket/sta/results/adapters_qwen3guard_gen_4b/",
+    "granite_guardian_31_2b": "gs://jazztest-bucket/sta/results/adapters_granite_guardian_31_2b/",
+    "shieldgemma_2b": "gs://jazztest-bucket/sta/results/adapters_shieldgemma_2b/",
+    "llama_guard_3_1b": "gs://jazztest-bucket/sta/results/adapters_llama_guard_3_1b/",
+    "wildguard_7b": "gs://jazztest-bucket/sta/results/adapters_wildguard_7b/"
+  }
+}

@@ -68,3 +68,4 @@ artifacts/starting_type_adaptation_v1/manifests/
 # KL-SFT (Act I control): keep text-free score parquets committed; adapters stay in GCS.
 artifacts/klsft_v1/runs/
 artifacts/klsft_v1/adapters/
+artifacts/starting_type_adaptation_v1/scores/combined.parquet

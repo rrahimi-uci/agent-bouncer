@@ -1,0 +1,560 @@
+{
+  "analysis_code_version": "starting_type_adaptation_analysis_v1",
+  "bootstrap": {
+    "n_families": 2140,
+    "redraws": 0,
+    "rejected_fraction": 0.0,
+    "reps": 10000,
+    "rng_seed": 20260716,
+    "stats": {
+      "H_conc": {
+        "ci95_two_sided": [
+          0.18924467275509202,
+          0.2784788690119663
+        ],
+        "lcb975_one_sided": 0.18924467275509202,
+        "n_finite": 10000,
+        "std": 0.02295223238581376,
+        "ucb975_one_sided": 0.2784788690119663
+      },
+      "H_conc_norm": {
+        "ci95_two_sided": [
+          1.7626579053904465,
+          2.4640404665959026
+        ],
+        "lcb975_one_sided": 1.7626579053904465,
+        "n_finite": 10000,
+        "std": 0.17692797173572383,
+        "ucb975_one_sided": 2.4640404665959026
+      },
+      "H_cost": {
+        "ci95_two_sided": [
+          -0.060223852872809375,
+          -0.016127482465553608
+        ],
+        "lcb975_one_sided": -0.060223852872809375,
+        "n_finite": 10000,
+        "std": 0.0116746576700922,
+        "ucb975_one_sided": -0.016127482465553608
+      },
+      "H_gain": {
+        "ci95_two_sided": [
+          0.12917415910635147,
+          0.2116290666858723
+        ],
+        "lcb975_one_sided": 0.12917415910635147,
+        "n_finite": 10000,
+        "std": 0.02114034995163359,
+        "ucb975_one_sided": 0.2116290666858723
+      },
+      "H_gain_norm": {
+        "ci95_two_sided": [
+          0.7163790000533635,
+          0.7908708700188279
+        ],
+        "lcb975_one_sided": 0.7163790000533635,
+        "n_finite": 10000,
+        "std": 0.01907380107220925,
+        "ucb975_one_sided": 0.7908708700188279
+      },
+      "H_held_sft": {
+        "ci95_two_sided": [
+          -0.08228104888943677,
+          -0.047085572638088706
+        ],
+        "lcb975_one_sided": -0.08228104888943677,
+        "n_finite": 10000,
+        "std": 0.009056277477665964,
+        "ucb975_one_sided": -0.047085572638088706
+      },
+      "H_held_sft_norm": {
+        "ci95_two_sided": [
+          -1.7035313595259864,
+          -1.006795508837136
+        ],
+        "lcb975_one_sided": -1.7035313595259864,
+        "n_finite": 10000,
+        "std": 0.17589286401774687,
+        "ucb975_one_sided": -1.006795508837136
+      },
+      "H_preserve": {
+        "ci95_two_sided": [
+          0.0346823349326446,
+          0.06328489433301727
+        ],
+        "lcb975_one_sided": 0.0346823349326446,
+        "n_finite": 10000,
+        "std": 0.007299349480297459,
+        "ucb975_one_sided": 0.06328489433301727
+      }
+    }
+  },
+  "claim_checks": {
+    "RQ1": {
+      "H_conc_lcb": 0.18924467275509202,
+      "H_gain_lcb": 0.12917415910635147,
+      "criterion": "LCB(H_gain) > 0 AND LCB(H_conc) > 0",
+      "interpretation": "Our ordinary SFT protocol further specialized these released guards toward represented sources, with a bound-confirmed adaptation-held-out loss (fixed-panel, this recipe).",
+      "supported": true
+    },
+    "RQ2": {
+      "H_cost_lcb": -0.060223852872809375,
+      "H_preserve_lcb": 0.0346823349326446,
+      "criterion": "LCB(H_preserve) > 0 AND LCB(H_cost) > -0.02",
+      "interpretation": "KL-SFT trades adaptation gain for retention; it preserved held-out transfer but the represented-source non-inferiority margin was not met -- it is not a free improvement.",
+      "supported": false
+    },
+    "interpretation_source": "locked claim-registry keyed by bootstrap-bound predicates; NO point-estimate sign was consulted to select wording (non-HARKing).",
+    "multiplicity": "Bonferroni across the two RQ families: one-sided 97.5% per-family lower bounds control familywise alpha = 0.05.",
+    "non_inferiority_margin_m": 0.02,
+    "panel_conditional_limitation": "Bootstrap lower bounds are CONDITIONAL ON THE FIXED MODEL PANEL: the resample draws evaluation near-duplicate families (Poisson weights) and training seeds while holding model identities fixed, so intervals carry only eval-row and seed uncertainty -- not between-model-family uncertainty. With few families a single dominant family can drive the equal-family mean; read H_gain/H_conc/H_preserve/H_cost as fixed-panel summaries, not as generalization over a population of purpose-built guards.",
+    "predicates": {
+      "p_conc_lcb_gt_0": true,
+      "p_cost_lcb_gt_neg_m": false,
+      "p_gain_lcb_gt_0": true,
+      "p_held_sft_loss_ucb_lt_0": true,
+      "p_preserve_lcb_gt_0": true
+    },
+    "primary_beta": 0.5
+  },
+  "config": {
+    "bootstrap_reps": 10000,
+    "heldout_split": "transfer_test",
+    "metric": "macro-AP over benchmark sources; RAW logit margin; tie-aware AP",
+    "model_families": [
+      "gemma",
+      "granite",
+      "llama",
+      "mistral",
+      "qwen",
+      "smollm"
+    ],
+    "n_checkpoints": 10,
+    "n_eval_families": 2140,
+    "non_inferiority_margin_m": 0.02,
+    "primary_beta": 0.5,
+    "represented_split": "id_test",
+    "rng_seed": 20260716
+  },
+  "panel_conditional_limitation": "Bootstrap lower bounds are CONDITIONAL ON THE FIXED MODEL PANEL: the resample draws evaluation near-duplicate families (Poisson weights) and training seeds while holding model identities fixed, so intervals carry only eval-row and seed uncertainty -- not between-model-family uncertainty. With few families a single dominant family can drive the equal-family mean; read H_gain/H_conc/H_preserve/H_cost as fixed-panel summaries, not as generalization over a population of purpose-built guards.",
+  "point_estimates": {
+    "H": {
+      "H_conc": 0.23861144701076195,
+      "H_conc_norm": 2.070303990962545,
+      "H_cost": -0.036122853144122606,
+      "H_gain": 0.17358656973846354,
+      "H_gain_norm": 0.7626334645188569,
+      "H_held_sft": -0.06502487727229836,
+      "H_held_sft_norm": -1.3076705264436879,
+      "H_preserve": 0.04891439969517475
+    },
+    "movement_vectors": {
+      "granite_guardian_31_2b": {
+        "model_family": "granite",
+        "theta_kl": [
+          0.08480794997725971,
+          -0.05452559793721068
+        ],
+        "theta_sft": [
+          0.13930683638797436,
+          -0.13353503386999943
+        ]
+      },
+      "llama_guard_3_1b": {
+        "model_family": "llama",
+        "theta_kl": [
+          5.551115123125783e-17,
+          0.0
+        ],
+        "theta_sft": [
+          5.551115123125783e-17,
+          0.0
+        ]
+      },
+      "qwen25_15b": {
+        "model_family": "qwen",
+        "theta_kl": [
+          0.34788540102310783,
+          0.0287933255923295
+        ],
+        "theta_sft": [
+          0.35632930052113787,
+          -0.022697765463747244
+        ]
+      },
+      "qwen3_4b": {
+        "model_family": "qwen",
+        "theta_kl": [
+          0.07341952960074527,
+          -0.05310106427778538
+        ],
+        "theta_sft": [
+          0.0958866382389768,
+          -0.10883282610327538
+        ]
+      },
+      "qwen3guard_gen_06b": {
+        "model_family": "qwen",
+        "theta_kl": [
+          0.041335375488006365,
+          -0.025946988778898672
+        ],
+        "theta_sft": [
+          0.08194811024559512,
+          -0.11598788398641591
+        ]
+      },
+      "qwen3guard_gen_4b": {
+        "model_family": "qwen",
+        "theta_kl": [
+          0.07484006909990182,
+          0.014061711013481859
+        ],
+        "theta_sft": [
+          0.1118624707946515,
+          -0.02004501554056959
+        ]
+      },
+      "shieldgemma_2b": {
+        "model_family": "gemma",
+        "theta_kl": [
+          0.1607727401039758,
+          -0.029361237690398223
+        ],
+        "theta_sft": [
+          0.21237514376016497,
+          -0.059365224194162014
+        ]
+      },
+      "smollm2_17b": {
+        "model_family": "smollm",
+        "theta_kl": [
+          0.48063484572642595,
+          0.07079461299561651
+        ],
+        "theta_sft": [
+          0.5296686064434895,
+          0.05311060656461353
+        ]
+      },
+      "smollm3_3b": {
+        "model_family": "smollm",
+        "theta_kl": [
+          0.24836017977437808,
+          -0.008524321847109051
+        ],
+        "theta_sft": [
+          0.31327586373644156,
+          -0.11684492752452824
+        ]
+      },
+      "wildguard_7b": {
+        "model_family": "mistral",
+        "theta_kl": [
+          0.08033400293146753,
+          -0.03486292129666879
+        ],
+        "theta_sft": [
+          0.10685857324258607,
+          -0.09849097231616932
+        ]
+      }
+    },
+    "per_checkpoint": {
+      "granite_guardian_31_2b": {
+        "heldout": {
+          "P": 0.07900943593278893,
+          "ap_u": 0.9451064737540525,
+          "delta_kl": -0.05452559793721068,
+          "delta_kl_norm": -0.993297418950856,
+          "delta_sft": -0.13353503386999943,
+          "delta_sft_norm": -2.432618980819395,
+          "kl_mean": 0.8905808758168419,
+          "sft_mean": 0.8115714398840531
+        },
+        "represented": {
+          "P": -0.05449888641071461,
+          "ap_u": 0.8472088478572676,
+          "delta_kl": 0.08480794997725971,
+          "delta_kl_norm": 0.5550579911723876,
+          "delta_sft": 0.13930683638797436,
+          "delta_sft_norm": 0.911746749954726,
+          "kl_mean": 0.9320167978345273,
+          "sft_mean": 0.9865156842452419
+        }
+      },
+      "llama_guard_3_1b": {
+        "heldout": {
+          "P": 0.0,
+          "ap_u": 0.5,
+          "delta_kl": 0.0,
+          "delta_kl_norm": 0.0,
+          "delta_sft": 0.0,
+          "delta_sft_norm": 0.0,
+          "kl_mean": 0.5,
+          "sft_mean": 0.5
+        },
+        "represented": {
+          "P": 0.0,
+          "ap_u": 0.4529401549615711,
+          "delta_kl": 5.551115123125783e-17,
+          "delta_kl_norm": 1.01471807398619e-16,
+          "delta_sft": 5.551115123125783e-17,
+          "delta_sft_norm": 1.01471807398619e-16,
+          "kl_mean": 0.45294015496157114,
+          "sft_mean": 0.45294015496157114
+        }
+      },
+      "qwen25_15b": {
+        "heldout": {
+          "P": 0.05149109105607663,
+          "ap_u": 0.8170835333832955,
+          "delta_kl": 0.0287933255923295,
+          "delta_kl_norm": 0.15741243052034776,
+          "delta_sft": -0.022697765463747244,
+          "delta_sft_norm": -0.12408814735804884,
+          "kl_mean": 0.845876858975625,
+          "sft_mean": 0.7943857679195483
+        },
+        "represented": {
+          "P": -0.008443899498029993,
+          "ap_u": 0.6308274770264124,
+          "delta_kl": 0.34788540102310783,
+          "delta_kl_norm": 0.9423382818986159,
+          "delta_sft": 0.35632930052113787,
+          "delta_sft_norm": 0.9652107845161364,
+          "kl_mean": 0.9787128780495202,
+          "sft_mean": 0.9871567775475503
+        }
+      },
+      "qwen3_4b": {
+        "heldout": {
+          "P": 0.05573176182549018,
+          "ap_u": 0.942497184734556,
+          "delta_kl": -0.05310106427778538,
+          "delta_kl_norm": -0.9234515568091879,
+          "delta_sft": -0.10883282610327538,
+          "delta_sft_norm": -1.892652135393411,
+          "kl_mean": 0.8893961204567706,
+          "sft_mean": 0.8336643586312806
+        },
+        "represented": {
+          "P": -0.022467108638231627,
+          "ap_u": 0.8866714823603449,
+          "delta_kl": 0.07341952960074527,
+          "delta_kl_norm": 0.6478469067617525,
+          "delta_sft": 0.0958866382389768,
+          "delta_sft_norm": 0.8460945244502591,
+          "kl_mean": 0.9600910119610901,
+          "sft_mean": 0.9825581205993217
+        }
+      },
+      "qwen3guard_gen_06b": {
+        "heldout": {
+          "P": 0.09004089520751749,
+          "ap_u": 0.9510745338998928,
+          "delta_kl": -0.025946988778898672,
+          "delta_kl_norm": -0.5303370789724952,
+          "delta_sft": -0.11598788398641591,
+          "delta_sft_norm": -2.370705753708943,
+          "kl_mean": 0.9251275451209942,
+          "sft_mean": 0.8350866499134769
+        },
+        "represented": {
+          "P": -0.04061273475758873,
+          "ap_u": 0.902273601735239,
+          "delta_kl": 0.041335375488006365,
+          "delta_kl_norm": 0.4229704176349596,
+          "delta_sft": 0.08194811024559512,
+          "delta_sft_norm": 0.8385463058157605,
+          "kl_mean": 0.9436089772232453,
+          "sft_mean": 0.9842217119808341
+        }
+      },
+      "qwen3guard_gen_4b": {
+        "heldout": {
+          "P": 0.034106726554051295,
+          "ap_u": 0.9310083204615733,
+          "delta_kl": 0.014061711013481859,
+          "delta_kl_norm": 0.20381749085626816,
+          "delta_sft": -0.02004501554056959,
+          "delta_sft_norm": -0.29054250707732093,
+          "kl_mean": 0.9450700314750552,
+          "sft_mean": 0.9109633049210037
+        },
+        "represented": {
+          "P": -0.037022401694749754,
+          "ap_u": 0.8769698509376166,
+          "delta_kl": 0.07484006909990182,
+          "delta_kl_norm": 0.6083067416422747,
+          "delta_sft": 0.1118624707946515,
+          "delta_sft_norm": 0.9092281172310923,
+          "kl_mean": 0.9518099200375184,
+          "sft_mean": 0.9888323217322681
+        }
+      },
+      "shieldgemma_2b": {
+        "heldout": {
+          "P": 0.03000398650376379,
+          "ap_u": 0.8524346566183569,
+          "delta_kl": -0.029361237690398223,
+          "delta_kl_norm": -0.19897109319538725,
+          "delta_sft": -0.059365224194162014,
+          "delta_sft_norm": -0.40229787586796595,
+          "kl_mean": 0.8230734189279587,
+          "sft_mean": 0.7930694324241949
+        },
+        "represented": {
+          "P": -0.05160240365618909,
+          "ap_u": 0.76936044303385,
+          "delta_kl": 0.1607727401039758,
+          "delta_kl_norm": 0.6970735732360591,
+          "delta_sft": 0.21237514376016497,
+          "delta_sft_norm": 0.9208097108482322,
+          "kl_mean": 0.9301331831378258,
+          "sft_mean": 0.981735586794015
+        }
+      },
+      "smollm2_17b": {
+        "heldout": {
+          "P": 0.017684006431002895,
+          "ap_u": 0.7892667816621879,
+          "delta_kl": 0.07079461299561651,
+          "delta_kl_norm": 0.33594425005235995,
+          "delta_sft": 0.05311060656461353,
+          "delta_sft_norm": 0.25202769161658944,
+          "kl_mean": 0.8600613946578044,
+          "sft_mean": 0.8423773882268014
+        },
+        "represented": {
+          "P": -0.04903376071706347,
+          "ap_u": 0.45048759421576184,
+          "delta_kl": 0.48063484572642595,
+          "delta_kl_norm": 0.8746569516305761,
+          "delta_sft": 0.5296686064434895,
+          "delta_sft_norm": 0.963888350596146,
+          "kl_mean": 0.9311224399421878,
+          "sft_mean": 0.9801562006592512
+        }
+      },
+      "smollm3_3b": {
+        "heldout": {
+          "P": 0.10832060567741922,
+          "ap_u": 0.9103080638978079,
+          "delta_kl": -0.008524321847109051,
+          "delta_kl_norm": -0.09504000267534327,
+          "delta_sft": -0.11684492752452824,
+          "delta_sft_norm": -1.3027361500079444,
+          "kl_mean": 0.9017837420506989,
+          "sft_mean": 0.7934631363732797
+        },
+        "represented": {
+          "P": -0.0649156839620634,
+          "ap_u": 0.665070644849375,
+          "delta_kl": 0.24836017977437808,
+          "delta_kl_norm": 0.7415300449334609,
+          "delta_sft": 0.31327586373644156,
+          "delta_sft_norm": 0.9353490786006338,
+          "kl_mean": 0.913430824623753,
+          "sft_mean": 0.9783465085858165
+        }
+      },
+      "wildguard_7b": {
+        "heldout": {
+          "P": 0.06362805101950082,
+          "ap_u": 0.9703005425727624,
+          "delta_kl": -0.03486292129666879,
+          "delta_kl_norm": -1.1738571784377374,
+          "delta_sft": -0.09849097231616932,
+          "delta_sft_norm": -3.316254936894659,
+          "kl_mean": 0.9354376212760936,
+          "sft_mean": 0.8718095702565931
+        },
+        "represented": {
+          "P": -0.026524570311118455,
+          "ap_u": 0.88177473930874,
+          "delta_kl": 0.08033400293146753,
+          "delta_kl_norm": 0.6794994780451884,
+          "delta_sft": 0.10685857324258607,
+          "delta_sft_norm": 0.903855678708482,
+          "kl_mean": 0.9621087422402075,
+          "sft_mean": 0.988633312551326
+        }
+      }
+    },
+    "per_family": {
+      "P": {
+        "heldout": {
+          "gemma": 0.03000398650376379,
+          "granite": 0.07900943593278893,
+          "llama": 0.0,
+          "mistral": 0.06362805101950082,
+          "qwen": 0.0578426186607839,
+          "smollm": 0.06300230605421106
+        },
+        "represented": {
+          "gemma": -0.05160240365618909,
+          "granite": -0.05449888641071461,
+          "llama": 0.0,
+          "mistral": -0.026524570311118455,
+          "qwen": -0.027136536147150028,
+          "smollm": -0.05697472233956344
+        }
+      },
+      "delta_kl": {
+        "heldout": {
+          "gemma": -0.029361237690398223,
+          "granite": -0.05452559793721068,
+          "llama": 0.0,
+          "mistral": -0.03486292129666879,
+          "qwen": -0.009048254112718174,
+          "smollm": 0.03113514557425373
+        },
+        "represented": {
+          "gemma": 0.1607727401039758,
+          "granite": 0.08480794997725971,
+          "llama": 5.551115123125783e-17,
+          "mistral": 0.08033400293146753,
+          "qwen": 0.13437009380294032,
+          "smollm": 0.364497512750402
+        }
+      },
+      "delta_sft": {
+        "heldout": {
+          "gemma": -0.059365224194162014,
+          "granite": -0.13353503386999943,
+          "llama": 0.0,
+          "mistral": -0.09849097231616932,
+          "qwen": -0.06689087277350203,
+          "smollm": -0.03186716047995736
+        },
+        "represented": {
+          "gemma": 0.21237514376016497,
+          "granite": 0.13930683638797436,
+          "llama": 5.551115123125783e-17,
+          "mistral": 0.10685857324258607,
+          "qwen": 0.16150662995009032,
+          "smollm": 0.4214722350899655
+        }
+      },
+      "delta_sft_norm": {
+        "heldout": {
+          "gemma": -0.40229787586796595,
+          "granite": -2.432618980819395,
+          "llama": 0.0,
+          "mistral": -3.316254936894659,
+          "qwen": -1.1694971358844308,
+          "smollm": -0.5253542291956774
+        },
+        "represented": {
+          "gemma": 0.9208097108482322,
+          "granite": 0.911746749954726,
+          "llama": 1.01471807398619e-16,
+          "mistral": 0.903855678708482,
+          "qwen": 0.889769933003312,
+          "smollm": 0.9496187145983899
+        }
+      }
+    }
+  }
+}

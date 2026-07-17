@@ -1,0 +1,133 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "access": "ungated_apache2",
+        "gated": true,
+        "native_output": "yes_no_named_risk",
+        "note": "gated access declared (ungated_apache2); secure + snapshot terms before the lock",
+        "role": "core"
+      },
+      "name": "license_access_note",
+      "required": false,
+      "status": "note"
+    },
+    {
+      "detail": {
+        "dtype": "float32",
+        "model_id": "ibm-granite/granite-guardian-3.1-2b",
+        "model_revision": "81145486e85c6c82c01e759c0356d9d6da4d21a5",
+        "tokenizer_revision": "81145486e85c6c82c01e759c0356d9d6da4d21a5"
+      },
+      "name": "revisions_resolve",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "completion_ids": {
+          "safe": [
+            2023
+          ],
+          "unsafe": [
+            10922
+          ]
+        },
+        "contract": "granite_yes_no",
+        "eos_id": 0,
+        "problems": [],
+        "safe_id": 2023,
+        "unsafe_id": 10922,
+        "verdict_body_len": {
+          "safe": 1,
+          "unsafe": 1
+        }
+      },
+      "name": "contract_tokens_distinct",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "all_present": true,
+        "present": {
+          "down_proj": true,
+          "gate_proj": true,
+          "k_proj": true,
+          "o_proj": true,
+          "q_proj": true,
+          "up_proj": true,
+          "v_proj": true
+        },
+        "targets": [
+          "q_proj",
+          "k_proj",
+          "v_proj",
+          "o_proj",
+          "gate_proj",
+          "up_proj",
+          "down_proj"
+        ]
+      },
+      "name": "lora_targets_present",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "initial_kl": 0.0,
+        "initial_kl_ok": true,
+        "initial_kl_tol": 0.001,
+        "max_abs_logit_diff": 0.0,
+        "recovers": true,
+        "tol": 0.0001
+      },
+      "name": "adapter_disable_recovers",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "reason": "include_training=False"
+      },
+      "name": "beta0_reproduces_sft",
+      "required": true,
+      "status": "skip"
+    },
+    {
+      "detail": {
+        "reason": "include_training=False"
+      },
+      "name": "smoke_adapter_only_finite",
+      "required": true,
+      "status": "skip"
+    }
+  ],
+  "contract": "granite_yes_no",
+  "created_utc": "2026-07-17T15:19:52.447213+00:00",
+  "device": "cuda",
+  "dtype": "float32",
+  "eligible": false,
+  "finalization_status": "nonfinal",
+  "initial_kl_tol": 0.001,
+  "model_id": "ibm-granite/granite-guardian-3.1-2b",
+  "model_revision": "81145486e85c6c82c01e759c0356d9d6da4d21a5",
+  "starting_key": "granite_guardian_31_2b",
+  "starting_type": "purpose_built",
+  "summary": {
+    "failed": [],
+    "n_checks": 7,
+    "passed": [
+      "revisions_resolve",
+      "contract_tokens_distinct",
+      "lora_targets_present",
+      "adapter_disable_recovers"
+    ],
+    "skipped": [
+      "beta0_reproduces_sft",
+      "smoke_adapter_only_finite"
+    ]
+  },
+  "tokenizer_revision": "81145486e85c6c82c01e759c0356d9d6da4d21a5",
+  "tol": 0.0001
+}

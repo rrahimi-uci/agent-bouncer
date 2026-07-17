@@ -1,0 +1,135 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "access": null,
+        "gated": false,
+        "native_output": null,
+        "note": "access=None (ungated or general checkpoint)",
+        "role": null
+      },
+      "name": "license_access_note",
+      "required": false,
+      "status": "note"
+    },
+    {
+      "detail": {
+        "dtype": "float32",
+        "model_id": "HuggingFaceTB/SmolLM3-3B",
+        "model_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1",
+        "tokenizer_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1"
+      },
+      "name": "revisions_resolve",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "completion_ids": {
+          "safe": [
+            6220,
+            128012
+          ],
+          "unsafe": [
+            20451,
+            128012
+          ]
+        },
+        "contract": "paper_a_safe_unsafe",
+        "eos_id": 128012,
+        "problems": [],
+        "safe_id": 6220,
+        "unsafe_id": 20451,
+        "verdict_body_len": {
+          "safe": 1,
+          "unsafe": 1
+        }
+      },
+      "name": "contract_tokens_distinct",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "all_present": true,
+        "present": {
+          "down_proj": true,
+          "gate_proj": true,
+          "k_proj": true,
+          "o_proj": true,
+          "q_proj": true,
+          "up_proj": true,
+          "v_proj": true
+        },
+        "targets": [
+          "q_proj",
+          "k_proj",
+          "v_proj",
+          "o_proj",
+          "gate_proj",
+          "up_proj",
+          "down_proj"
+        ]
+      },
+      "name": "lora_targets_present",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "initial_kl": 0.0,
+        "initial_kl_ok": true,
+        "initial_kl_tol": 0.001,
+        "max_abs_logit_diff": 0.0,
+        "recovers": true,
+        "tol": 0.0001
+      },
+      "name": "adapter_disable_recovers",
+      "required": true,
+      "status": "pass"
+    },
+    {
+      "detail": {
+        "reason": "include_training=False"
+      },
+      "name": "beta0_reproduces_sft",
+      "required": true,
+      "status": "skip"
+    },
+    {
+      "detail": {
+        "reason": "include_training=False"
+      },
+      "name": "smoke_adapter_only_finite",
+      "required": true,
+      "status": "skip"
+    }
+  ],
+  "contract": "paper_a_safe_unsafe",
+  "created_utc": "2026-07-17T15:16:23.949708+00:00",
+  "device": "cuda",
+  "dtype": "float32",
+  "eligible": false,
+  "finalization_status": "nonfinal",
+  "initial_kl_tol": 0.001,
+  "model_id": "HuggingFaceTB/SmolLM3-3B",
+  "model_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1",
+  "starting_key": "smollm3_3b",
+  "starting_type": "general",
+  "summary": {
+    "failed": [],
+    "n_checks": 7,
+    "passed": [
+      "revisions_resolve",
+      "contract_tokens_distinct",
+      "lora_targets_present",
+      "adapter_disable_recovers"
+    ],
+    "skipped": [
+      "beta0_reproduces_sft",
+      "smoke_adapter_only_finite"
+    ]
+  },
+  "tokenizer_revision": "a07cc9a04f16550a088caea529712d1d335b0ac1",
+  "tol": 0.0001
+}
