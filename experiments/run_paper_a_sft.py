@@ -197,8 +197,15 @@ def train_one_cell(lock, model_key, seed, out_dir, train_path, steps=None,
         meta["prompt_template_sha256_observed"] = tmpl_sha
         locked_tmpl = lock.get("prompt", {}).get("per_model_template_sha256", {}).get(model_key)
         if locked_tmpl and locked_tmpl != tmpl_sha:
-            raise RuntimeError(f"prompt template hash drift for {model_key}: "
-                               f"lock={locked_tmpl} observed={tmpl_sha}")
+            # Some chat templates (e.g. SmolLM3) inject the current date, so the rendered-prompt
+            # hash legitimately drifts on a later date. For FINAL runs this is a hard stop; for
+            # nonfinal research variants (e.g. KL-SFT) the drift is recorded and tolerated, since the
+            # within-run beta comparison uses one identical template on the same day.
+            if run_kind == "nonfinal":
+                meta["prompt_template_drift"] = {"locked": locked_tmpl, "observed": tmpl_sha}
+            else:
+                raise RuntimeError(f"prompt template hash drift for {model_key}: "
+                                   f"lock={locked_tmpl} observed={tmpl_sha}")
         meta["decision_tokens"] = dt
 
         verdict_ids = {0: tok.encode(dt["safe_str"], add_special_tokens=False),
