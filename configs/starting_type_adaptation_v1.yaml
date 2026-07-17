@@ -4,8 +4,10 @@
 # The within-checkpoint deltas (SFT-U, KL-U, KL-SFT) are the controlled estimands; the KL
 # reference for any checkpoint is that SAME unmodified starting checkpoint.
 #
-# STATUS: authoring input for the model registry. Purpose-built revisions are NOT yet pinned
-# (proposal Phase 0 pins them + snapshots cards/terms before any claim-bearing GPU work).
+# STATUS: revisions PINNED (Phase 0, 2026-07-16) to the resolved HF commit SHAs for all 10
+# checkpoints; HF_TOKEN confirmed to have accepted the gated licenses (gemma/llama/ai2) so all
+# repos are downloadable. Remaining Phase-0 gates before claim-bearing use: real-model
+# native-contract fidelity gates + per-checkpoint eligibility preflight (proposal 4.3).
 # This file is an authoring input only; protocol/primary_contract.json is the normative source.
 schema_version: 1
 study_id: starting_type_adaptation_v1
@@ -68,15 +70,15 @@ general_checkpoints:
     contract: paper_a_safe_unsafe        # NOTE: date-injected chat template -> template drift (nonfinal-tolerated)
   qwen3_4b:
     model_id: Qwen/Qwen3-4B
-    model_revision: PIN_FROM_paper_a_sft.yaml
-    tokenizer_revision: PIN_FROM_paper_a_sft.yaml
+    model_revision: 1cfa9a7208912126459214e8b04321603b3df60c
+    tokenizer_revision: 1cfa9a7208912126459214e8b04321603b3df60c
     trust_remote_code: false
     dtype: bfloat16
     family: qwen
     contract: paper_a_safe_unsafe
 
 # ------------------------------------------------------------------------------------------
-# Panel B: released purpose-built guard starting checkpoints. Revisions PIN_AT_PHASE0.
+# Panel B: released purpose-built guard starting checkpoints. Revisions PINNED (Phase 0).
 # `contract` names the model-native top-level-verdict contract (implemented in
 # experiments/starting_type_common.py; guards' native scorers are added after preflight).
 # Each must pass the empirical eligibility preflight (proposal 4.3) before entering the
@@ -85,8 +87,8 @@ general_checkpoints:
 purpose_built_checkpoints:
   shieldgemma_2b:
     model_id: google/shieldgemma-2b
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: d1dffc9c8c9237a90aab09c61383791e718ef9e8
+    tokenizer_revision: d1dffc9c8c9237a90aab09c61383791e718ef9e8
     trust_remote_code: false
     dtype: bfloat16
     family: gemma
@@ -96,8 +98,8 @@ purpose_built_checkpoints:
     role: core_if_preflight_passes
   qwen3guard_gen_06b:
     model_id: Qwen/Qwen3Guard-Gen-0.6B
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: fada3b2f655b89601929198343c94cd2f64d93cc
+    tokenizer_revision: fada3b2f655b89601929198343c94cd2f64d93cc
     trust_remote_code: false
     dtype: bfloat16
     family: qwen          # counts as ONE family with the 4B for equal-family weighting
@@ -107,8 +109,8 @@ purpose_built_checkpoints:
     role: efficiency_point
   qwen3guard_gen_4b:
     model_id: Qwen/Qwen3Guard-Gen-4B
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: 6ec42827da0c1ff11e7a49dc269d2e810d27e108
+    tokenizer_revision: 6ec42827da0c1ff11e7a49dc269d2e810d27e108
     trust_remote_code: false
     dtype: bfloat16
     family: qwen
@@ -118,8 +120,8 @@ purpose_built_checkpoints:
     role: core_closest_bridge   # matches the report's Qwen3-4B general checkpoint
   granite_guardian_31_2b:
     model_id: ibm-granite/granite-guardian-3.1-2b
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: 81145486e85c6c82c01e759c0356d9d6da4d21a5
+    tokenizer_revision: 81145486e85c6c82c01e759c0356d9d6da4d21a5
     trust_remote_code: false
     dtype: bfloat16
     family: granite
@@ -129,8 +131,8 @@ purpose_built_checkpoints:
     role: core
   llama_guard_3_1b:
     model_id: meta-llama/Llama-Guard-3-1B
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: acf7aafa60f0410f8f42b1fa35e077d705892029
+    tokenizer_revision: acf7aafa60f0410f8f42b1fa35e077d705892029
     trust_remote_code: false
     dtype: bfloat16
     family: llama
@@ -140,8 +142,8 @@ purpose_built_checkpoints:
     role: core_if_access
   wildguard_7b:
     model_id: allenai/wildguard
-    model_revision: PIN_AT_PHASE0
-    tokenizer_revision: PIN_AT_PHASE0
+    model_revision: cbba4823f3e8020e5a74a5e29bf85072def6f2ff
+    tokenizer_revision: cbba4823f3e8020e5a74a5e29bf85072def6f2ff
     trust_remote_code: false
     dtype: bfloat16
     family: mistral

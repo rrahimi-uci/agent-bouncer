@@ -155,12 +155,7 @@ def score_condition(*, ckpt: dict, contract, adapter_dir, condition: str, seed, 
     dtype_name = str(dtype or ckpt.get("dtype", "bfloat16"))
     trust = bool(ckpt.get("trust_remote_code", False))
 
-    tok = AutoTokenizer.from_pretrained(
-        ckpt["model_id"], revision=ckpt.get("tokenizer_revision"), trust_remote_code=trust)
-    if tok.pad_token is None:
-        tok.pad_token = tok.eos_token
-    tok.padding_side = "right"
-    tok.truncation_side = "left"
+    tok = S.load_study_tokenizer(ckpt)
 
     if isinstance(contract, str):
         contract_name = contract

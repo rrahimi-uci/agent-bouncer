@@ -18,6 +18,11 @@ sentencepiece
 
 # --- model-native prompt rendering (chat templates) ---
 jinja2>=3.1.0
+# guard tokenizers: shieldgemma/granite need sentencepiece+protobuf; wildguard (Mistral SP model)
+# needs protobuf + the slow tokenizer path (load_study_tokenizer falls back to use_fast=False);
+# some Qwen/Llama tokenizers pull tiktoken. Without these the guard tokenizers fail to load.
+protobuf
+tiktoken
 
 # --- core analysis: metrics, bootstrap, thresholds, table/figure generation (CPU) ---
 numpy

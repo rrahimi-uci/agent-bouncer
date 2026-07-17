@@ -147,6 +147,28 @@ def get_contract(name: str, tok) -> VerdictContract:
     raise KeyError(f"unknown verdict contract: {name}")
 
 
+def load_study_tokenizer(ckpt: dict):
+    """Load a checkpoint's tokenizer at its pinned revision with the study's pad/side setup.
+
+    Robust fast->slow fallback: some released guards ship a SentencePiece `tokenizer.model` that
+    transformers' fast path mis-routes to the tiktoken converter (e.g. allenai/wildguard, a Mistral
+    tokenizer) -> retry with use_fast=False. Both paths require `protobuf` + `sentencepiece` at
+    runtime. Centralizing here keeps train / eval / preflight byte-identical for a given checkpoint.
+    """
+    from transformers import AutoTokenizer
+    kw = dict(revision=ckpt.get("tokenizer_revision"),
+              trust_remote_code=bool(ckpt.get("trust_remote_code", False)))
+    try:
+        tok = AutoTokenizer.from_pretrained(ckpt["model_id"], use_fast=True, **kw)
+    except Exception:
+        tok = AutoTokenizer.from_pretrained(ckpt["model_id"], use_fast=False, **kw)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+    tok.padding_side = "right"
+    tok.truncation_side = "left"
+    return tok
+
+
 def build_dataset(rows, tok, contract: VerdictContract, max_len: int):
     """Completion-only supervised dataset under `contract`. Supervises the COMPLETE verdict sequence
     (not the first sub-token); prompt tokens masked to -100."""
@@ -234,12 +256,7 @@ def adapt(*, ckpt: dict, contract_name: str, train_rows, method: str, beta: floa
         dtype_name = str(ckpt.get("dtype", "bfloat16"))
 
         random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
-        tok = AutoTokenizer.from_pretrained(
-            ckpt["model_id"], revision=ckpt.get("tokenizer_revision"),
-            trust_remote_code=bool(ckpt.get("trust_remote_code", False)))
-        if tok.pad_token is None:
-            tok.pad_token = tok.eos_token
-        tok.padding_side = "right"; tok.truncation_side = "left"
+        tok = load_study_tokenizer(ckpt)
 
         contract = get_contract(contract_name, tok)
         ds = build_dataset(train_rows, tok, contract, max_len)

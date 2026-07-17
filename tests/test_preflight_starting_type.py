@@ -90,21 +90,38 @@ def test_full_preflight_eligible():
           f"smoke base_unchanged + finite nonconstant margins (std={sm['detail']['margin_std']:.3g})")
 
 
-def test_unimplemented_contract_fails_closed():
-    """A registered-but-unimplemented guard contract fails contract_tokens_distinct (not eligible)."""
+def test_unknown_contract_fails_closed():
+    """An UNKNOWN contract name fails contract_tokens_distinct (get_contract KeyError -> not
+    eligible). The five guard contracts are now implemented + validated on real tokenizers; the
+    fail-closed guarantee still holds for a genuinely unregistered contract."""
     report = P.run_preflight(
-        ckpt=TINY, contract_name="shieldgemma_yes_no", recipe=RECIPE,
+        ckpt=TINY, contract_name="does_not_exist_contract_v0", recipe=RECIPE,
         fixture_rows=P.default_fixture_rows(4), device="cpu", dtype="float32",
         include_training=False)
     by = _by_name(report)
     assert by["contract_tokens_distinct"]["status"] == "fail", by["contract_tokens_distinct"]
     assert report["eligible"] is False, report["summary"]
-    print("  [ok] unimplemented guard contract fails closed -> eligible=False")
+    print("  [ok] unknown contract fails closed -> eligible=False")
+
+
+def test_implemented_guard_contract_tokens_distinct():
+    """An implemented guard contract (shieldgemma_yes_no) now PASSES contract_tokens_distinct even
+    with a stand-in tokenizer: distinct, EOS-free (appends_eos=False) native verdict sequences."""
+    report = P.run_preflight(
+        ckpt=TINY, contract_name="shieldgemma_yes_no", recipe=RECIPE,
+        fixture_rows=P.default_fixture_rows(4), device="cpu", dtype="float32",
+        include_training=False)
+    by = _by_name(report)
+    ct = by["contract_tokens_distinct"]
+    assert ct["status"] == "pass", ct
+    assert ct["detail"]["safe_id"] != ct["detail"]["unsafe_id"], ct
+    print("  [ok] implemented guard contract passes contract_tokens_distinct (appends_eos=False)")
 
 
 if __name__ == "__main__":
     print("=== preflight_starting_type_adaptation tests (CPU, tiny model) ===")
     test_structural_subset_passes()
-    test_unimplemented_contract_fails_closed()
+    test_unknown_contract_fails_closed()
+    test_implemented_guard_contract_tokens_distinct()
     test_full_preflight_eligible()
     print("ALL PASSED")

@@ -112,6 +112,11 @@ def check_contract_tokens_distinct(contract_name: str, tok) -> dict:
         dec = contract.decision_ids(tok)
         safe_id, unsafe_id = int(dec["safe_id"]), int(dec["unsafe_id"])
         eos = tok.eos_token_id
+        # appends_eos distinguishes an EOS-terminated head (Paper A safe/unsafe single token) from a
+        # native-schema guard verdict whose output legitimately CONTINUES past the top-level token
+        # (Qwen `Categories:`, Llama hazard IDs, WildGuard response/refusal). Guards set this False
+        # on purpose: forcing EOS after the verdict would train the model to violate its schema.
+        appends_eos = bool(getattr(contract, "appends_eos", True))
         problems = []
         if not comp0 or not comp1:
             problems.append("empty verdict completion sequence")
@@ -119,15 +124,20 @@ def check_contract_tokens_distinct(contract_name: str, tok) -> dict:
             problems.append("safe and unsafe completion sequences are identical")
         if safe_id == unsafe_id:
             problems.append("decision-position safe_id == unsafe_id")
-        # contract owns EOS: a COMPLETE verdict sequence terminates the schema.
-        if eos is not None and (comp0[-1] != eos or comp1[-1] != eos):
-            problems.append("verdict completion does not end in the contract-owned EOS")
-        # the supervised verdict (completion minus trailing EOS) must be nonempty -> never a lone
-        # sub-token followed only by EOS is still complete; an *empty* verdict body is the failure.
-        body0 = comp0[:-1] if (eos is not None and comp0[-1] == eos) else comp0
-        body1 = comp1[:-1] if (eos is not None and comp1[-1] == eos) else comp1
+        if appends_eos:
+            # EOS-terminated contract: a COMPLETE verdict sequence terminates the schema.
+            if eos is not None and (comp0[-1] != eos or comp1[-1] != eos):
+                problems.append("appends_eos contract: verdict completion does not end in EOS")
+            body0 = comp0[:-1] if (eos is not None and comp0[-1] == eos) else comp0
+            body1 = comp1[:-1] if (eos is not None and comp1[-1] == eos) else comp1
+        else:
+            # native-schema guard: the supervised completion IS the top-level verdict sub-sequence
+            # (no forced EOS); it must NOT terminate the schema early.
+            if eos is not None and (comp0[-1] == eos or comp1[-1] == eos):
+                problems.append("native-schema (appends_eos=False) contract forces a premature EOS")
+            body0, body1 = comp0, comp1
         if not body0 or not body1:
-            problems.append("verdict body is empty once EOS is removed")
+            problems.append("verdict body is empty")
         status = "pass" if not problems else "fail"
         return _res("contract_tokens_distinct", status, {
             "contract": contract_name, "safe_id": safe_id, "unsafe_id": unsafe_id,
@@ -228,12 +238,7 @@ def check_smoke_adapter_only_finite(ckpt, contract_name, rows, recipe, fixture_e
                 "status": meta["status"], "reason": meta.get("failure_reason")})
         adapter_dir = os.path.join(out_dir, "adapter")
 
-        tok = AutoTokenizer.from_pretrained(
-            ckpt["model_id"], revision=ckpt.get("tokenizer_revision"),
-            trust_remote_code=bool(ckpt.get("trust_remote_code", False)))
-        if tok.pad_token is None:
-            tok.pad_token = tok.eos_token
-        tok.padding_side = "right"; tok.truncation_side = "left"
+        tok = A.load_study_tokenizer(ckpt)
         contract = A.get_contract(contract_name, tok)
         dec = contract.decision_ids(tok)
         enc = fixture_enc_builder(tok, contract, device)
@@ -335,12 +340,7 @@ def run_preflight(*, ckpt: dict, contract_name: str, recipe: dict,
         # ---- revisions resolve (gates all model-dependent checks) ----
         tok = base_for_peft = ref_model = None
         try:
-            tok = AutoTokenizer.from_pretrained(
-                ckpt["model_id"], revision=ckpt.get("tokenizer_revision"),
-                trust_remote_code=bool(ckpt.get("trust_remote_code", False)))
-            if tok.pad_token is None:
-                tok.pad_token = tok.eos_token
-            tok.padding_side = "right"; tok.truncation_side = "left"
+            tok = A.load_study_tokenizer(ckpt)
             td = C.torch_dtype_from_name(torch, load_dtype)
             base_for_peft = AutoModelForCausalLM.from_pretrained(
                 ckpt["model_id"], revision=ckpt.get("model_revision"), dtype=td,
