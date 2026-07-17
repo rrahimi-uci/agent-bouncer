@@ -52,6 +52,7 @@
 \input{generated/results_macros_gen} % Paper A: \Rep*, \Transfer*, \HarmBench*, \SpecializationSeedCount, ...
 \input{generated/pilot_macros}       % Paper B: \Pilot*
 \input{generated/klsft_macros}       % KL-SFT anti-forgetting control: \KL* (placeholder until run completes)
+\input{generated/adaptation_macros}  % Starting-type adaptation study: \Ada* (H values + LCBs + verdicts)
 
 \title{\textbf{The Benchmark Chooses the Winner:}\\[3pt]
 \large Measuring, Tuning, and Composing Small Safety Guards\\
@@ -203,6 +204,7 @@ audit, not a deployment recommendation.
 \input{sections/background-setup}   % Background (full) + The shared experimental setup (full methods)
 \input{sections/related-work}       % comprehensive related work
 \input{sections/act1}               % Act I detail (defines tab:primary, fig:plane, tab:sensitivity)
+\input{sections/act-adaptation}     % Confirmatory starting-type adaptation study (10 checkpoints; sec:adaptation, tab:adaptation)
 \begin{figure}[htbp]\centering
 \includegraphics[width=0.8\linewidth]{fig_act1_percheckpoint.pdf}
 \caption{Per-checkpoint view of Act I: SFT lifts represented-source macro-AP for every checkpoint (blue), but the transfer change (orange) ranges from $+0.04$ (SmolLM2) to $-0.15$ (Qwen3-4B) --- the fixed-panel average hides opposite signs.}
@@ -332,6 +334,13 @@ invariance check before trusting any guard. \\
 One forward pass $\approx$10--50\,ms on one A100 (\Cref{tab:latency}); no third-party egress. &
 Prefer a small self-hosted guard for inline, high-volume, or regulated traffic over a hosted-API
 round-trip. \\
+\rowcolor{white}
+\textbf{\textcolor{tkgreenedge}{7.}~Fine-tuning a \emph{released} guard specializes it too; KL-SFT keeps transfer but at a represented cost.} &
+Confirmatory 10-checkpoint study: SFT raises represented AP \AdaHGain{} (LCB \AdaHGainLCB{}) with a
+bound-confirmed transfer loss; KL-SFT preserves transfer (LCB \AdaHPreserveLCB{}) but its represented
+cost (LCB \AdaHCostLCB{}) fails the $-\AdaMargin$ non-inferiority margin (\Cref{sec:adaptation}). &
+Adapting a purpose-built guard is not exempt from the tradeoff; use KL-SFT as a tradeoff dial, not a
+free upgrade, and re-measure both splits on your own data. \\
 \arrayrulecolor{black}\bottomrule
 \end{tabular}
 \end{table}
