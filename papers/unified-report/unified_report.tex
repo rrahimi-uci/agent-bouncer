@@ -391,6 +391,32 @@ free upgrade, and re-measure both splits on your own data. \\
 Each step carries its caveat: these are estimates on a fixed panel, and the domain labels are a
 measuring stick, not a verdict.
 
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}[font=\footnotesize,node distance=7pt and 10pt,
+  wfstep/.style={rounded corners=3pt,draw=inkgrey,fill=cardgrey,align=center,inner sep=4pt,text width=0.66\linewidth},
+  gate/.style={rounded corners=3pt,draw=bgblueedge,fill=bgblue,align=left,inner sep=4pt,text width=0.66\linewidth},
+  dec/.style={diamond,aspect=2.4,draw=amberedge,fill=amberfill,align=center,inner sep=1pt,text width=1.9cm},
+  ship/.style={rounded corners=3pt,draw=tkgreenedge,fill=tkgreen,align=center,inner sep=4pt,text width=0.40\linewidth},
+  stop/.style={rounded corners=3pt,draw=statusred,fill=statusfill,align=center,inner sep=4pt,text width=0.40\linewidth},
+  arr/.style={-{Stealth[length=4pt]},inkgrey,thick}]
+  \node[wfstep] (reg) {\textbf{1. Freeze the candidate registry} --- base, SFT, KL-SFT, composition (checkpoint, prompt, calibrator, threshold rule, owner)};
+  \node[wfstep,below=of reg] (cal) {\textbf{2. Calibrate + choose a threshold} for \emph{each} candidate on target-calibration data};
+  \node[wfstep,below=of cal] (blind) {\textbf{3. Open the blind acceptance set \textsc{once}} (paired rows)};
+  \node[gate,below=of blind] (gates) {\textbf{4. Required gates:} absolute-AP floor $\cdot$ operating point (FPR/recall) $\cdot$ transfer retention vs.\ base $\cdot$ each domain separately $\cdot$ reliability $\cdot$ service SLO $\cdot$ governance};
+  \node[dec,below=of gates] (q) {All required gates pass?};
+  \node[ship,below left=14pt and -10pt of q] (ship) {\textbf{Select} (incumbent-first) $\to$ shadow $\to$ canary $\to$ monitor $\to$ rollback-ready};
+  \node[stop,below right=14pt and -10pt of q] (stop) {\textbf{No ship} / \texttt{NO\_FEASIBLE\_THRESHOLD}: redesign, escalate, or change the requirement};
+  \draw[arr](reg)--(cal); \draw[arr](cal)--(blind); \draw[arr](blind)--(gates); \draw[arr](gates)--(q);
+  \draw[arr](q.south) -- ++(0,-4pt) -| (ship.north) node[pos=0.25,above,font=\scriptsize\bfseries,text=tkgreenedge]{yes};
+  \draw[arr](q.south) -- ++(0,-4pt) -| (stop.north) node[pos=0.25,above,font=\scriptsize\bfseries,text=statusred]{no / missing evidence};
+\end{tikzpicture}
+\caption{\textbf{Gate candidates, not leaderboards} (recommended workflow; not validated end to end by
+this study). Every candidate is calibrated and thresholded separately, evaluated once on a blind
+acceptance set, and must clear \emph{all} required gates; a missing required gate is a failure, and an
+empty feasible set is a deliberate \textsc{no-ship}, not a relaxed cutoff.}
+\label{fig:gating}
+\end{figure}
+
 \subsection{Latency and cost: the case for a small, self-hosted guard}
 \label{sec:practitioner-cost}
 An inline guard runs on \emph{every} request, so its own latency and cost sit on the critical path.
