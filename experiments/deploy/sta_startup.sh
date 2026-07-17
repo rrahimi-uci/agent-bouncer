@@ -6,7 +6,9 @@ set -x
 hdr="Metadata-Flavor: Google"
 MK=$(curl -s -H "$hdr" http://metadata/computeMetadata/v1/instance/attributes/model-key)
 BUCKET=$(curl -s -H "$hdr" http://metadata/computeMetadata/v1/instance/attributes/bucket)
+{ set +x; } 2>/dev/null   # keep the HF token out of the (GCS-uploaded) log
 HFTOKEN=$(curl -s -H "$hdr" http://metadata/computeMetadata/v1/instance/attributes/hf-token)
+set -x
 PY=/usr/bin/python3
 echo "=== STA MK=$MK ==="
 $PY -c "import torch;print('torch',torch.__version__,torch.cuda.get_device_name(0))" || true
@@ -16,7 +18,8 @@ rm -rf /root/repo && mkdir -p /root/repo && tar xzf /root/bundle.tar.gz -C /root
 cd /root/repo
 mkdir -p /root/staout/runs /root/staout/scores
 export TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export HF_TOKEN="$HFTOKEN" HF_HUB_OFFLINE=0
+{ set +x; } 2>/dev/null; export HF_TOKEN="$HFTOKEN"; set -x   # export the token without echoing it
+export HF_HUB_OFFLINE=0
 $PY -m pip uninstall -y torchaudio torchvision 2>&1 | tail -1
 $PY -m pip install -q --no-input transformers==5.12.1 peft==0.19.1 "jinja2>=3.1.0" "pyarrow>=14" \
     pandas scikit-learn scipy accelerate safetensors sentencepiece protobuf tiktoken PyYAML 2>&1 | tail -3
