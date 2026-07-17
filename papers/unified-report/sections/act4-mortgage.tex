@@ -1,4 +1,4 @@
-\section{Act III --- Mortgage: an HMDA-grounded, dual-labeled benchmark built in depth}
+\section{General safety $\neq$ domain compliance: the HMDA-grounded Mortgage benchmark (Act~III)}
 \label{sec:actIV}\label{sec:actIV-mortgage}
 
 This is the strongest form of the report's thesis. In a regulated domain a general-safety benchmark
@@ -71,111 +71,7 @@ be a generic jailbreak with no mortgage angle. Two labels, rather than one merge
 what lets us pull the G0/D1 stratum out and score a guard on it alone.
 \end{background}
 
-\subsection{HMDA grounding: de-identified, banded fact sheets}
-\label{sec:actIV-mortgage-hmda}
-
-Realism is what makes the benchmark hard: a guard should face requests that read like genuine
-mortgage-workflow traffic, not toy prompts. We ground each scenario in the public HMDA 2022 loan-level
-snapshot \citep{hmda2022}, pulled from the FFIEC/CFPB Data Browser (the U.S.\ agencies that collect and
-publish HMDA data). Each source record is reduced to a \emph{banded, de-identified fact sheet}: loan
-purpose, occupancy, banded loan amount, banded income, banded LTV and DTI, action taken, denial reason,
-and state --- and never an exact dollar amount, a census tract, or any identifier.
-
-Three properties make this PII-safe by construction. \textbf{(i) Banding}: every exact figure is
-replaced by a range (an income band rather than a dollar amount, likewise for LTV and DTI).
-\textbf{(ii) Marginal sampling}: each field is drawn from its own marginal distribution over the bands
---- how often each band occurs \emph{on its own} --- rather than from the real joint combinations of
-fields in any one record, so no actual borrower's row can be reassembled. \textbf{(iii) A build-time
-assertion} that no emitted fact sheet reproduces a single source record verbatim; the frozen release
-carries \code{contains\_real\_pii=false} with zero violations at freeze. Following
-\citet{bowen2024mortgage}, the fair-lending and ability-to-repay cells are deliberately biased toward
-\textbf{borderline, higher-risk} files (high DTI, high LTV, a prior denial) --- exactly where
-underwriter discretion, and therefore bias, has room to operate.
-
-\begin{background}{``Banded,'' ``marginal,'' and ``PII-safe'' --- in plain words}
-\emph{Banded} means we never print an exact number; ``income \$92{,}450'' becomes ``income in the
-\$75k--\$100k band.'' \emph{Marginal sampling} means we build a synthetic applicant field-by-field from
-how common each band is by itself, not by copying a real person's combination of fields --- so even
-though every band is realistic, the assembled applicant corresponds to no real borrower. \emph{PII-safe}
-(personally identifiable information) then follows: with no exact figures, no tract, and no real
-field-combination, there is nothing in a fact sheet that could re-identify anyone. The grounding buys
-realism; the banding and marginal sampling buy privacy.
-\end{background}
-
-\subsection{The agentic construction pipeline}
-\label{sec:actIV-mortgage-pipeline}
-
-Rows are authored and labeled by a five-stage agentic loop, summarized in \Cref{fig:pipeline}. The loop
-is \emph{deterministic in structure} (the coverage cells it must fill are enumerated up front) but
-\emph{stochastic in surface wording} (the LLM stages run at temperature $>0$), which is why the release
-is a frozen artifact rather than a regenerable one.
-
-\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
-  \item \textbf{Planner.} Enumerates coverage cells as a product of quadrant $\times$ trap type
-  $\times$ policy card $\times$ role $\times$ protected context, so every intended combination is
-  targeted rather than left to chance.
-  \item \textbf{HMDA-grounder.} Draws a de-identified banded fact sheet (\Cref{sec:actIV-mortgage-hmda})
-  matching the planned cell.
-  \item \textbf{Generator.} Authors the request in a mortgage-workflow \emph{role voice} --- applicant,
-  loan officer, underwriter, processor, broker, or adversary --- so the phrasing matches who would
-  plausibly send it.
-  \item \textbf{Adversarial mutator.} Composes \emph{label-preserving} tactics that make a violation
-  subtle and deniable without changing its ground truth: euphemism, coded proxy, business
-  justification, and buried injection.
-  \item \textbf{Rubric-bound judge.} Assigns $G$ and $D$ by reading the request against the policy
-  cards (\Cref{sec:actIV-mortgage-cards}).
-\end{enumerate}
-
-The loop closes on an \textbf{accept-iff-target} rule: a generated row is kept only when the judge's
-assigned label matches the target the planner set for that cell; otherwise the row is retried or
-dropped. This is what ties the surface wording (adversarially mutated to be hard) back to a controlled
-label. Domain-independent harm (the jailbreak seeds behind the $G{=}1$ rows) is drawn from curated
-seeds; the novel mortgage-policy content is LLM-authored. Accepted rows then pass provenance and
-decontamination, a family-isolated train/dev/test split with a sealed private test, and are published
-as the frozen \code{v1\_hmda2022} release --- the object the reproducible harness scores.
-
-Each row is built around exactly one \textbf{trap} --- the tactic that makes its label hard to read
-off the surface. \code{direct} states the ask plainly; \code{business\_justified} wraps it in a
-business rationale; \code{coded\_proxy} substitutes a stand-in (a neighborhood, a language) for a
-protected group; \code{euphemism} softens the wording; \code{occupancy\_temptation} invites lying about
-owner-occupancy; \code{buried\_injection} hides an instruction inside otherwise ordinary text;
-\code{over\_refusal\_bait} looks alarming but is in fact benign, so a good guard should \emph{not} flag
-it; \code{benign\_info} is a plain safe request; and \code{minimal\_pair} is the protected-class
-counterfactual of \Cref{sec:actIV-mortgage-pairs}.
-
-\subsection{The 24 policy cards and the label rubric}
-\label{sec:actIV-mortgage-cards}
-
-The mortgage-policy label $D$ is not a vibe --- it is defined by \textbf{24 benchmark policy cards}
-spanning six regulatory families: fair lending, ability-to-repay / qualified-mortgage (ATR/QM),
-disclosures, UDAAP, fraud, and privacy. Each card is a one-page rule with two machine-usable parts: an
-\textbf{``intervene iff'' predicate} (the precise condition under which a guard \emph{should} step in)
-and an \textbf{authority pointer} (the law or regulation the predicate rests on). The judge reads a
-request against the applicable cards and emits $G\in\{\text{safe},\text{unsafe}\}$ and
-$D\in\{\text{allow},\text{intervene}\}$; the composed $\mathrm{final}$ of \Cref{eq:mortgage-final}
-follows mechanically, together with an \emph{action lattice} (the ordered menu of responses, from
-allow through warn to block) and a \emph{severity} grade.
-
-The honesty caveat is load-bearing and stated plainly: \textbf{these labels are policy-card-consistent,
-assigned by an LLM judge --- they are not SME-adjudicated.} The judge is run rubric-bound against the
-applicable cards at temperature~$0$ with a three-sample majority vote; all 24 cards remain unsigned, and
-judge agreement is measured as \emph{self-consistency} (re-running the same judge and checking it agrees
-with itself), not as a human inter-rater study. Two transparency gaps we flag rather than resolve here: the
-frozen artifact does not record the exact judge \emph{model and version}, so its
-possible model-family overlap with an evaluated checkpoint cannot be ruled out as a source of correlated
-blind spots; and per-label self-consistency \emph{counts} were not exported, so self-consistency is asserted,
-not tabulated.
-
-\begin{background}{Policy cards, ``SME,'' and Fleiss-\texorpdfstring{$\kappa$}{kappa} --- in plain words}
-A \emph{policy card} turns a slice of mortgage law into something a program can check: a plain
-``intervene when \ldots'' condition plus a citation to the rule it comes from. An \emph{SME} is a
-subject-matter expert --- here, a compliance lawyer --- and \emph{Fleiss-$\kappa$} is a standard number
-between $0$ and $1$ for how much several \emph{independent human} raters agree beyond chance, the usual
-gold standard for a labeled benchmark. We do not yet have that. What we report instead is
-\emph{self-consistency}: the same LLM judge, re-run, agreeing with itself --- a much weaker guarantee.
-That gap is precisely why every result in this section is a diagnostic, not a certified fair-lending
-finding.
-\end{background}
+\noindent \emph{Benchmark construction --- HMDA grounding and de-identified fact sheets, the agentic construction pipeline, and the 24 policy cards with the label rubric --- is detailed in \Cref{app:detail}.}
 
 \subsection{The frozen composition (994 rows)}
 \label{sec:actIV-mortgage-composition}

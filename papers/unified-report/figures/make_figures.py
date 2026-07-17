@@ -21,7 +21,8 @@ REPO = REPORT.parents[1]
 GEN = REPORT / "generated"
 plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False,
                      "figure.dpi": 150, "savefig.bbox": "tight", "axes.grid": True,
-                     "grid.alpha": 0.25, "grid.linestyle": "--"})
+                     "grid.alpha": 0.25, "grid.linestyle": "--",
+                     "pdf.fonttype": 42, "ps.fonttype": 42})  # embed TrueType, never Type 3
 BLUE, ORANGE, GREEN, RED, GREY = "#2563EB", "#EA580C", "#15803D", "#DC2626", "#94A3B8"
 
 
@@ -300,10 +301,54 @@ def diagrams():
             subprocess.run([dot, "-Tpng", "-Gdpi=150", str(src), "-o", str(HERE / f"{name}.png")], check=True)
 
 
+def adaptation_plane():
+    """Confirmatory adaptation study: the specialization plane. Represented vs held-out transfer
+    macro-AP change (vs the same base) under SFT (o) and KL-SFT (triangle) for all 10 checkpoints,
+    general vs released purpose-built guards. Reads the committed analysis results.json."""
+    from matplotlib.lines import Line2D
+    R = json.loads((REPO / "artifacts/starting_type_adaptation_v1/analysis/results.json").read_text())
+    mv = R["point_estimates"]["movement_vectors"]
+    GENERAL = {"qwen25_15b", "smollm2_17b", "smollm3_3b", "qwen3_4b"}
+    LAB = {"qwen25_15b": "Qwen2.5-1.5B", "smollm2_17b": "SmolLM2-1.7B", "smollm3_3b": "SmolLM3-3B",
+           "qwen3_4b": "Qwen3-4B", "qwen3guard_gen_06b": "Qwen3Guard-0.6B",
+           "qwen3guard_gen_4b": "Qwen3Guard-4B", "granite_guardian_31_2b": "Granite-2B",
+           "shieldgemma_2b": "ShieldGemma-2B", "llama_guard_3_1b": "Llama-Guard-1B",
+           "wildguard_7b": "WildGuard-7B"}
+    fig, ax = plt.subplots(figsize=(6.8, 4.8))
+    ax.axhline(0, color="#333", lw=0.8, zorder=1)
+    ax.axvline(0, color="#333", lw=0.8, zorder=1)
+    for k, v in mv.items():
+        sft, kl = v["theta_sft"], v["theta_kl"]
+        col = BLUE if k in GENERAL else GREEN
+        if abs(sft[0]) < 1e-6 and abs(sft[1]) < 1e-6:  # Llama-Guard pruned-head null cell
+            ax.scatter([0], [0], c=GREY, marker="x", s=45, zorder=4)
+            ax.annotate(LAB.get(k, k) + " (null)", (0, 0), fontsize=6, color=GREY,
+                        xytext=(4, 4), textcoords="offset points")
+            continue
+        ax.annotate("", xy=(kl[0], kl[1]), xytext=(sft[0], sft[1]),
+                    arrowprops=dict(arrowstyle="->", color=col, lw=1.1, alpha=0.65), zorder=2)
+        ax.scatter([sft[0]], [sft[1]], c=col, marker="o", s=34, zorder=3)
+        ax.scatter([kl[0]], [kl[1]], c=col, marker="^", s=48, zorder=3,
+                   edgecolors="white", linewidths=0.4)
+        ax.annotate(LAB.get(k, k), (sft[0], sft[1]), fontsize=6, color=col,
+                    xytext=(4, -7), textcoords="offset points")
+    ax.set_xlabel("Represented-source macro-AP change (vs. same base)")
+    ax.set_ylabel("Held-out transfer macro-AP change")
+    ax.set_title("Adaptation specialization plane: SFT ($\\circ$) $\\to$ KL-SFT ($\\triangle$)")
+    ax.text(0.985, 0.03, "specialization\n(represented $\\uparrow$, transfer $\\downarrow$)",
+            transform=ax.transAxes, ha="right", va="bottom", fontsize=7, color="#555")
+    ax.legend(handles=[Line2D([0], [0], marker='o', color=BLUE, lw=0, label='general checkpoint'),
+                       Line2D([0], [0], marker='o', color=GREEN, lw=0, label='purpose-built guard'),
+                       Line2D([0], [0], marker='o', color='#555', lw=0, label='SFT'),
+                       Line2D([0], [0], marker='^', color='#555', lw=0, label='KL-SFT')],
+              fontsize=7, loc="upper left", framealpha=0.9)
+    fig.savefig(HERE / "fig_adaptation_plane.pdf", metadata={"CreationDate": None}); plt.close(fig)
+
+
 def main():
     made = []
     for fn in (act1_percheckpoint, attractor, act3_composition, mortgage_quadrant, mortgage_baseline,
-               expguard_domains, prevalence, diagrams):
+               expguard_domains, prevalence, adaptation_plane, diagrams):
         try:
             fn(); made.append(fn.__name__)
         except Exception as e:

@@ -32,11 +32,24 @@
 \definecolor{tkgreenedge}{HTML}{15803D}
 \definecolor{guidealt}{HTML}{F2FBF5}   % zebra tint for the guidelines table
 \definecolor{guiderule}{HTML}{BFE3CB}  % soft green rule
+% ---- executive-spread palette (Evidence/Risk/Action cards + selector diagram) ----
+\definecolor{amberfill}{HTML}{FEF3C7}
+\definecolor{amberedge}{HTML}{D97706}
+\definecolor{cardgrey}{HTML}{F3F4F6}
+\definecolor{inkgrey}{HTML}{374151}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
 \newtcolorbox{background}[1]{colback=bgblue,colframe=bgblueedge,title={#1},fonttitle=\bfseries\small,
   fontupper=\small,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,breakable}
 \newtcolorbox{takeaway}[1]{colback=tkgreen,colframe=tkgreenedge,title={#1},fonttitle=\bfseries\small,
   fontupper=\small,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,breakable}
 \newcommand{\code}[1]{\texttt{\small #1}}
+% ---- end-of-section result module: Evidence / Decision / Boundary ----
+\newtcolorbox{edbox}[1][]{colback=cardgrey,colframe=inkgrey,boxrule=0.7pt,arc=2pt,
+  left=5pt,right=5pt,top=3pt,bottom=3pt,fontupper=\small,breakable,#1}
+\newcommand{\edb}[3]{\begin{edbox}\textbf{\textcolor{tkgreenedge}{Evidence.}}~#1\par\smallskip
+  \textbf{\textcolor{bgblueedge}{Decision.}}~#2\par\smallskip
+  \textbf{\textcolor{amberedge}{Boundary.}}~#3\end{edbox}}
 
 % ---- study-status banner (reused from Paper B) ----
 \definecolor{statusred}{HTML}{9F1239}
@@ -107,7 +120,7 @@ arithmetic, not skill. Composition recovers much of the lost transfer without re
 general-safety score does not cover domain compliance: general-purpose instruction models, used zero-shot as
 guards, rank mortgage violations only
 moderately and their fairness varies widely, and the top-ranked finance/health/law guard (SmolLM3-3B at
-AP $0.956$, statistically tied with the larger Qwen3-4B) is \emph{not} the largest model and \emph{not} the
+AP $0.956$, within overlapping marginal CIs of the larger Qwen3-4B --- order unresolved) is \emph{not} the largest model and \emph{not} the
 guard the mortgage benchmark prefers (directionally, on a small split) --- the numerically top-ranked
 guard differs across benchmarks.
 
@@ -127,11 +140,16 @@ number: measure it against its own base, on your traffic, at your prevalence; yo
 robustness \emph{without} paying to retrain; and you must gate on domain-grounded compliance \emph{and}
 fairness, which general-safety accuracy does not capture. And because the guard is a single
 $\approx$10--50\,ms forward pass (measured; \Cref{tab:latency}), a small self-hosted guard keeps regulated
-data in-house at far lower latency and per-call cost than a frontier hosted API. All evidence here is \emph{retrospective and
-estimation-only} on a fixed panel (mortgage labels are LLM-judge, not expert-adjudicated), so no causal or
+data in-house at a measured per-call latency of tens of milliseconds (serving-mode load, concurrency, and
+cost break-even are not benchmarked here). Acts~I--III are \emph{retrospective and estimation-only} on this
+fixed panel (mortgage labels are LLM-judge, not expert-adjudicated), while the preregistered adaptation
+study (\Cref{sec:adaptation}) is the one confirmatory piece; no causal or
 fair-lending claim is licensed; code, data manifests, and the frozen benchmark are public
 (\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
 \end{abstract}
+
+\clearpage
+\input{sections/executive-spread}   % the five-minute route (cards + selector + study map)
 
 \clearpage
 \tableofcontents
@@ -204,8 +222,8 @@ checkpoints (1.5--4B); one LoRA-SFT recipe; four regulated domains. Not a leader
 audit, not a deployment recommendation.
 
 
-\input{sections/background-setup}   % Background (full) + The shared experimental setup (full methods)
-\input{sections/related-work}       % comprehensive related work
+\input{sections/background-setup}   % Background concepts only (methods moved to Appendix B)
+% related work + the detailed experimental setup are now Appendices A/B (see end of document)
 \input{sections/act1}               % Act I detail (defines tab:primary, fig:plane, tab:sensitivity)
 \input{sections/act-adaptation}     % Confirmatory starting-type adaptation study (10 checkpoints; sec:adaptation, tab:adaptation)
 \begin{figure}[htbp]\centering
@@ -252,8 +270,9 @@ benchmark-co-production thesis recur across domains? --- rather than a re-run of
 mechanism. On ExpGuard's expert-annotated prompts, all four bases already rank domain violations well
 (aggregate AP $0.88$--$0.96$ across the panel; \Cref{tab:expguard}, \Cref{fig:expguard-domains}). The
 ordering echoes Act~I's lesson rather than raw capacity: \textbf{SmolLM3-3B ranks highest} (AP $0.956$,
-$95\%$ CI $[.949,.963]$, near-uniform across the three verticals), with Qwen3-4B \emph{statistically tied}
-just behind ($0.951$, $[.943,.958]$ --- the two CIs overlap, so their order is not resolved at this sample
+$95\%$ CI $[.949,.963]$, near-uniform across the three verticals), with Qwen3-4B close
+just behind ($0.951$, $[.943,.958]$ --- the two \emph{marginal} CIs overlap and no paired per-domain
+difference was computed, so their order is unresolved at this sample
 size), while the smaller checkpoints trail (Qwen2.5-1.5B $0.921$, SmolLM2-1.7B $0.883$) --- the ranking is
 \emph{not} monotone in parameter count.
 As external, expert-labeled evidence these numbers sit at a strictly stronger label tier than the mortgage
@@ -372,6 +391,32 @@ free upgrade, and re-measure both splits on your own data. \\
 Each step carries its caveat: these are estimates on a fixed panel, and the domain labels are a
 measuring stick, not a verdict.
 
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}[font=\footnotesize,node distance=7pt and 10pt,
+  wfstep/.style={rounded corners=3pt,draw=inkgrey,fill=cardgrey,align=center,inner sep=4pt,text width=0.66\linewidth},
+  gate/.style={rounded corners=3pt,draw=bgblueedge,fill=bgblue,align=left,inner sep=4pt,text width=0.66\linewidth},
+  dec/.style={diamond,aspect=2.4,draw=amberedge,fill=amberfill,align=center,inner sep=1pt,text width=1.9cm},
+  ship/.style={rounded corners=3pt,draw=tkgreenedge,fill=tkgreen,align=center,inner sep=4pt,text width=0.40\linewidth},
+  stop/.style={rounded corners=3pt,draw=statusred,fill=statusfill,align=center,inner sep=4pt,text width=0.40\linewidth},
+  arr/.style={-{Stealth[length=4pt]},inkgrey,thick}]
+  \node[wfstep] (reg) {\textbf{1. Freeze the candidate registry} --- base, SFT, KL-SFT, composition (checkpoint, prompt, calibrator, threshold rule, owner)};
+  \node[wfstep,below=of reg] (cal) {\textbf{2. Calibrate + choose a threshold} for \emph{each} candidate on target-calibration data};
+  \node[wfstep,below=of cal] (blind) {\textbf{3. Open the blind acceptance set \textsc{once}} (paired rows)};
+  \node[gate,below=of blind] (gates) {\textbf{4. Required gates:} absolute-AP floor $\cdot$ operating point (FPR/recall) $\cdot$ transfer retention vs.\ base $\cdot$ each domain separately $\cdot$ reliability $\cdot$ service SLO $\cdot$ governance};
+  \node[dec,below=of gates] (q) {All required gates pass?};
+  \node[ship,below left=14pt and -10pt of q] (ship) {\textbf{Select} (incumbent-first) $\to$ shadow $\to$ canary $\to$ monitor $\to$ rollback-ready};
+  \node[stop,below right=14pt and -10pt of q] (stop) {\textbf{No ship} / \texttt{NO\_FEASIBLE\_THRESHOLD}: redesign, escalate, or change the requirement};
+  \draw[arr](reg)--(cal); \draw[arr](cal)--(blind); \draw[arr](blind)--(gates); \draw[arr](gates)--(q);
+  \draw[arr](q.south) -- ++(0,-4pt) -| (ship.north) node[pos=0.25,above,font=\scriptsize\bfseries,text=tkgreenedge]{yes};
+  \draw[arr](q.south) -- ++(0,-4pt) -| (stop.north) node[pos=0.25,above,font=\scriptsize\bfseries,text=statusred]{no / missing evidence};
+\end{tikzpicture}
+\caption{\textbf{Gate candidates, not leaderboards} (recommended workflow; not validated end to end by
+this study). Every candidate is calibrated and thresholded separately, evaluated once on a blind
+acceptance set, and must clear \emph{all} required gates; a missing required gate is a failure, and an
+empty feasible set is a deliberate \textsc{no-ship}, not a relaxed cutoff.}
+\label{fig:gating}
+\end{figure}
+
 \subsection{Latency and cost: the case for a small, self-hosted guard}
 \label{sec:practitioner-cost}
 An inline guard runs on \emph{every} request, so its own latency and cost sit on the critical path.
@@ -415,8 +460,7 @@ Operational coupling & self-contained; pinned, versioned, auditable in-house & e
 \end{table}
 
 
-\input{sections/limitations-validation}   % what it does NOT establish + evidence ledger + roadmap
-
+% limitations/ledger/roadmap moved to Appendix E (result-specific caveats live in the E/D/B boxes)
 \section{Reproducibility}
 \label{sec:repro}
 Every number above is \code{\textbackslash input} from a committed generated table bound to a lock ---
@@ -454,6 +498,12 @@ Measured honestly, fine-tuning specializes rather than uniformly improves; a ret
 recovers some of the lost transfer; and in regulated domains a general-safety score does not cover
 compliance. The disciplined next step is not a more
 confident headline but a prospectively locked evaluation on genuinely uninspected data.
+
+\appendix
+\input{sections/related-work}       % Appendix A: related work (moved out of the main narrative)
+\input{sections/appendix-methods}   % Appendix B: shared experimental setup, frozen objects, statistical protocol
+\input{sections/appendix-detail}    % Appendix C: attractor mechanism + mortgage benchmark construction
+\input{sections/limitations-validation}   % Appendix E: full limitations, evidence ledger, validation roadmap
 
 \bibliographystyle{plainnat}
 \bibliography{refs}

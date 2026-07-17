@@ -1,4 +1,4 @@
-\section{Act II --- Compose, don't (re)tune: recovering transfer without retraining}
+\section{Recover transfer without retraining: output-space composition (Act~II)}
 \label{sec:actIII}
 
 Act I left us with an uncomfortable asymmetry. Supervised fine-tuning (SFT) buys a large,
@@ -112,8 +112,9 @@ specialization, restated. Composition sits between the two on represented rankin
 ($\PilotCompositionTransfer$). Read down the $\min(\text{both})$ column, composition is the most
 \emph{balanced} promotable operator: its worst regime ($0.883$) beats both the base's worst
 ($0.658$) and SFT's worst ($0.807$). In other words, if you must commit to one scorer without
-knowing whether the next prompt is on-source or off-source, the composition is the safest single
-choice on this panel.
+knowing whether the next prompt is on-source or off-source, the composition is the best-balanced single
+choice on this panel by worst-regime AP --- a \emph{ranking} statement, not a deployability one (its
+operating point still misses the illustrated FPR target; see below).
 
 \input{generated/pilot_summary_table}
 
@@ -254,3 +255,12 @@ significance claim (all numbers are descriptive contrasts on a fixed four-checkp
 manifest inspected during development). Finally, we compose only the SFT adapter here; whether the same
 operator recovers transfer for guards tuned with \emph{other objectives} (e.g.\ preference optimization)
 is left open.
+
+\edb{Output-space base$+$SFT averaging recovers transfer relative to SFT ($\PilotTransferDeltaSFT$) and
+beats an equal-cost SFT$+$SFT ensemble (\Cref{tab:sftsft}), so the gain is the base's, not generic
+ensembling; it has the highest worst-regime AP on the panel.}
+{If you have already SFT'd and transfer regressed, compose base$+$adapter to recover it without
+retraining --- then recalibrate the threshold on the target regime.}
+{Ranking recovery $\neq$ calibration transfer: the composition operating point still misses the
+illustrated $5\%$ FPR target ($11.4\%$). Descriptive, fixed-panel; the ensemble intuition is a
+motivation, not a proof.}

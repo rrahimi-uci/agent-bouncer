@@ -28,11 +28,23 @@ across the two research questions (familywise $\alpha=0.05$).
 
 \input{generated/tab_adaptation_gen}
 
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.86\linewidth]{fig_adaptation_plane.pdf}
+\caption{\textbf{The adaptation specialization plane.} Each checkpoint's macro-AP change vs.\ its
+\emph{own} unmodified base, on represented (x) and held-out transfer (y) sources, under SFT ($\circ$)
+and KL-SFT ($\triangle$); arrows run SFT\,$\to$\,KL-SFT. Nearly all checkpoints --- general (blue) and
+released purpose-built guards (green) alike --- land in the specialization quadrant (represented up,
+transfer down: \textbf{RQ1}). The KL-SFT arrows point up-and-left: it recovers transfer at a
+represented-source cost (\textbf{RQ2}). Llama-Guard-3-1B's $20$-token-pruned tied head is unmovable by
+LoRA (null cell at the origin).}
+\label{fig:adaptation-plane}
+\end{figure}
+
 \paragraph{RQ1 --- ordinary SFT specializes released guards too (supported).}
 Across the panel, our SFT protocol raised represented-source macro-AP by \AdaHGain{} (equal-family mean;
 LCB $\AdaHGainLCB>0$) while the gain was concentrated relative to held-out transfer (H\_conc \AdaHConc,
 LCB $\AdaHConcLCB>0$), with the preregistered criterion $\text{LCB}(\text{H\_gain})>0$ and
-$\text{LCB}(\text{H\_conc})>0$ both met. \Cref{tab:adaptation} shows the pattern is not a general-model
+$\text{LCB}(\text{H\_conc})>0$ both met. \Cref{tab:adaptation} and \Cref{fig:adaptation-plane} show the pattern is not a general-model
 artifact: the released guards move the same way --- SFT buys represented ranking (e.g.\ ShieldGemma-2B
 $+0.212$, Granite-Guard-2B $+0.139$) at a held-out cost (equal-family held-out change under SFT
 \AdaHheldSFT). Fine-tuning a released guard on your data specializes it toward your sources, at a

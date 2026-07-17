@@ -1,0 +1,93 @@
+% Executive spread: the five-minute route (Evidence -> Risk -> Action cards + selector + study map).
+% Tiered by evidence strength: green = preregistered confirmatory; blue = retrospective; amber = caution.
+\section*{Executive summary: evidence, risk, action}
+\addcontentsline{toc}{section}{Executive summary: evidence, risk, action}
+\label{sec:exec}
+
+\noindent\footnotesize\textbf{Micro-legend.}
+\textbf{AP} = ranking quality over all thresholds (\emph{not} a cutoff);
+\textbf{FPR} = legitimate requests wrongly blocked;
+\textbf{represented} = sources seen in tuning;
+\textbf{transfer} = held-out sources;
+\textcolor{tkgreenedge}{\textbf{CONFIRMED}} = preregistered (decision rules locked before the data);
+the other cards are retrospective on a fixed, inspected panel. \normalsize
+
+\smallskip
+
+% ---- card helper: fill, frame, title, evidence, risk, action ----
+\newcommand{\ericard}[6]{%
+  \begin{tcolorbox}[colback=#1,colframe=#2,coltitle=white,fonttitle=\bfseries\footnotesize,
+    fontupper=\footnotesize,boxrule=0.8pt,arc=2pt,left=4pt,right=4pt,top=3pt,bottom=3pt,title={#3}]
+    \textbf{Evidence.}~#4\par\smallskip
+    \textbf{Risk.}~#5\par\smallskip
+    \textbf{Action.}~#6
+  \end{tcolorbox}}
+
+\begin{tcbraster}[raster columns=2,raster equal height=rows,raster column skip=6pt,raster row skip=6pt]
+  \ericard{tkgreen}{tkgreenedge}{1 \; CONFIRMED: tuning specializes \emph{any} guard}
+    {A preregistered 10-checkpoint test finds ordinary SFT specializes even a released vendor guard on your data --- represented ranking up, transfer down (gain lower bound $+0.13$).}
+    {A benchmark gain hides a bound-confirmed transfer loss.}
+    {Compare every tune to its \emph{own} base on represented \emph{and} held-out sets.}
+  \ericard{bgblue}{bgblueedge}{2 \; The benchmark co-produces the ``winner''}
+    {A model ranks differently across represented, transfer, and domain sets (directional on the small mortgage split).}
+    {One aggregate leaderboard winner can hide a deployment failure.}
+    {Select against your declared deployment matrix, not one score.}
+  \ericard{bgblue}{bgblueedge}{3 \; Ordinary SFT trades transfer for rank}
+    {Represented $+32.3$ AP; transfer $-5.9$ on average; 15/20 seed runs specialize (Act~I, retrospective).}
+    {A tuning gain conceals a transfer regression.}
+    {Recalibrate and gate on \emph{both} splits before replacing the base.}
+  \ericard{amberfill}{amberedge}{4 \; Ranking $\neq$ operating point}
+    {After tuning, pooled FPR $4.3\%\!\to\!17.0\%$; hard-attack recall $78\%\!\to\!60\%$.}
+    {Better AP does not preserve the production cutoff.}
+    {Recalibrate every candidate; require explicit threshold gates.}
+  \ericard{amberfill}{amberedge}{5 \; Repairs are conditional, not free}
+    {Composition recovers transfer vs.\ SFT ($+7.6$ AP) but shows $11.4\%$ FPR at a $5\%$ target; KL-SFT is \emph{confirmed not free} --- its represented cost fails the $-0.02$ margin (RQ2).}
+    {A repair can still fail release; KL-SFT is a tradeoff dial.}
+    {Treat both as gated, recalibrated candidates --- not upgrades.}
+  \ericard{amberfill}{amberedge}{6 \; Domain evidence is base-only, incomplete}
+    {Mortgage/Finance/Health/Law orderings are domain-dependent but \emph{base-only, zero-shot}; overlap audit, SME adjudication, and serving study are incomplete.}
+    {General-safety evidence mistaken for compliance readiness.}
+    {Require separate target-domain validation and explicit evidence badges.}
+\end{tcbraster}
+
+\smallskip
+
+% ---- candidate selector (decision diagram) ----
+\begin{center}
+\begin{tikzpicture}[font=\footnotesize,node distance=5pt,
+  start/.style={rounded corners=3pt,draw=inkgrey,fill=cardgrey,thick,align=center,inner sep=5pt},
+  keep/.style={rounded corners=3pt,draw=tkgreenedge,fill=tkgreen,align=left,inner sep=4pt,text width=0.80\linewidth},
+  cond/.style={rounded corners=3pt,draw=bgblueedge,fill=bgblue,align=left,inner sep=4pt,text width=0.80\linewidth},
+  stop/.style={rounded corners=3pt,draw=statusred,fill=statusfill,align=left,inner sep=4pt,text width=0.80\linewidth}]
+  \node[start] (q) {\bfseries Choosing a guard? Gate candidates, don't rank leaderboards};
+  \node[keep,below=of q] (o1) {\textbf{1. Keep the base} if it passes every required gate.};
+  \node[cond,below=of o1] (o2) {\textbf{2. SFT} only for a stated represented-source need --- recalibrate + gate both splits.};
+  \node[cond,below=of o2] (o3) {\textbf{3. Composition} only to repair a \emph{measured} SFT transfer regression, once recalibration + the two-pass service gate pass.};
+  \node[below=of o3,rounded corners=3pt,draw=amberedge,fill=amberfill,align=left,inner sep=4pt,text width=0.80\linewidth] (o4) {\textbf{4. KL-SFT} = a tradeoff dial with a \emph{confirmed} represented-source cost (RQ2), not a free upgrade; gate like any candidate.};
+  \node[stop,below=of o4] (o5) {\textbf{5. Do not ship} when a required gate or evidence dependency is missing.};
+  \draw[-{Stealth[length=4pt]},inkgrey] (q) -- (o1);
+  \draw[-{Stealth[length=4pt]},inkgrey] (o1) -- (o2);
+  \draw[-{Stealth[length=4pt]},inkgrey] (o2) -- (o3);
+  \draw[-{Stealth[length=4pt]},inkgrey] (o3) -- (o4);
+  \draw[-{Stealth[length=4pt]},inkgrey] (o4) -- (o5);
+\end{tikzpicture}
+\end{center}
+
+\smallskip
+
+% ---- study map: four bodies of evidence + their tier ----
+\begin{table}[H]\centering\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\arrayrulecolor{guiderule}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.30\linewidth} >{\raggedright\arraybackslash}p{0.30\linewidth} l@{}}
+\rowcolor{inkgrey}
+{\color{white}\bfseries Body of evidence} & {\color{white}\bfseries What it measures} & {\color{white}\bfseries Tier} \\
+Acts~I--II: paired SFT + composition (4 general checkpoints) & Within-checkpoint effect of tuning + repair & \textcolor{bgblueedge}{\textbf{Retrospective}} \\
+\rowcolor{guidealt} Act~III: Mortgage + ExpGuard (base-only, zero-shot) & Domain-dependent ranking, no adaptation & \textcolor{amberedge}{\textbf{Base-only / directional}} \\
+\textbf{Adaptation study} (10 checkpoints, 6 families) & Does tuning specialize \emph{released} guards? (RQ1/RQ2) & \textcolor{tkgreenedge}{\textbf{Confirmatory}} \\
+\rowcolor{guidealt} Engineering lifecycle (gates, selector, no-ship) & How to turn evidence into a release decision & \textcolor{inkgrey}{\textbf{Recommended}} \\
+\arrayrulecolor{black}\bottomrule
+\end{tabular}
+\end{table}
+
+\smallskip\noindent\footnotesize\emph{Reader routes.} Executive: this spread (5\,min). Engineer: this spread + \Cref{sec:practitioner} (20--30\,min). R\&D: full text + appendices. \normalsize
