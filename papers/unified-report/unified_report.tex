@@ -32,6 +32,13 @@
 \definecolor{tkgreenedge}{HTML}{15803D}
 \definecolor{guidealt}{HTML}{F2FBF5}   % zebra tint for the guidelines table
 \definecolor{guiderule}{HTML}{BFE3CB}  % soft green rule
+% ---- executive-spread palette (Evidence/Risk/Action cards + selector diagram) ----
+\definecolor{amberfill}{HTML}{FEF3C7}
+\definecolor{amberedge}{HTML}{D97706}
+\definecolor{cardgrey}{HTML}{F3F4F6}
+\definecolor{inkgrey}{HTML}{374151}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
 \newtcolorbox{background}[1]{colback=bgblue,colframe=bgblueedge,title={#1},fonttitle=\bfseries\small,
   fontupper=\small,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,breakable}
 \newtcolorbox{takeaway}[1]{colback=tkgreen,colframe=tkgreenedge,title={#1},fonttitle=\bfseries\small,
@@ -134,6 +141,9 @@ study (\Cref{sec:adaptation}) is the one confirmatory piece; no causal or
 fair-lending claim is licensed; code, data manifests, and the frozen benchmark are public
 (\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
 \end{abstract}
+
+\clearpage
+\input{sections/executive-spread}   % the five-minute route (cards + selector + study map)
 
 \clearpage
 \tableofcontents
