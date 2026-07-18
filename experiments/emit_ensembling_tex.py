@@ -16,6 +16,7 @@ A = os.path.join(ROOT, "artifacts", "starting_type_adaptation_v1", "analysis")
 GEN = os.path.join(ROOT, "papers", "unified-report", "generated")
 P = json.load(open(os.path.join(A, "ensembling_point.json")))
 CB = json.load(open(os.path.join(A, "ensembling_committee_bootstrap.json")))
+EC = json.load(open(os.path.join(A, "ensembling_error_correlation.json")))
 
 pan = P["panels"]["excl_null"]
 m = pan["methods"]
@@ -65,6 +66,9 @@ macros = [
     r"\newcommand{\EnsCommSFTvsBestAll}{%s}" % d3(comm["all10"]["sft"]["vs_best_single_trans"]),
     r"\newcommand{\EnsCommKLvsBestGen}{%s}" % d3(comm["general"]["kl_sft"]["vs_best_single_trans"]),
     r"\newcommand{\EnsCommKLvsBestAll}{%s}" % d3(comm["all10"]["kl_sft"]["vs_best_single_trans"]),
+    # measured diversity mechanism: transfer error correlation, diverse vs redundant pair
+    r"\newcommand{\EnsErrCorrBaseSFT}{%s}" % a3(EC["r_base_sft"]),
+    r"\newcommand{\EnsErrCorrSFTSFT}{%s}" % a3(EC["r_sft_sft"]),
 ]
 open(os.path.join(GEN, "ensembling_macros.tex"), "w").write("\n".join(macros) + "\n")
 

@@ -171,10 +171,13 @@ There is a simple statistical reason composition works, and the same reason expl
 fails. Averaging two scorers is an \emph{ensemble}, and an ensemble beats its members when they are each
 individually good and make \emph{different} mistakes. A clean diagnostic is the \emph{midpoint}: if
 composition merely interpolated between the base and the SFT guard, it would land at their average AP. It
-does not --- it lands \emph{above} that midpoint by a strikingly uniform margin on every checkpoint
-($+0.047,+0.055,+0.040,+0.045$; read off \Cref{tab:pilot-models}). That uniform bonus is the
-\emph{diversity} term: the base and its own fine-tune rank the hard transfer cases differently, and
-averaging cancels part of each one's error --- which is why composition is not mere interpolation.
+does not --- it lands \emph{above} that midpoint by a consistently positive margin on every checkpoint
+($+0.047,+0.055,+0.040,+0.045$; read off \Cref{tab:pilot-models}). Because AP is nonlinear, this
+above-midpoint margin is a heuristic \emph{signature} of diversity, not a formal decomposition; a direct
+measurement bears it out --- on transfer the base's per-row errors correlate only \EnsErrCorrBaseSFT{} with
+its own fine-tune's, versus \EnsErrCorrSFTSFT{} between two fine-tune seeds (\Cref{app:ensembling}). The
+base and its own fine-tune rank the hard transfer cases differently, and averaging cancels part of each
+one's error --- which is why composition is not mere interpolation.
 
 The same lens explains why composition helps \emph{least} where the base is strongest. The gain from
 averaging shrinks as the two scorers' errors grow more \emph{correlated}. A LoRA adapter is a low-rank edit

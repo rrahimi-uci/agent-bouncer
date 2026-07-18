@@ -1,12 +1,13 @@
 \section{Adapting released guards: a confirmatory starting-type study}
 \label{sec:adaptation}
 
-Acts~I--III characterize what fine-tuning does to \emph{general} instruction checkpoints, on a panel the
-researcher inspected while building the method --- so they are retrospective estimation, not confirmed
-findings (\Cref{sec:honesty}). This section is the one \emph{confirmatory} piece: a preregistered
+Acts~I--II characterize what fine-tuning does to \emph{general} instruction checkpoints, and Act~III ranks
+\emph{base} guards on regulated domains --- all on panels the researcher inspected while building the
+method, so they are retrospective estimation, not confirmed findings (\Cref{sec:honesty}). This section is the one \emph{confirmatory} piece: a preregistered
 study whose estimands, decision rules, non-inferiority margin, and interpretation wording were locked in
-a claim registry \emph{before} any score existed, so the verdicts below cannot be a post-hoc reading of
-the data (no HARKing). It asks two questions that the earlier acts raise but cannot settle:
+a committed claim registry (\code{artifacts/starting\_type\_adaptation\_v1/protocol/claim\_registry.json},
+hashed in the release lock) \emph{before} any score existed, so the verdicts below cannot be a post-hoc
+reading of the data (no HARKing). It asks two questions that the earlier acts raise but cannot settle:
 (RQ1) does the specialization tradeoff also hit models that are \emph{already} purpose-built safety
 guards, and (RQ2) is KL-SFT --- which recovered transfer for general checkpoints (\Cref{sec:actI-klsft})
 --- a \emph{free} improvement, i.e.\ does it retain transfer at no represented-source cost?
@@ -15,7 +16,8 @@ guards, and (RQ2) is KL-SFT --- which recovered transfer for general checkpoints
 purpose-built guards$\}\times\{$unmodified $U$, $+$SFT, $+$KL-SFT$\}$, over \AdaNCheckpoints{}
 checkpoints spanning \AdaNFamilies{} model families (gemma, granite, llama, mistral, qwen, smollm), five
 seeds, primary $\beta{=}\AdaPrimaryBeta$. Every guard keeps its \emph{native} top-level verdict
-interface (ShieldGemma \texttt{Yes/No}, Qwen3Guard \texttt{Safe/Unsafe}, Llama-Guard
+interface (ShieldGemma \texttt{Yes/No}, Qwen3Guard \texttt{Safe/Controversial/Unsafe} --- its native
+three-tier top-level verdict, scored as a binary margin $\mathrm{logsumexp}(\text{Unsafe},\text{Controversial})-\text{Safe}$ --- Llama-Guard
 \texttt{safe/unsafe}, Granite \texttt{Yes/No}, WildGuard \texttt{yes/no}), validated byte-for-byte
 against the real tokenizer at a decision-position fidelity check before scoring; all cells share the
 frozen Paper~A binary manifest, LoRA recipe, and optimizer. We report macro-AP (mean over benchmark

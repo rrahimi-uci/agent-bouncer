@@ -1,0 +1,62 @@
+{
+  "estimand": "Pearson correlation of per-row standardized wrongness on transfer_test; equal-family mean, excl. Llama-Guard null cell",
+  "source_scores": "artifacts/starting_type_adaptation_v1/scores/combined.parquet",
+  "r_base_sft": 0.4216514336485323,
+  "r_sft_sft": 0.8511682225412456,
+  "per_checkpoint": [
+    {
+      "ck": "granite_guardian_31_2b",
+      "family": "granite",
+      "r_base_sft": 0.45128740219066055,
+      "r_sft_sft": 0.8372636348709156
+    },
+    {
+      "ck": "qwen25_15b",
+      "family": "qwen",
+      "r_base_sft": 0.14502677160704058,
+      "r_sft_sft": 0.8673718897212341
+    },
+    {
+      "ck": "qwen3_4b",
+      "family": "qwen",
+      "r_base_sft": 0.3318485578815426,
+      "r_sft_sft": 0.8656630691382267
+    },
+    {
+      "ck": "qwen3guard_gen_06b",
+      "family": "qwen",
+      "r_base_sft": 0.5324650880623107,
+      "r_sft_sft": 0.8633465862327482
+    },
+    {
+      "ck": "qwen3guard_gen_4b",
+      "family": "qwen",
+      "r_base_sft": 0.6293752021864792,
+      "r_sft_sft": 0.9063180373948301
+    },
+    {
+      "ck": "shieldgemma_2b",
+      "family": "gemma",
+      "r_base_sft": 0.39327069073392407,
+      "r_sft_sft": 0.8408219665119283
+    },
+    {
+      "ck": "smollm2_17b",
+      "family": "smollm",
+      "r_base_sft": 0.19380978520852593,
+      "r_sft_sft": 0.8995252107060155
+    },
+    {
+      "ck": "smollm3_3b",
+      "family": "smollm",
+      "r_base_sft": 0.22986501216618532,
+      "r_sft_sft": 0.8208444467888807
+    },
+    {
+      "ck": "wildguard_7b",
+      "family": "mistral",
+      "r_base_sft": 0.6421827716963782,
+      "r_sft_sft": 0.8418957869541763
+    }
+  ]
+}

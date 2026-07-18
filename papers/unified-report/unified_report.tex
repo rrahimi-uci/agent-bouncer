@@ -93,14 +93,18 @@ steers by a protected class) that a benchmark-tuned guard never learned to catch
 pre-tuning base on identical rows, separating \emph{represented} (trained-on) from \emph{transfer}
 (held-out) sources. Four findings on one fixed panel of compact checkpoints: (i)~fine-tuning
 \emph{specializes} --- it lifts represented ranking to a shared ceiling ($\RepDelta$ macro-AP) but changes
-transfer by only $\TransferDelta$ and, at a calibrated threshold, more than \emph{triples} the pooled
+transfer by only $\TransferDelta$ on average, pooling opposing per-checkpoint effects ($+0.04$ to $-0.15$),
+and, at a calibrated threshold, more than \emph{triples} the pooled
 false-alarm rate on unseen traffic while dropping hard-attack recall; (ii)~a retraining-free
 base$+$adapter \emph{composition} recovers much of the lost transfer ($\PilotTransferDeltaSFT$ vs.\ the
-fine-tune) at one extra inference pass; (iii)~a \emph{preregistered confirmatory} study over ten released
-checkpoints confirms the same specialization even for purpose-built vendor guards, while KL-regularized
+fine-tune) at one extra inference pass; (iii)~a \emph{preregistered confirmatory} study over ten
+checkpoints (including six released vendor guards) confirms the same specialization even for
+purpose-built guards, while KL-regularized
 SFT preserves transfer but at a real represented cost --- a tradeoff dial, not a free win; and (iv)~in
 regulated domains, evaluated base-only and zero-shot, the numerically top-ranked guard \emph{differs}
-across mortgage, finance, health, and law, and fairness varies in ways accuracy never surfaces.
+between the mortgage benchmark and the finance/health/law arm (within which one guard leads all three
+verticals; CIs overlap), and a protected-token probe separates guards that aggregate ranking rates
+alike (directional; three public-test pairs).
 
 \smallskip
 \noindent The contribution is a measurement-and-decision \emph{workflow} for choosing guards in regulated
@@ -190,7 +194,7 @@ audit, not a deployment recommendation.
 \input{sections/act3}               % Act II (Compose) detail (inputs pilot tables, defines eq:comp)
 \begin{figure}[htbp]\centering
 \includegraphics[width=0.8\linewidth]{fig_act3_composition.pdf}
-\caption{Per-checkpoint transfer macro-AP for base, SFT, and the base+SFT composition. Composition (green) exceeds SFT (orange) for every checkpoint, and lands at or above base except for the strongest base (Qwen3-4B) --- transfer \emph{recovery}, not Pareto dominance.}
+\caption{Per-checkpoint transfer macro-AP for base, SFT, and the base+SFT composition. Composition (green) exceeds SFT (orange) for every checkpoint; relative to the base it lands above for the two weaker bases, approximately at base for SmolLM3-3B ($0.907$ vs.\ $0.910$), and below base for the strongest base (Qwen3-4B) --- transfer \emph{recovery}, not Pareto dominance.}
 \label{fig:act3-bars}
 \end{figure}
 
@@ -303,7 +307,7 @@ In a regulated domain, build domain-grounded, dual-labeled evaluation and a prot
 invariance check before trusting any guard. \\
 \rowcolor{guidealt}
 \textbf{\textcolor{tkgreenedge}{6.}~A small, single-token guard is fast, cheap, and keeps data in-house.} &
-One forward pass $\approx$10--50\,ms on one A100 (\Cref{tab:latency}); no third-party egress. &
+One forward pass $\approx$10--50\,ms (P50--P90, batched) on one A100 (\Cref{tab:latency}); no third-party egress. &
 Prefer a small self-hosted guard for inline, high-volume, or regulated traffic over a hosted-API
 round-trip. \\
 \rowcolor{white}
@@ -333,7 +337,7 @@ free upgrade, and re-measure both splits on your own data. \\
   \item \textbf{In a regulated domain, build domain-grounded, dual-labeled evaluation} and a
   protected-pair invariance check; a general-safety score does not cover compliance.
   \item \textbf{Prefer a small, self-hosted guard for inline, high-volume, or regulated traffic}: one
-  local forward pass is $\approx$10--50\,ms (\Cref{tab:latency}) and keeps regulated prompts in-house,
+  local forward pass is $\approx$10--50\,ms (P50--P90, batched; P99 up to $\approx$94\,ms) (\Cref{tab:latency}) and keeps regulated prompts in-house,
   versus a per-call fee and a network round-trip to a third party (\Cref{tab:deployment}).
 \end{enumerate}
 Each step carries its caveat: these are estimates on a fixed panel, and the domain labels are a
@@ -369,7 +373,7 @@ empty feasible set is a deliberate \textsc{no-ship}, not a relaxed cutoff.}
 \label{sec:practitioner-cost}
 An inline guard runs on \emph{every} request, so its own latency and cost sit on the critical path.
 Because our guard emits a single verdict token --- one forward pass, no autoregressive generation --- it
-is fast and cheap to run: measured per-call latency is $\approx$10--50\,ms depending on model size
+is fast to run: measured per-call latency is $\approx$10--50\,ms (P50--P90, batched on one A100; P99 up to $\approx$94\,ms, and composition adds a pass) depending on model size
 (\Cref{tab:latency}), from $10.4$\,ms (P50) for Qwen2.5-1.5B to $25.2$\,ms for Qwen3-4B, with P90 within
 $\approx$50\,ms, on a single A100 at batch~16. Latency tracks model size and prompt length, not any decode
 budget, because there is nothing to decode. One caveat on reading these numbers: they are \emph{batched}

@@ -25,7 +25,7 @@ LABEL = {  # short display names
     "qwen25_15b": "Qwen2.5-1.5B", "smollm2_17b": "SmolLM2-1.7B", "smollm3_3b": "SmolLM3-3B",
     "qwen3_4b": "Qwen3-4B", "qwen3guard_gen_06b": "Qwen3Guard-0.6B", "qwen3guard_gen_4b": "Qwen3Guard-4B",
     "granite_guardian_31_2b": "Granite-Guard-2B", "shieldgemma_2b": "ShieldGemma-2B",
-    "llama_guard_3_1b": "Llama-Guard-1B", "wildguard_7b": "WildGuard-7B",
+    "llama_guard_3_1b": "Llama-Guard-3-1B", "wildguard_7b": "WildGuard-7B",
 }
 
 def s(x): return f"${x:+.3f}$"

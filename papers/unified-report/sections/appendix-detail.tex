@@ -49,8 +49,10 @@ correction in the base's own features, so full base-independence is approximate 
 residual is exactly that approximation, made visible.
 
 \begin{background}{Why the represented ceiling is $\approx0.98$, not $1.0$ --- and why that helps the thesis}
-A perfect ranker cannot score AP $=1$ on a benchmark whose \emph{labels} are slightly noisy: a small rate
-$\eta$ of ambiguous or mislabeled rows caps the achievable AP at roughly $1-1.3\,\eta$ (the coefficient
+A ranker of the \emph{latent} truth generally cannot score AP $=1$ against slightly noisy \emph{observed}
+labels (though it can rank the observed labels perfectly if the noise is systematic and learnable): under
+random label noise a small rate $\eta$ of ambiguous or mislabeled rows lowers the expected achievable AP to
+roughly $1-1.3\,\eta$ (the coefficient
 $1.3$ is an order-of-magnitude rule of thumb, not derived here --- the exact factor depends on prevalence
 and on where mislabels fall in the ranking). The observed common
 ceiling $0.982$ is what you would see at $\eta\approx1.5\%$ label noise --- i.e.\ the ceiling would then be a

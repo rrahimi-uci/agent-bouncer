@@ -32,7 +32,11 @@ the seed-ensembling arrows stay inside the ``transfer below base'' band, while t
 SFT crosses into ``transfer recovered.'' Adding KL-SFT as a third member (base $\oplus$ SFT $\oplus$
 KL-SFT) lands essentially on top of base $\oplus$ SFT --- no further gain. The active ingredient is
 \emph{diversity across the specialization axis}: the un-tuned base makes off-distribution errors that are
-decorrelated from the tuned member's, so averaging cancels them; two specialized members do not.
+decorrelated from the tuned member's, so averaging cancels them; two specialized members do not. This is
+measured directly, not merely inferred from the AP midpoint: on transfer rows the base's per-row errors
+correlate only \EnsErrCorrBaseSFT{} with its own fine-tune's, versus \EnsErrCorrSFTSFT{} between two
+fine-tune seeds --- the base is far more complementary to the fine-tune than one fine-tune run is to
+another, which is exactly why base $\oplus$ SFT recovers transfer while SFT $\oplus$ SFT (below) does not.
 
 \input{generated/tab_ensembling_gen}
 
