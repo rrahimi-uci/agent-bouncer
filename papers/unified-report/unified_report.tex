@@ -47,7 +47,7 @@
 \newcommand{\code}[1]{\texttt{\small #1}}
 % ---- end-of-section result module: Evidence / Decision / Boundary ----
 \newtcolorbox{edbox}[1][]{colback=cardgrey,colframe=inkgrey,boxrule=0.7pt,arc=2pt,
-  left=5pt,right=5pt,top=3pt,bottom=3pt,fontupper=\small,breakable,#1}
+  left=5pt,right=5pt,top=3pt,bottom=3pt,fontupper=\small,#1}   % non-breakable: keep E/D/B summary together
 \newcommand{\edb}[3]{\begin{edbox}\textbf{\textcolor{tkgreenedge}{Evidence.}}~#1\par\smallskip
   \textbf{\textcolor{bgblueedge}{Decision.}}~#2\par\smallskip
   \textbf{\textcolor{amberedge}{Boundary.}}~#3\end{edbox}}
@@ -192,11 +192,7 @@ audit, not a deployment recommendation.
 % fig:act1-bars relocated into act1.tex (anchored at its "hides opposite signs" paragraph)
 
 \input{sections/act3}               % Act II (Compose) detail (inputs pilot tables, defines eq:comp)
-\begin{figure}[htbp]\centering
-\includegraphics[width=0.8\linewidth]{fig_act3_composition.pdf}
-\caption{Per-checkpoint transfer macro-AP for base, SFT, and the base+SFT composition. Composition (green) exceeds SFT (orange) for every checkpoint; relative to the base it lands above for the two weaker bases, approximately at base for SmolLM3-3B ($0.907$ vs.\ $0.910$), and below base for the strongest base (Qwen3-4B) --- transfer \emph{recovery}, not Pareto dominance.}
-\label{fig:act3-bars}
-\end{figure}
+% fig:act3-bars relocated into act3.tex (anchored at the per-checkpoint composition story)
 
 \input{sections/act4-mortgage}      % Act III (Domains) mortgage detail
 

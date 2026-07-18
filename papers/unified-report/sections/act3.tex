@@ -133,9 +133,19 @@ this fixed panel --- not significance tests and not population claims.
 \subsubsection{Per-checkpoint recovery}
 \label{sec:actIII-percheckpoint}
 
-The aggregate hides a more instructive per-checkpoint story, in \Cref{tab:pilot-models}.
+The aggregate hides a more instructive per-checkpoint story, in \Cref{tab:pilot-models} and
+\Cref{fig:act3-bars}.
 
 \input{generated/pilot_per_model_table}
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.82\linewidth]{fig_act3_composition.pdf}
+\caption{Per-checkpoint transfer macro-AP for base, SFT, and the base+SFT composition. Composition (green)
+exceeds SFT (orange) for every checkpoint; relative to the base it lands above for the two weaker bases,
+approximately at base for SmolLM3-3B ($0.907$ vs.\ $0.910$), and below base for the strongest base
+(Qwen3-4B) --- transfer \emph{recovery}, not Pareto dominance.}
+\label{fig:act3-bars}
+\end{figure}
 
 \begin{itemize}[leftmargin=1.4em,itemsep=2pt]
   \item \textbf{SmolLM2-1.7B} ($0.790\!\to\!0.830\!\to\!0.857$): the friendly case. SFT already
