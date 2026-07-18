@@ -1,0 +1,69 @@
+\section{Ensembling: when does combining guards recover transfer?}
+\label{app:ensembling}
+
+Ensembling is a classic way to make a classifier generalize, so it is natural to ask whether it repairs
+the transfer loss that fine-tuning induces (\Cref{sec:actI}). We test this \emph{retrospectively} on the
+adaptation panel's committed per-row margins (\Cref{sec:adaptation}): \EnsNCk{} checkpoints across \EnsNFam{}
+families (excluding the degenerate Llama-Guard null cell), each scored under \{unmodified base, SFT,
+KL-SFT\} $\times$ five seeds on the \emph{same} rows. Every number is equal-family macro-AP on the raw
+logit margin, anchored to each checkpoint's \emph{own} unmodified base --- identical estimand to the main
+text. Within a checkpoint the base and its adapters share one output head, so raw margins are
+scale-comparable and can be averaged directly; across checkpoints they are not, so the cross-model
+committee (below) rank-normalizes first. This appendix is retrospective on the inspected panel, not a
+preregistered claim.
+
+\paragraph{Ensembling a fine-tune with itself is only denoising.} Averaging the five SFT seeds into one
+guard raises transfer by a bootstrap-significant but small \EnsSeedGainTrans{} (one-sided LCB
+\EnsSeedGainTransLCB{}) over a single SFT run --- yet transfer still lands \emph{below} the base
+(\EnsSeedSFTdTrans{} vs.\ base; \Cref{tab:ensembling}). Seed-ensembling KL-SFT behaves the same
+(\EnsSeedKLdTrans{}). The reason is structural: every seed is trained by the same recipe on the same data,
+so all members share the \emph{same} specialization bias. Averaging them cancels seed \emph{variance}, not
+the shared \emph{bias} toward the represented sources --- so it polishes a specialized guard without
+un-specializing it.
+
+\paragraph{Ensembling across the specialization axis recovers transfer.} The one ensemble that lifts
+transfer above the base is the base $\oplus$ adapter combination --- which is exactly the Act~II
+composition (\Cref{sec:actIII}). On this panel it raises transfer by \EnsBaseSFTvsBaseTrans{} over the base
+(one-sided LCB \EnsBaseSFTvsBaseTransLCB{} $>0$), recovering \EnsBaseSFTvsSFTTrans{} relative to pure SFT,
+at a represented cost of \EnsBaseSFTvsSFTRep{} (95\% CI $[\EnsBaseSFTvsSFTRepLCB, \EnsBaseSFTvsSFTRepUCB]$).
+It is a recovery, not a Pareto win: for the strongest base the composed guard still gives back a little
+transfer (the Act~II caveat, \Cref{sec:actIII}). \Cref{fig:ensembling-plane} makes the distinction visual:
+the seed-ensembling arrows stay inside the ``transfer below base'' band, while the arrow to base $\oplus$
+SFT crosses into ``transfer recovered.'' Adding KL-SFT as a third member (base $\oplus$ SFT $\oplus$
+KL-SFT) lands essentially on top of base $\oplus$ SFT --- no further gain. The active ingredient is
+\emph{diversity across the specialization axis}: the un-tuned base makes off-distribution errors that are
+decorrelated from the tuned member's, so averaging cancels them; two specialized members do not.
+
+\input{generated/tab_ensembling_gen}
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.86\linewidth]{fig_ensembling_plane.pdf}
+\caption{\textbf{The ensembling plane} (equal-family mean, \EnsNCk{}-checkpoint panel). Change in
+represented (x) and held-out transfer (y) macro-AP vs.\ each checkpoint's own base. Ensembling a fine-tune
+with itself (orange, single~$\to$~5 seeds) stays in the ``transfer below base'' band; only crossing the
+specialization axis by adding the un-tuned base (green arrow, to base~$\oplus$~SFT) lifts transfer above
+the base. \mbox{base~$\oplus$~SFT~$\oplus$~KL-SFT} coincides with base~$\oplus$~SFT (adding a second
+specialized member buys nothing).}
+\label{fig:ensembling-plane}
+\end{figure}
+
+\paragraph{A committee of fine-tuned guards does not generalize better.} The strongest form of the
+technique --- a cross-model \emph{committee} that rank-averages different guards on the same row --- makes
+the point sharpest (\Cref{tab:ensembling-committee}). A committee of the SFT guards is \emph{worse} than
+the single best guard on transfer (\EnsCommSFTvsBestGen{} over the four general checkpoints,
+\EnsCommSFTvsBestAll{} over all ten): SFT drives every member toward the same represented sources, so their
+held-out errors are correlated and averaging cannot cancel them --- it only dilutes the best member. The
+committee of \emph{KL-SFT} guards merely breaks even (\EnsCommKLvsBestGen{} / \EnsCommKLvsBestAll{}),
+because KL regularization leaves the members less specialized and therefore more diverse --- but that is
+the KL penalty doing the work, not the ensemble.
+
+\input{generated/tab_ensembling_committee}
+
+\begin{takeaway}{Does ensembling help here?}
+Only when it injects the diversity fine-tuning removed. Keeping the \emph{un-tuned base} in the ensemble
+(Act~II composition) recovers transfer above base; ensembling fine-tunes \emph{with each other} --- across
+seeds or as a committee of tuned guards --- does not, because specialization correlates their
+off-distribution errors. Ensembling is a variance tool, not a bias fix: it costs $N$ inference passes,
+does not dissolve the represented/transfer tradeoff, and every composed candidate must still be
+recalibrated and gated on both splits like any other (\Cref{sec:practitioner}).
+\end{takeaway}

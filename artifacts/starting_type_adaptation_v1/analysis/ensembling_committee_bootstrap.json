@@ -1,0 +1,78 @@
+{
+  "committee": {
+    "general": {
+      "unmodified": {
+        "rep": 0.6663965433868312,
+        "trans": 0.9209518862818453,
+        "best_single_trans": 0.942497184734556,
+        "vs_best_single_trans": -0.021545298452710693
+      },
+      "sft": {
+        "rep": 0.9904057816401014,
+        "trans": 0.8537448996778674,
+        "best_single_trans": 0.8678825492263973,
+        "vs_best_single_trans": -0.014137649548529918
+      },
+      "kl_sft": {
+        "rep": 0.9749704009011252,
+        "trans": 0.9176788765288824,
+        "best_single_trans": 0.9135510655672776,
+        "vs_best_single_trans": 0.00412781096160475
+      },
+      "diverse_bases_plus_sfts_trans": 0.9177552523881864
+    },
+    "all10": {
+      "unmodified": {
+        "rep": 0.8327476154730978,
+        "trans": 0.9697265862033637,
+        "best_single_trans": 0.9703005425727624,
+        "vs_best_single_trans": -0.0005739563693987204
+      },
+      "sft": {
+        "rep": 0.9923578579920264,
+        "trans": 0.8760191040425251,
+        "best_single_trans": 0.9320366838199587,
+        "vs_best_single_trans": -0.0560175797774336
+      },
+      "kl_sft": {
+        "rep": 0.9746087753414209,
+        "trans": 0.9454320180823669,
+        "best_single_trans": 0.9491035357420035,
+        "vs_best_single_trans": -0.0036715176596365806
+      },
+      "diverse_bases_plus_sfts_trans": 0.9432126688345996
+    }
+  },
+  "bootstrap": {
+    "reps": 1500,
+    "rng_seed": 20260716,
+    "panel": "excl_null",
+    "deltas": {
+      "seedens_gain_trans": {
+        "mean": 0.024623667761929736,
+        "lcb": 0.01991731661647893,
+        "ucb": 0.02899161089300353,
+        "verdict": "sig>0"
+      },
+      "basesft_vs_base_trans": {
+        "mean": 0.01385544334908838,
+        "lcb": 0.007625130658019877,
+        "ucb": 0.020018161879631846,
+        "verdict": "sig>0"
+      },
+      "basesft_vs_sft_trans": {
+        "mean": 0.06621622463543281,
+        "lcb": 0.04917847411825508,
+        "ucb": 0.08541027079511564,
+        "verdict": "sig>0"
+      },
+      "basesft_vs_sft_rep": {
+        "mean": -0.022372436669596308,
+        "lcb": -0.035272799928369056,
+        "ucb": -0.013109241099305915,
+        "verdict": "sig<0"
+      }
+    }
+  },
+  "source_scores": "artifacts/starting_type_adaptation_v1/scores/combined.parquet"
+}

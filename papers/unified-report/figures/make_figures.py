@@ -345,10 +345,66 @@ def adaptation_plane():
     fig.savefig(HERE / "fig_adaptation_plane.pdf", metadata={"CreationDate": None}); plt.close(fig)
 
 
+def ensembling_plane():
+    """Ensembling plane: equal-family mean (Δrepresented, Δtransfer) vs each checkpoint's own base,
+    for the within-checkpoint ensembles. Seed-ensembling a fine-tune (orange) stays BELOW the base
+    transfer line; only crossing the specialization axis by adding the un-tuned base (green) lifts
+    transfer above base. Reads the committed ensembling_point.json (excl-null panel)."""
+    from matplotlib.lines import Line2D
+    P = json.loads((REPO / "artifacts/starting_type_adaptation_v1/analysis/ensembling_point.json").read_text())
+    m = P["panels"]["excl_null"]["methods"]
+
+    def pt(k):
+        return m[k]["drep"], m[k]["dtrans"]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.8))
+    ax.axhspan(0, 0.05, color=GREEN, alpha=0.06, zorder=0)
+    ax.axhspan(-0.12, 0, color=RED, alpha=0.05, zorder=0)
+    ax.axhline(0, color="#333", lw=0.9, zorder=1)
+    ax.axvline(0, color="#333", lw=0.9, zorder=1)
+    # A) ensemble a fine-tune with itself (redundant -> correlated) : orange, single -> 5-seed
+    for single, ens, lab in [("sft_single", "sft_seedens", "SFT"), ("kl_single", "kl_seedens", "KL-SFT")]:
+        x0, y0 = pt(single); x1, y1 = pt(ens)
+        ax.annotate("", xy=(x1, y1), xytext=(x0, y0),
+                    arrowprops=dict(arrowstyle="->", color=ORANGE, lw=1.2, alpha=0.8), zorder=2)
+        ax.scatter([x0], [y0], c=ORANGE, marker="o", s=42, zorder=3)
+        ax.scatter([x1], [y1], c=ORANGE, marker="s", s=46, edgecolors="white", linewidths=0.4, zorder=3)
+        ax.annotate(f"{lab} single", (x0, y0), fontsize=6.5, color=ORANGE,
+                    xytext=(2, -9), textcoords="offset points")
+        ax.annotate(f"{lab} $\\times$5 seeds", (x1, y1), fontsize=6.5, color=ORANGE,
+                    xytext=(2, 5), textcoords="offset points")
+    # B) ensemble across the specialization axis (diverse -> decorrelated) : green
+    x0, y0 = pt("sft_single"); x1, y1 = pt("base_sft")
+    ax.annotate("", xy=(x1, y1), xytext=(x0, y0),
+                arrowprops=dict(arrowstyle="->", color=GREEN, lw=1.6), zorder=2)
+    for k, lab, off in [("base_sft", "base$\\oplus$SFT", (6, 6)), ("base_kl", "base$\\oplus$KL", (4, -9)),
+                        ("base_sft_kl", "", (0, 0)), ("sft_kl", "SFT$\\oplus$KL", (2, -9))]:
+        x, y = pt(k)
+        mk = "o" if k == "sft_kl" else "D"
+        ax.scatter([x], [y], c=GREEN, marker=mk, s=48, edgecolors="white", linewidths=0.4, zorder=3)
+        if lab:
+            ax.annotate(lab, (x, y), fontsize=6.5, color=GREEN, xytext=off, textcoords="offset points")
+    ax.scatter([0], [0], c=GREY, marker="*", s=150, zorder=4)
+    ax.annotate("base", (0, 0), fontsize=7, color="#555", xytext=(4, 4), textcoords="offset points")
+    ax.text(0.985, 0.965, "transfer recovered\n($\\geq$ base)", transform=ax.transAxes,
+            ha="right", va="top", fontsize=7, color=GREEN)
+    ax.text(0.985, 0.03, "transfer below base", transform=ax.transAxes,
+            ha="right", va="bottom", fontsize=7, color=RED)
+    ax.set_xlabel("Represented-source macro-AP change (vs. own base)")
+    ax.set_ylabel("Held-out transfer macro-AP change")
+    ax.set_title("Ensembling plane: only crossing the specialization axis recovers transfer")
+    ax.legend(handles=[
+        Line2D([0], [0], marker='o', color=ORANGE, lw=0, label='fine-tune with itself (seeds)'),
+        Line2D([0], [0], marker='D', color=GREEN, lw=0, label='base $\\oplus$ adapter (diverse)'),
+        Line2D([0], [0], marker='*', color=GREY, lw=0, label='unmodified base')],
+        fontsize=7, loc="lower left", framealpha=0.9)
+    fig.savefig(HERE / "fig_ensembling_plane.pdf", metadata={"CreationDate": None}); plt.close(fig)
+
+
 def main():
     made = []
     for fn in (act1_percheckpoint, attractor, act3_composition, mortgage_quadrant, mortgage_baseline,
-               expguard_domains, prevalence, adaptation_plane, diagrams):
+               expguard_domains, prevalence, adaptation_plane, ensembling_plane, diagrams):
         try:
             fn(); made.append(fn.__name__)
         except Exception as e:
