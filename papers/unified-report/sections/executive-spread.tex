@@ -52,28 +52,8 @@ the other cards are retrospective on a fixed, inspected panel. \normalsize
 
 \smallskip
 
-% ---- candidate selector (decision diagram) ----
-\begin{center}
-\begin{tikzpicture}[font=\footnotesize,node distance=5pt,
-  start/.style={rounded corners=3pt,draw=inkgrey,fill=cardgrey,thick,align=center,inner sep=5pt},
-  keep/.style={rounded corners=3pt,draw=tkgreenedge,fill=tkgreen,align=left,inner sep=4pt,text width=0.80\linewidth},
-  cond/.style={rounded corners=3pt,draw=bgblueedge,fill=bgblue,align=left,inner sep=4pt,text width=0.80\linewidth},
-  stop/.style={rounded corners=3pt,draw=statusred,fill=statusfill,align=left,inner sep=4pt,text width=0.80\linewidth}]
-  \node[start] (q) {\bfseries Choosing a guard? Gate candidates, don't rank leaderboards};
-  \node[keep,below=of q] (o1) {\textbf{1. Keep the base} if it passes every required gate.};
-  \node[cond,below=of o1] (o2) {\textbf{2. SFT} only for a stated represented-source need --- recalibrate + gate both splits.};
-  \node[cond,below=of o2] (o3) {\textbf{3. Composition} only to repair a \emph{measured} SFT transfer regression, once recalibration + the two-pass service gate pass.};
-  \node[below=of o3,rounded corners=3pt,draw=amberedge,fill=amberfill,align=left,inner sep=4pt,text width=0.80\linewidth] (o4) {\textbf{4. KL-SFT} = a tradeoff dial with a \emph{confirmed} represented-source cost (RQ2), not a free upgrade; gate like any candidate.};
-  \node[stop,below=of o4] (o5) {\textbf{5. Do not ship} when a required gate or evidence dependency is missing.};
-  \draw[-{Stealth[length=4pt]},inkgrey] (q) -- (o1);
-  \draw[-{Stealth[length=4pt]},inkgrey] (o1) -- (o2);
-  \draw[-{Stealth[length=4pt]},inkgrey] (o2) -- (o3);
-  \draw[-{Stealth[length=4pt]},inkgrey] (o3) -- (o4);
-  \draw[-{Stealth[length=4pt]},inkgrey] (o4) -- (o5);
-\end{tikzpicture}
-\end{center}
-
-\smallskip
+% Candidate-selector logic lives in the 6 cards' Action lines above and, in full, in
+% the gating-lifecycle diagram of \Cref{sec:practitioner}; not duplicated here.
 
 % ---- study map: four bodies of evidence + their tier ----
 \begin{table}[H]\centering\footnotesize

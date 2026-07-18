@@ -23,6 +23,7 @@
 \titlespacing*{\subsection}{0pt}{2.6ex plus .6ex minus .2ex}{1.1ex plus .3ex}
 \titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{0.6em}{}
 \setlength{\emergencystretch}{3em}
+\newcommand{\sectionbreak}{\clearpage}  % each section starts on a new page
 \graphicspath{{figures/}}
 
 % ---- teaching / takeaway callout boxes (reused from the simplified editions) ----
@@ -78,28 +79,35 @@ in High-Compliance Regulated Domains}
 
 
 \begin{abstract}
-\noindent A safety \emph{guard} --- a small model that labels each request \code{safe} or \code{unsafe}
-before an assistant acts --- is usually chosen by its score on a public benchmark. That score is
-\emph{co-produced} by the benchmark, the training objective, the decision threshold, and the domain, so
-the leaderboard-best guard can be the wrong guard for the traffic you serve.
+\noindent A safety \emph{guard} --- a small model that labels each incoming request \code{safe} or
+\code{unsafe} before an assistant acts on it --- is usually chosen by whichever fine-tune scores best on a
+public benchmark. That score is \emph{co-produced} by the benchmark, the training objective, the decision
+threshold, and the domain, so the leaderboard-best guard can be the wrong guard for the traffic you serve.
+This bites hardest in high-compliance domains --- finance, health, law, mortgage lending --- where the
+dangerous request is often \emph{polite, compliant-looking} text (e.g.\ a mortgage inquiry that quietly
+steers by a protected class) that a benchmark-tuned guard never learned to catch.
 
 \smallskip
 \noindent We measure what a fine-tune actually buys by comparing each guard only against its \emph{own}
 pre-tuning base on identical rows, separating \emph{represented} (trained-on) from \emph{transfer}
 (held-out) sources. Four findings on one fixed panel of compact checkpoints: (i)~fine-tuning
-\emph{specializes} --- it lifts represented ranking to a shared ceiling ($\RepDelta$ macro-AP) but
-changes transfer by only $\TransferDelta$, more than \emph{tripling} the pooled false-alarm rate at a
-calibrated threshold; (ii)~a retraining-free base$+$adapter \emph{composition} recovers much of the lost
-transfer ($\PilotTransferDeltaSFT$ vs.\ the fine-tune); (iii)~a \emph{preregistered confirmatory} study
-over ten released checkpoints confirms the same specialization even for purpose-built guards, while
-KL-regularized SFT preserves transfer but at a represented cost --- not a free win; and (iv)~in regulated
-domains the numerically top-ranked guard \emph{differs} across mortgage, finance, health, and law.
+\emph{specializes} --- it lifts represented ranking to a shared ceiling ($\RepDelta$ macro-AP) but changes
+transfer by only $\TransferDelta$ and, at a calibrated threshold, more than \emph{triples} the pooled
+false-alarm rate on unseen traffic while dropping hard-attack recall; (ii)~a retraining-free
+base$+$adapter \emph{composition} recovers much of the lost transfer ($\PilotTransferDeltaSFT$ vs.\ the
+fine-tune) at one extra inference pass; (iii)~a \emph{preregistered confirmatory} study over ten released
+checkpoints confirms the same specialization even for purpose-built vendor guards, while KL-regularized
+SFT preserves transfer but at a real represented cost --- a tradeoff dial, not a free win; and (iv)~in
+regulated domains, evaluated base-only and zero-shot, the numerically top-ranked guard \emph{differs}
+across mortgage, finance, health, and law, and fairness varies in ways accuracy never surfaces.
 
 \smallskip
-\noindent The contribution is a measurement-and-decision \emph{workflow}, not a winning model. Acts~I--III
-are retrospective on an inspected panel; only the adaptation study is confirmatory; the domain arms are
-base-only and zero-shot; no causal or fair-lending claim is licensed. Code, data manifests, and the
-frozen benchmark are public (\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
+\noindent The contribution is a measurement-and-decision \emph{workflow} for choosing guards in regulated
+products --- compare to your own base, gate on both represented and transfer, recalibrate, and treat
+repairs as gated candidates --- not a new winning model. Acts~I--III are retrospective on an inspected
+panel; only the adaptation study is confirmatory; the domain arms are base-only and zero-shot; no causal
+or fair-lending claim is licensed. Code, data manifests, and the frozen benchmark are public
+(\Cref{sec:repro}; \url{https://github.com/rrahimi-uci/guard-ranking-fragility}).
 \end{abstract}
 
 \clearpage
@@ -179,11 +187,7 @@ audit, not a deployment recommendation.
 % related work + the detailed experimental setup are now Appendices A/B (see end of document)
 \input{sections/act1}               % Act I detail (defines tab:primary, fig:plane, tab:sensitivity)
 \input{sections/act-adaptation}     % Confirmatory starting-type adaptation study (10 checkpoints; sec:adaptation, tab:adaptation)
-\begin{figure}[htbp]\centering
-\includegraphics[width=0.8\linewidth]{fig_act1_percheckpoint.pdf}
-\caption{Per-checkpoint view of Act I: SFT lifts represented-source macro-AP for every checkpoint (blue), but the transfer change (orange) ranges from $+0.04$ (SmolLM2) to $-0.15$ (Qwen3-4B) --- the fixed-panel average hides opposite signs.}
-\label{fig:act1-bars}
-\end{figure}
+% fig:act1-bars relocated into act1.tex (anchored at its "hides opposite signs" paragraph)
 
 \input{sections/act3}               % Act II (Compose) detail (inputs pilot tables, defines eq:comp)
 \begin{figure}[htbp]\centering
@@ -209,6 +213,15 @@ audit, not a deployment recommendation.
 \label{fig:mortgage-bars}
 \end{figure}
 
+\begin{figure}[H]\centering
+\includegraphics[width=0.80\linewidth]{fig_expguard_domains.pdf}
+\caption{Per-domain average precision (finance/health/law) for the four base guards on ExpGuard,
+zero-shot. The top-ranked domain guard (SmolLM3-3B --- tied with Qwen3-4B within CI) is \emph{not} the
+largest model, and the ranking is not monotone in size, echoing Act~I: capability
+and benchmark rank are distinct axes. AP is shown on a zoomed $[0.80,1.00]$ scale.}
+\label{fig:expguard-domains}
+\end{figure}
+
 \paragraph{Result --- external breadth (finance/health/law).} These are the four \emph{base} checkpoints
 scored \emph{zero-shot} (no domain fine-tuning), so this act is a thematic breadth test --- does the
 benchmark-co-production thesis recur across domains? --- rather than a re-run of the Act~I/II SFT
@@ -228,14 +241,6 @@ committed text-free per-row scores; the run was independently cross-checked on a
 (agreement to $3$--$4$ decimals).
 
 \input{generated/expguard_table}                % tab:expguard (4-guard result; from committed margins)
-\begin{figure}[htbp]\centering
-\includegraphics[width=0.86\linewidth]{fig_expguard_domains.pdf}
-\caption{Per-domain average precision (finance/health/law) for the four base guards on ExpGuard,
-zero-shot. The top-ranked domain guard (SmolLM3-3B --- tied with Qwen3-4B within CI) is \emph{not} the
-largest model, and the ranking is not monotone in size, echoing Act~I: capability
-and benchmark rank are distinct axes. AP is shown on a zoomed $[0.80,1.00]$ scale.}
-\label{fig:expguard-domains}
-\end{figure}
 
 \section{Synthesis --- one lesson at three scales}
 \label{sec:synthesis}

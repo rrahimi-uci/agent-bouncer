@@ -89,7 +89,15 @@ ordering tracks base transfer strength (\Cref{tab:primary}): the models with the
 begin with (SmolLM3 at $0.9102$, Qwen3-4B at $0.9438$) give the most of it back, while the model that
 had the least ($0.7904$) is the only one that improves. In other words, SFT does not add a portable
 notion of ``unsafe''; it reshapes the score toward the training sources, and for a model that already
-generalised well that reshaping is a net loss off-distribution.
+generalised well that reshaping is a net loss off-distribution (\Cref{fig:act1-bars}).
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.82\linewidth]{fig_act1_percheckpoint.pdf}
+\caption{Per-checkpoint view of Act~I: SFT lifts represented-source macro-AP for every checkpoint (blue),
+but the transfer change (orange) ranges from $+0.04$ (SmolLM2) to $-0.15$ (Qwen3-4B) --- the fixed-panel
+average hides opposite signs.}
+\label{fig:act1-bars}
+\end{figure}
 
 \begin{takeaway}{Why the $\TransferDelta$ transfer average is misleading}
 It averages effects that point in opposite directions --- SmolLM2 $+0.0400$ against Qwen3-4B $-0.1499$.
